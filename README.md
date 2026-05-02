@@ -70,6 +70,25 @@ npm run lint
 npm run format
 ```
 
+## Pre-commit hooks
+
+The repo includes a `.pre-commit-config.yaml` so formatting and linting can run automatically on each commit.
+
+```bash
+uv sync --dev
+npm install
+uv run pre-commit install
+uv run pre-commit run --all-files
+```
+
+The hooks use the same tools as local development and CI:
+
+- `ruff format`
+- `ruff check`
+- `djlint --reformat`
+- `djlint --lint`
+- `biome check --write`
+
 ## Notes
 
 - Tailwind is loaded from the CDN for this first pass.
