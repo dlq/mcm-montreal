@@ -1,0 +1,11 @@
+{
+  "name": "mcm-montreal",
+  "private": true,
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.6"
+  },
+  "scripts": {
+    "lint": "uv run ruff check . && uv run djlint templates --lint && biome check static",
+    "format": "uv run ruff format . && uv run djlint templates --reformat && biome check --write static"
+  }
+}

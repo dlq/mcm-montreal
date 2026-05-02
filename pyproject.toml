@@ -1,0 +1,31 @@
+[project]
+name = "mcm-montreal"
+version = "0.1.0"
+description = "Montreal-first discovery app for vintage and resale mid-century modern furniture."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4==4.13.4",
+    "Flask==3.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "djlint>=1.36.4",
+    "ruff>=0.11.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.djlint]
+profile = "jinja"
+indent = 2
+max_line_length = 100
+extension = "html"
+ignore = "H006,H030,H031,T003"

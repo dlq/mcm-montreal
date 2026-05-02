@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}{{ t("nav.shops") }} | Montreal MCM{% endblock %}
+{% block content %}
+  <section class="space-y-5">
+    <div class="rounded-[2rem] bg-[#e7dccb] p-6">
+      <p class="text-xs uppercase tracking-[0.25em] text-ink/50">{{ t("shops.sources") }}</p>
+      <h1 class="font-display text-4xl">{{ t("shops.title") }}</h1>
+      <p class="mt-2 max-w-3xl text-sm text-ink/70">{{ t("shops.subtitle") }}</p>
+    </div>
+    <div class="grid gap-5 lg:grid-cols-2">
+      {% for shop in shops %}
+        <article class="rounded-[2rem] border border-ink/10 bg-white p-6 shadow-sm">
+          <div class="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <p class="text-xs uppercase tracking-[0.2em] text-ink/50">
+                {{ t("shops.local") if shop.is_montreal_local else t("shops.canada_friendly") }}
+              </p>
+              <a class="mt-1 block font-display text-3xl hover:text-clay"
+                 href="{{ url_for('shop_detail', slug=shop.slug) }}">{{ shop.name }}</a>
+            </div>
+            {% include "_favourite_shop_button.html" %}
+          </div>
+          <p class="text-sm text-ink/70">{{ shop_text(shop, "description") }}</p>
+          <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+            <div>
+              <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.location") }}</dt>
+              <dd class="mt-1">
+                {{ shop.city }}, {{ shop.province }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("shops.active_listings") }}</dt>
+              <dd class="mt-1">
+                {{ shop.active_listing_count }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("shops.shipping") }}</dt>
+              <dd class="mt-1">
+                {{ shop_text(shop, "shipping_summary") }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("shops.categories") }}</dt>
+              <dd class="mt-1">
+                {{ shop.categories_carried or t("shops.categories_fallback") }}
+              </dd>
+            </div>
+          </dl>
+          <p class="mt-4 text-sm text-ink/60">{{ shop_text(shop, "style_focus") }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

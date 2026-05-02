@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>
+      {% block title %}Montreal MCM{% endblock %}
+    </title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              oat: "#f3efe7",
+              ink: "#1e1b18",
+              clay: "#b0633f",
+              moss: "#5f7255",
+              brass: "#9d7c35"
+            },
+            fontFamily: {
+              display: ["Georgia", "serif"],
+              sans: ["Helvetica Neue", "Arial", "sans-serif"]
+            }
+          }
+        }
+      }
+    </script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  </head>
+  <body class="bg-oat text-ink min-h-screen">
+    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <header class="mb-8 rounded-[2rem] border border-ink/10 bg-white/80 p-5 shadow-sm backdrop-blur">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <a href="{{ url_for('listings') }}"
+               class="font-display text-3xl tracking-tight">Montreal MCM</a>
+            <p class="mt-1 max-w-2xl text-sm text-ink/70">{{ t("site.tagline") }}</p>
+          </div>
+          <nav class="flex flex-wrap items-center gap-2 text-sm">
+            <a class="rounded-full border border-ink/10 px-3 py-2 hover:bg-ink hover:text-white"
+               href="{{ lang_url_en }}">EN</a>
+            <a class="rounded-full border border-ink/10 px-3 py-2 hover:bg-ink hover:text-white"
+               href="{{ lang_url_fr }}">FR</a>
+            <a class="rounded-full border border-ink/10 px-4 py-2 hover:bg-ink hover:text-white"
+               href="{{ url_for('listings') }}">{{ t("nav.listings") }}</a>
+            <a class="rounded-full border border-ink/10 px-4 py-2 hover:bg-ink hover:text-white"
+               href="{{ url_for('shops') }}">{{ t("nav.shops") }}</a>
+            <a class="rounded-full border border-ink/10 px-4 py-2 hover:bg-ink hover:text-white"
+               href="{{ url_for('favourites') }}">{{ t("nav.favourites") }} <span class="text-ink/60">({{ favourite_counts.listings }})</span></a>
+            <a class="rounded-full border border-ink/10 px-4 py-2 hover:bg-ink hover:text-white"
+               href="{{ url_for('admin_dashboard') }}">{{ t("nav.admin") }}</a>
+          </nav>
+        </div>
+      </header>
+      {% block content %}{% endblock %}
+    </div>
+    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  </body>
+</html>

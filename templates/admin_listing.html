@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ t("admin.listing_inspection") }} | Montreal MCM{% endblock %}
+{% block content %}
+  <section class="mx-auto max-w-4xl space-y-6">
+    <div class="rounded-[2rem] border border-ink/10 bg-white p-6 shadow-sm">
+      <p class="text-xs uppercase tracking-[0.25em] text-ink/50">{{ t("admin.listing_inspection") }}</p>
+      <h1 class="mt-2 font-display text-4xl">{{ listing.title }}</h1>
+      <p class="mt-2 text-sm text-ink/70">
+        {{ listing.shop_name }} · {{ t("admin.parse_confidence", value="%.0f"|format(listing.parse_confidence * 100) ) }}
+      </p>
+    </div>
+    <div class="grid gap-6 lg:grid-cols-[0.9fr,1.1fr]">
+      <div class="rounded-[2rem] border border-ink/10 bg-white p-6 shadow-sm">
+        <dl class="space-y-4 text-sm">
+          <div>
+            <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("admin.source_url") }}</dt>
+            <dd class="mt-1 break-all">
+              <a href="{{ listing.source_listing_url }}"
+                 target="_blank"
+                 rel="noreferrer">{{ listing.source_listing_url }}</a>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("admin.current_status") }}</dt>
+            <dd class="mt-1">
+              {{ status_label(listing.availability_override or listing.availability_status) }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("admin.current_category") }}</dt>
+            <dd class="mt-1">
+              {{ category_label(listing.category_override or listing.category) }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("admin.price") }}</dt>
+            <dd class="mt-1">
+              {{ listing.price_raw }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("admin.last_seen") }}</dt>
+            <dd class="mt-1">
+              {{ listing.last_seen_at }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("admin.last_checked") }}</dt>
+            <dd class="mt-1">
+              {{ listing.last_checked_at }}
+            </dd>
+          </div>
+        </dl>
+      </div>
+      <form class="rounded-[2rem] border border-ink/10 bg-white p-6 shadow-sm"
+            method="post">
+        <h2 class="font-display text-2xl">{{ t("admin.manual_overrides") }}</h2>
+        <div class="mt-5 space-y-4">
+          <div>
+            <label class="mb-1 block text-sm font-medium" for="category_override">
+              {{ t("admin.category_override") }}
+            </label>
+            <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+                    id="category_override"
+                    name="category_override">
+              <option value="">{{ t("admin.use_parsed_category") }}</option>
+              {% for category in categories %}
+                <option value="{{ category }}"
+                        {% if listing.category_override == category %}selected{% endif %}>
+                  {{ category_label(category) }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium" for="availability_override">
+              {{ t("admin.availability_override") }}
+            </label>
+            <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+                    id="availability_override"
+                    name="availability_override">
+              <option value="">{{ t("admin.use_parsed_status") }}</option>
+              {% for status in ["available", "sold_out", "unknown", "removed"] %}
+                <option value="{{ status }}"
+                        {% if listing.availability_override == status %}selected{% endif %}>
+                  {{ status_label(status) }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <label class="flex items-center gap-2 rounded-2xl bg-oat px-4 py-3 text-sm">
+            <input type="checkbox"
+                   name="is_featured"
+                   value="1"
+                   {% if listing.is_featured %}checked{% endif %}>
+            {{ t("admin.featured_listing") }}
+          </label>
+          <div>
+            <label class="mb-1 block text-sm font-medium" for="manual_notes">
+              {{ t("admin.manual_notes") }}
+            </label>
+            <textarea class="min-h-36 w-full rounded-2xl border border-ink/10 px-4 py-3"
+                      id="manual_notes"
+                      name="manual_notes">{{ listing.manual_notes }}</textarea>
+          </div>
+          <button class="rounded-full bg-ink px-5 py-3 text-white" type="submit">
+            {{ t("admin.save_overrides") }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+{% endblock %}

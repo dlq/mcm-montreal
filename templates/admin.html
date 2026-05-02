@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ t("nav.admin") }} | Montreal MCM{% endblock %}
+{% block content %}
+  <section class="space-y-6">
+    <div class="flex flex-col gap-4 rounded-[2rem] bg-[#e1d8c7] p-6 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <p class="text-xs uppercase tracking-[0.25em] text-ink/50">{{ t("nav.admin") }}</p>
+        <h1 class="font-display text-4xl">{{ t("admin.title") }}</h1>
+        <p class="mt-2 text-sm text-ink/70">{{ t("admin.subtitle") }}</p>
+      </div>
+      <form method="post" action="{{ url_for('admin_refresh') }}">
+        <button class="rounded-full bg-ink px-5 py-3 text-white" type="submit">
+          {{ t("admin.refresh") }}
+        </button>
+      </form>
+    </div>
+    <div class="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+      <div class="space-y-6">
+        <div class="rounded-[2rem] border border-ink/10 bg-white p-5 shadow-sm">
+          <h2 class="font-display text-2xl">{{ t("admin.source_health") }}</h2>
+          <div class="mt-4 overflow-x-auto">
+            <table class="min-w-full text-left text-sm">
+              <thead class="text-ink/50">
+                <tr>
+                  <th class="pb-3 pr-4">{{ t("admin.shop") }}</th>
+                  <th class="pb-3 pr-4">{{ t("admin.status") }}</th>
+                  <th class="pb-3 pr-4">{{ t("admin.listings") }}</th>
+                  <th class="pb-3 pr-4">{{ t("admin.last_run") }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for source in sources %}
+                  <tr class="border-t border-ink/10">
+                    <td class="py-3 pr-4">{{ source.name }}</td>
+                    <td class="py-3 pr-4">{{ source.last_status or t("admin.not_run_yet") }}</td>
+                    <td class="py-3 pr-4">{{ source.active_listing_count }}</td>
+                    <td class="py-3 pr-4">{{ source.last_run_at or t("admin.pending") }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="rounded-[2rem] border border-ink/10 bg-white p-5 shadow-sm">
+          <h2 class="font-display text-2xl">{{ t("admin.listing_inspection") }}</h2>
+          <div class="mt-4 space-y-3">
+            {% for listing in listings %}
+              <a class="flex items-center justify-between rounded-2xl bg-oat px-4 py-3 hover:bg-[#ece2d2]"
+                 href="{{ url_for('admin_listing', listing_id=listing.id) }}">
+                <span>{{ listing.title }}</span>
+                <span class="text-xs text-ink/50">{{ listing.shop_name }}</span>
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="space-y-6">
+        <div class="rounded-[2rem] border border-ink/10 bg-white p-5 shadow-sm">
+          <h2 class="font-display text-2xl">{{ t("admin.failed_review") }}</h2>
+          <div class="mt-4 space-y-3">
+            {% for failure in failures %}
+              <div class="rounded-2xl bg-[#f7f0e7] p-4 text-sm">
+                <p class="font-medium">{{ failure.shop_name }}</p>
+                <p class="mt-1 text-ink/70">{{ failure.error_message }}</p>
+                <p class="mt-2 text-xs text-ink/50">{{ failure.created_at }}</p>
+              </div>
+            {% else %}
+              <p class="text-sm text-ink/60">{{ t("admin.no_failures") }}</p>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="rounded-[2rem] border border-ink/10 bg-white p-5 shadow-sm">
+          <h2 class="font-display text-2xl">{{ t("admin.duplicate_review") }}</h2>
+          <div class="mt-4 space-y-3">
+            {% for pair in duplicates %}
+              <div class="rounded-2xl bg-oat p-4 text-sm">
+                <p class="font-medium">{{ pair.left.title }}</p>
+                <p class="text-ink/60">{{ pair.left.shop_name }} ↔ {{ pair.right.shop_name }}</p>
+                <p class="mt-2 text-xs uppercase tracking-[0.2em] text-ink/50">
+                  {{ t("admin.similarity", score=pair.score) }}
+                </p>
+              </div>
+            {% else %}
+              <p class="text-sm text-ink/60">{{ t("admin.no_duplicates") }}</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}{{ listing.title }} | Montreal MCM{% endblock %}
+{% block content %}
+  {% set availability = listing.availability_override or listing.availability_status %}
+  <section class="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+    <div class="space-y-4">
+      <div class="overflow-hidden rounded-[2rem] border border-ink/10 bg-white shadow-sm">
+        <div class="aspect-[4/3] bg-stone-200">
+          {% if listing.primary_image_url %}
+            <img class="h-full w-full object-cover"
+                 src="{{ listing.primary_image_url }}"
+                 alt="{{ listing.title }}">
+          {% endif %}
+        </div>
+      </div>
+      {% set images = json_loads(listing.additional_image_urls or '[]') %}
+      {% if images %}
+        <div class="grid grid-cols-3 gap-3">
+          {% for image in images %}
+            <div class="overflow-hidden rounded-3xl bg-white">
+              <img class="aspect-square h-full w-full object-cover"
+                   src="{{ image }}"
+                   alt="{{ listing.title }}">
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+    <div class="rounded-[2rem] border border-ink/10 bg-white p-6 shadow-sm">
+      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="text-xs uppercase tracking-[0.25em] text-ink/50">{{ listing.shop_name }}</p>
+          <h1 class="mt-2 font-display text-4xl leading-tight">{{ listing.title }}</h1>
+        </div>
+        {% include "_favourite_listing_button.html" %}
+      </div>
+      <div class="mb-4 flex flex-wrap gap-2 text-xs">
+        <availability-pill data-state="{{ availability }}">{{ status_label(availability) }}</availability-pill>
+        {% if listing.ships_to_montreal %}
+          <availability-pill data-state="shipping">{{ t("listing.badge.shipping") }}</availability-pill>
+        {% endif %}
+        {% if shop.is_montreal_local %}
+          <availability-pill data-state="local">{{ t("listing.badge.local") }}</availability-pill>
+        {% endif %}
+      </div>
+      <p class="mb-6 text-3xl font-semibold">{{ listing.price_raw or t("listing.quote_required") }}</p>
+      <dl class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.shop") }}</dt>
+          <dd class="mt-1">
+            <a class="hover:text-clay"
+               href="{{ url_for('shop_detail', slug=listing.shop_slug) }}">{{ listing.shop_name }}</a>
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.location") }}</dt>
+          <dd class="mt-1">
+            {{ listing.location_text }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("filters.category") }}</dt>
+          <dd class="mt-1">
+            {{ category_label(listing.category_override or listing.category) or t("listing.uncategorized") }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.materials") }}</dt>
+          <dd class="mt-1">
+            {{ listing.materials or t("listing.not_parsed") }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.dimensions") }}</dt>
+          <dd class="mt-1">
+            {{ listing.dimensions_text or t("listing.not_parsed") }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("filters.designer") }}</dt>
+          <dd class="mt-1">
+            {{ listing.designer or listing.maker or t("listing.not_parsed") }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.era") }}</dt>
+          <dd class="mt-1">
+            {{ listing.era or t("listing.era_unknown") }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.condition") }}</dt>
+          <dd class="mt-1">
+            {{ listing.condition_text or t("listing.condition_unknown") }}
+          </dd>
+        </div>
+      </dl>
+      <div class="mt-6 rounded-[1.5rem] bg-oat p-4">
+        <p class="text-sm font-medium">{{ t("listing.shipping_note") }}</p>
+        <p class="mt-1 text-sm text-ink/70">
+          {{ listing.shipping_note or shop_text(shop, "shipping_summary") }}
+        </p>
+      </div>
+      <div class="mt-6 rounded-[1.5rem] bg-oat p-4">
+        <p class="text-sm font-medium">{{ t("listing.freshness") }}</p>
+        <p class="mt-1 text-sm text-ink/70">
+          {{ freshness_label(listing.last_checked_at) }} · {{ t("listing.last_checked", value=listing.last_checked_at) }}
+        </p>
+      </div>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a class="rounded-full bg-ink px-5 py-3 text-white"
+           href="{{ listing.source_listing_url }}"
+           target="_blank"
+           rel="noreferrer">{{ t("listing.view_original") }}</a>
+        <a class="rounded-full border border-ink/10 px-5 py-3"
+           href="{{ shop.website }}"
+           target="_blank"
+           rel="noreferrer">{{ t("listing.visit_shop") }}</a>
+      </div>
+      {% if listing.source_description %}
+        <div class="mt-6 border-t border-ink/10 pt-6">
+          <h2 class="font-display text-2xl">{{ t("listing.source_notes") }}</h2>
+          <p class="mt-2 text-sm leading-7 text-ink/75">{{ listing.source_description }}</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,168 @@
+<aside class="rounded-[2rem] border border-ink/10 bg-white p-5 shadow-sm">
+  <div class="mb-4">
+    <p class="text-xs uppercase tracking-[0.25em] text-ink/50">{{ t("filters.browse") }}</p>
+    <h2 class="font-display text-2xl">{{ t("filters.title") }}</h2>
+  </div>
+  <listing-filters data-default-summary="{{ t('filters.default_summary') }}">
+    <form class="space-y-4"
+          hx-get="{{ url_for('listings') }}"
+          hx-target="#listing-grid"
+          hx-push-url="true">
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="q">{{ t("filters.search") }}</label>
+        <input class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+               id="q"
+               name="q"
+               value="{{ filters.q }}"
+               placeholder="{{ t('filters.search_placeholder') }}">
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="shop">{{ t("filters.shop") }}</label>
+        <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+                id="shop"
+                name="shop">
+          <option value="">{{ t("filters.all_shops") }}</option>
+          {% for shop in shops %}
+            <option value="{{ shop.slug }}"
+                    {% if filters.shop == shop.slug %}selected{% endif %}>{{ shop.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium" for="price_min">{{ t("filters.min_price") }}</label>
+          <input class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+                 id="price_min"
+                 name="price_min"
+                 value="{{ filters.price_min }}"
+                 placeholder="500">
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium" for="price_max">{{ t("filters.max_price") }}</label>
+          <input class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+                 id="price_max"
+                 name="price_max"
+                 value="{{ filters.price_max }}"
+                 placeholder="2500">
+        </div>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="category">{{ t("filters.category") }}</label>
+        <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+                id="category"
+                name="category">
+          <option value="">{{ t("filters.all_categories") }}</option>
+          {% for category in categories %}
+            <option value="{{ category }}"
+                    {% if filters.category == category %}selected{% endif %}>
+              {{ category_label(category) }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="material">{{ t("filters.material") }}</label>
+        <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+                id="material"
+                name="material">
+          <option value="">{{ t("filters.all_materials") }}</option>
+          {% for material in materials %}
+            <option value="{{ material }}"
+                    {% if filters.material == material %}selected{% endif %}>
+              {{ material }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="designer">{{ t("filters.designer") }}</label>
+        <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+                id="designer"
+                name="designer">
+          <option value="">{{ t("filters.all_designers") }}</option>
+          {% for designer in designers %}
+            <option value="{{ designer }}"
+                    {% if filters.designer == designer %}selected{% endif %}>
+              {{ designer }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="location">{{ t("filters.location") }}</label>
+        <input class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+               id="location"
+               name="location"
+               value="{{ filters.location }}"
+               placeholder="{{ t('filters.location_placeholder') }}">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="mb-1 block text-sm font-medium" for="availability">
+            {{ t("filters.availability") }}
+          </label>
+          <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+                  id="availability"
+                  name="availability">
+            <option value="available"
+                    {% if filters.availability == "available" %}selected{% endif %}>
+              {{ t("filters.available_only") }}
+            </option>
+            <option value="unknown"
+                    {% if filters.availability == "unknown" %}selected{% endif %}>
+              {{ t("filters.unknown") }}
+            </option>
+            <option value="sold_out"
+                    {% if filters.availability == "sold_out" %}selected{% endif %}>
+              {{ t("filters.sold_out") }}
+            </option>
+            <option value="all" {% if filters.availability == "all" %}selected{% endif %}>
+              {{ t("filters.all_statuses") }}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium" for="sort">{{ t("filters.sort") }}</label>
+          <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+                  id="sort"
+                  name="sort">
+            <option value="newest" {% if filters.sort == "newest" %}selected{% endif %}>
+              {{ t("filters.newest") }}
+            </option>
+            <option value="recent_check"
+                    {% if filters.sort == "recent_check" %}selected{% endif %}>
+              {{ t("filters.recent_check") }}
+            </option>
+            <option value="price_low"
+                    {% if filters.sort == "price_low" %}selected{% endif %}>
+              {{ t("filters.price_low") }}
+            </option>
+            <option value="price_high"
+                    {% if filters.sort == "price_high" %}selected{% endif %}>
+              {{ t("filters.price_high") }}
+            </option>
+            <option value="recent_source"
+                    {% if filters.sort == "recent_source" %}selected{% endif %}>
+              {{ t("filters.recent_source") }}
+            </option>
+          </select>
+        </div>
+      </div>
+      <label class="flex items-center gap-2 rounded-2xl bg-moss/10 px-4 py-3 text-sm text-moss">
+        <input type="checkbox"
+               name="ships_to_montreal"
+               value="1"
+               {% if filters.ships_to_montreal %}checked{% endif %}>
+        {{ t("filters.ships_to_montreal") }}
+      </label>
+      <div class="flex gap-3">
+        <button class="flex-1 rounded-full bg-ink px-4 py-3 text-white" type="submit">
+          {{ t("filters.apply") }}
+        </button>
+        <a class="rounded-full border border-ink/10 px-4 py-3"
+           href="{{ url_for('listings') }}">{{ t("filters.reset") }}</a>
+      </div>
+      <filter-summary class="block rounded-2xl bg-oat px-4 py-3 text-sm text-ink/70"></filter-summary>
+    </form>
+  </listing-filters>
+</aside>
