@@ -1,6 +1,7 @@
 # Montreal MCM Resale Research
 
 Date: 2026-04-26
+Updated: 2026-05-02
 
 ## Goal
 
@@ -16,6 +17,31 @@ This document is intentionally research-only. It is meant to answer:
 1. What shops and marketplaces are worth tracking?
 2. Which ones look easiest to spider first?
 3. Which ones are better handled later or manually?
+
+## Current Project Status Note
+
+This document began as pre-build research, but the project now has a working MVP codebase.
+
+What is already implemented in code:
+
+- Flask + SQLite application
+- listings feed with filters and sorting
+- listing detail pages
+- shop index and shop detail pages
+- favourites for listings and shops
+- lightweight email-based local session login
+- freshness and availability labels
+- bilingual English / French UI
+- admin review tools for refreshes, failures, overrides, and duplicate inspection
+
+What is currently live in the source layer:
+
+1. Morceau
+2. Showroom Montreal
+3. Montreal Moderne
+4. Le Centerpiece
+
+This means the research priority is no longer just "what should we build first." It is now also "which researched sources should be added next, and in what order, after the existing MVP is stabilized."
 
 ## Recommendation
 
@@ -54,6 +80,54 @@ Best manual / later-review targets:
 6. Bien Beau
 
 Reason: the first group appears to expose item pages and prices clearly, while the manual group looks stronger as store discovery than as clean item-feed sources.
+
+## Recommended Next Source Order From Here
+
+Given the current implementation, the research-backed next source order should be:
+
+### Near-Term Additions
+
+1. Green Wall Vintage
+2. Vintage Home Boutique
+3. Maison Singulier
+
+Reason:
+
+- they fit the Montreal / Canada-friendly thesis
+- they are the clearest gap between the original research and the current live source set
+- they add meaningful inventory without forcing a marketplace-style expansion
+
+### Next Expansion After That
+
+1. Urbano Vintej
+2. Banana Lab
+
+Reason:
+
+- both remain promising direct-source additions
+- both appear worth doing after the first missing launch sources are live
+
+### Still Defer For Later
+
+1. 1stDibs
+2. Chairish
+3. Pamono
+
+Reason:
+
+- higher duplication risk
+- higher crawl complexity
+- better evaluated only after direct-shop ingestion, change tracking, and duplicate handling are stronger
+
+## Research Questions That Still Matter
+
+The build has answered the "is this product worth prototyping?" question. The main research questions still worth validating are now:
+
+1. Which active source parsers are stable enough to rely on without frequent seed fallback?
+2. Which missing direct-shop sources can be added with the least parser complexity?
+3. How often do target sources expose sold, removed, or ambiguous inventory states?
+4. Which sources mix in too much lighting or decor for a furniture-first launch?
+5. Which sources are most likely to create duplicate inventory if marketplace expansion happens later?
 
 ## What To Capture Per Item
 

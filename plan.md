@@ -1,14 +1,53 @@
 # Montreal MCM Listings Site Plan
 
 Date: 2026-04-26
+Updated: 2026-05-02
 
 ## Purpose
 
 This document turns the research in [research.md](/Users/dlq/Developer/MCM%20Montreal/research.md) into a practical product and delivery plan.
 
-This is intentionally a planning document only.
+This started as a planning document before implementation.
 
-No coding has been started.
+The project now has a working MVP foundation, so this document should be read as both:
+
+- the original product plan
+- the current roadmap from the codebase that now exists
+
+## Current Build Status
+
+Already implemented:
+
+- listings feed with filters and sorting
+- listing detail pages
+- shop pages
+- favourites for listings and shops
+- lightweight email-based local session login
+- freshness and availability labels
+- bilingual English / French UI
+- admin tools for refreshes, failures, overrides, and duplicate review
+
+Currently active launch sources in code:
+
+1. Morceau
+2. Showroom Montreal
+3. Montreal Moderne
+4. Le Centerpiece
+
+Still missing from the originally recommended first-wave source set:
+
+1. Green Wall Vintage
+2. Vintage Home Boutique
+3. Maison Singulier
+
+The biggest remaining product gaps versus the original roadmap are:
+
+- saved searches
+- alerts and notifications
+- explicit price / availability history
+- richer shop and discovery pages
+- editorial / SEO content
+- second-wave source expansion
 
 ## Product Goal
 
@@ -728,6 +767,12 @@ Success criteria:
 - users can save listings
 - users can click through confidently to seller
 
+Current status:
+
+- substantially implemented
+- should now focus on hardening parser reliability, refresh quality, and availability-state trust
+- should resolve whether launch remains strictly furniture-first or formally includes some lighting / decor
+
 ### Phase 2: Retention Features
 
 Goal:
@@ -747,6 +792,11 @@ Success criteria:
 - meaningful favourite usage
 - alert subscriptions
 
+Recommended next build priority:
+
+- this is now the clearest missing layer after Phase 1 hardening
+- saved searches and change tracking should come before a broad source expansion
+
 ### Phase 3: Content and Expansion
 
 Goal:
@@ -759,6 +809,11 @@ Includes:
 - second-wave sources
 - compare view
 - curated collections
+
+Recommended interpretation now:
+
+- first complete the missing first-wave direct shops
+- then expand into richer browse pages, editorial pages, and carefully chosen second-wave sources
 
 ### Phase 4: Broader Marketplace Strategy
 
@@ -778,17 +833,19 @@ Recommendation:
 
 ## Delivery Order Recommendation
 
-If this were implemented, I would do it in this order:
+Given the current codebase, the best next order is:
 
-1. finalize source scope
-2. define item/shop/status data model
-3. build direct-shop listing ingestion
-4. build browse and item pages
-5. add favourites
-6. add freshness and status labels
-7. add admin review tools
-8. add saved searches and alerts
-9. add editorial and second-wave sources
+1. harden the existing parsers and refresh reliability
+2. tighten availability handling and duplicate-review quality
+3. decide whether launch stays furniture-only or accepts some lighting / decor
+4. add Green Wall Vintage, Vintage Home Boutique, and Maison Singulier
+5. implement saved searches
+6. add explicit price and availability change tracking
+7. add alerts and notification preferences
+8. deepen shop, category, material, and designer discovery pages
+9. add editorial content and analytics
+10. expand to Urbano Vintej and Banana Lab
+11. evaluate marketplace ingestion only after the direct-source product is strong
 
 ## MVP Success Definition
 
@@ -799,6 +856,12 @@ The MVP is successful if:
 - users can favourite listings
 - users trust the freshness labels
 - the site feels meaningfully more focused than 1stDibs or Chairish for Montreal-oriented MCM discovery
+
+For the current build, "MVP success" should also mean:
+
+- parser failures are understandable and reviewable
+- the active direct-shop sources feel dependable enough to use repeatedly
+- the site is ready for retention features rather than still fighting basic ingestion trust issues
 
 ## Bottom Line
 
