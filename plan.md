@@ -484,6 +484,7 @@ For manual or unstable sources:
 Duplicates may happen if:
 
 - the same item appears on a direct site and a marketplace
+- the same shop posts inventory to Facebook Marketplace under a personal or alternate seller account
 - the same pair of chairs appears in multiple versions
 - a shop republishes an item under a new URL
 
@@ -823,6 +824,7 @@ Goal:
 
 Includes:
 
+- explicit Facebook Marketplace recheck for current and candidate sources
 - optional marketplace inclusion
 - duplicate-preference rules
 - direct-vs-marketplace source badges

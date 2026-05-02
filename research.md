@@ -525,6 +525,12 @@ Platforms checked:
 - Etsy
 - eBay
 
+Not yet checked:
+
+- Facebook Marketplace
+
+Follow-up: recheck Facebook Marketplace explicitly for the same shops. Public search may miss listings because Facebook Marketplace is location-scoped, login-sensitive, and sellers may use personal or alternate account names rather than shop brands.
+
 Shops checked:
 
 - Morceau
@@ -557,6 +563,7 @@ Main takeaway:
 
 - The only clear branded overlap I confirmed in this pass is `Trianon Boutique` on `1stDibs`.
 - For the other local shops checked, I did not find clear evidence of branded presence on `1stDibs`, `Chairish`, `Pamono`, `Etsy`, or `eBay`.
+- This pass did not cover `Facebook Marketplace`; treat Facebook Marketplace overlap as unresolved until a logged-in/location-aware manual check is done.
 - That strengthens the case that a Montreal-focused direct-source aggregator could still add real value.
 
 ## Bottom Line
