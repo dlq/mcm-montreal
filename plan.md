@@ -1,7 +1,7 @@
 # Montreal MCM Listings Site Plan
 
 Date: 2026-04-26
-Updated: 2026-05-02
+Updated: 2026-05-06
 
 ## Purpose
 
@@ -22,7 +22,7 @@ Already implemented:
 - listing detail pages
 - shop pages
 - favourites for listings and shops
-- lightweight email-based local session login
+- browser-session favourites without user accounts
 - freshness and availability labels
 - bilingual English / French UI
 - admin tools for refreshes, failures, overrides, and duplicate review
@@ -264,6 +264,12 @@ Users should be able to favourite:
 - listings
 - shops
 
+Current implementation status:
+
+- users can favourite listings and shops now
+- favourites are stored in the browser session
+- there is no real account-backed persistence yet
+
 Minimum favourites behavior:
 
 - save listing to account
@@ -403,6 +409,14 @@ Internal tools should exist to review:
 - `is_active`
 - `is_featured`
 - `manual_notes`
+
+### Current Implementation Caveats To Revisit
+
+- `subcategory` exists in SQLite but is not meaningfully populated yet.
+- `width`, `depth`, and `height` exist in SQLite but are not yet extracted into structured numeric fields for most sources.
+- `dimensions_text` is stored, but dimension parsing and normalization still need a dedicated hardening pass.
+- `dedupe_group_id` exists in SQLite but is not yet actively assigned by the ingest pipeline.
+- some descriptive fields remain source-dependent and incomplete, especially where the source pages do not expose structured metadata cleanly.
 
 ## Shop Data Model
 
@@ -577,6 +591,11 @@ At minimum, accounts should support:
 - saved shops
 - saved searches
 - alert preferences
+
+Current implementation status:
+
+- not implemented as a real user-facing system yet
+- the database schema has a `users` table, but the app does not currently expose account creation, login, or persisted user-specific favourites
 
 Optional later additions:
 

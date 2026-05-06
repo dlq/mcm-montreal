@@ -1,7 +1,7 @@
 # Montreal MCM Resale Research
 
 Date: 2026-04-26
-Updated: 2026-05-02
+Updated: 2026-05-06
 
 ## Goal
 
@@ -29,7 +29,7 @@ What is already implemented in code:
 - listing detail pages
 - shop index and shop detail pages
 - favourites for listings and shops
-- lightweight email-based local session login
+- browser-session favourites without a real account flow yet
 - freshness and availability labels
 - bilingual English / French UI
 - admin review tools for refreshes, failures, overrides, and duplicate inspection
