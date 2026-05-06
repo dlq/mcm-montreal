@@ -11,7 +11,17 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
-from flask import Flask, abort, g, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    abort,
+    g,
+    has_request_context,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 from .sources import SOURCE_DEFINITIONS, fetch_source_listings
 
@@ -516,7 +526,7 @@ def main() -> None:
         ensure_schema(db)
         ensure_shops_seeded(db)
         if len(sys.argv) > 1 and sys.argv[1] == "refresh":
-            refresh_all_sources(db)
+            refresh_all_sources(db, progress=lambda message: print(message, flush=True))
             print("Refresh complete.")
             return
     app.run(debug=True, port=8000)
@@ -685,12 +695,18 @@ def has_any_listing(db: sqlite3.Connection) -> bool:
     return bool(row["count"])
 
 
-def refresh_all_sources(db: sqlite3.Connection) -> None:
+def refresh_all_sources(
+    db: sqlite3.Connection,
+    progress: Callable[[str], None] | None = None,
+) -> None:
     timestamp = datetime.now(UTC).isoformat()
     for source in SOURCE_DEFINITIONS:
+        if progress:
+            progress(f"Checking {source.name} ...")
         shop = get_shop_by_slug(db, source.slug)
         listings, error = fetch_source_listings(source)
         seen_keys: set[str] = set()
+        new_count = 0
         for item in listings:
             source_url = item["source_listing_url"]
             key = item.get("source_listing_key") or source_url.rstrip("/").lower()
@@ -700,6 +716,8 @@ def refresh_all_sources(db: sqlite3.Connection) -> None:
                 (shop["id"], key),
             ).fetchone()
             first_seen = existing["first_seen_at"] if existing else timestamp
+            if not existing:
+                new_count += 1
             db.execute(
                 """
                 INSERT INTO listings (
@@ -777,12 +795,12 @@ def refresh_all_sources(db: sqlite3.Connection) -> None:
                     "",
                 ),
             )
-        db.execute(
+        deactivated = db.execute(
             "UPDATE listings SET is_active = 0, last_checked_at = ? WHERE source_shop_id = ? AND source_listing_key NOT IN ({})".format(
                 ",".join("?" for _ in seen_keys) if seen_keys else "''"
             ),
             [timestamp, shop["id"], *seen_keys],
-        )
+        ).rowcount
         if error:
             db.execute(
                 "INSERT INTO crawl_failures (shop_id, created_at, error_message) VALUES (?, ?, ?)",
@@ -792,6 +810,13 @@ def refresh_all_sources(db: sqlite3.Connection) -> None:
             "INSERT INTO crawl_runs (shop_id, ran_at, status, listings_found, error_message) VALUES (?, ?, ?, ?, ?)",
             (shop["id"], timestamp, "warning" if error else "success", len(listings), error or ""),
         )
+        if progress:
+            summary = f"{source.name}: {len(listings)} listings, {new_count} new"
+            if deactivated > 0:
+                summary += f", {deactivated} hidden"
+            if error:
+                summary += f" [warning: {error}]"
+            progress(summary)
     db.commit()
 
 
@@ -928,10 +953,14 @@ def list_filter_values(db: sqlite3.Connection, field: str) -> list[str]:
 
 
 def favourite_listing_ids() -> set[int]:
+    if not has_request_context():
+        return set()
     return {int(value) for value in session.get("favourite_listing_ids", [])}
 
 
 def favourite_shop_ids() -> set[int]:
+    if not has_request_context():
+        return set()
     return {int(value) for value in session.get("favourite_shop_ids", [])}
 
 
@@ -1027,6 +1056,8 @@ def list_favourite_shops(db: sqlite3.Connection) -> list[dict[str, Any]]:
 
 
 def favourite_counts() -> dict[str, int]:
+    if not has_request_context():
+        return {"listings": 0, "shops": 0}
     return {
         "listings": len(session.get("favourite_listing_ids", [])),
         "shops": len(session.get("favourite_shop_ids", [])),
