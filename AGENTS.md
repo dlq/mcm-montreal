@@ -39,6 +39,7 @@
 - Keep the MVP focused on browse, filtering, listing detail, shop detail, favourites, and admin review workflows.
 - Preserve English/French UI behavior when changing user-facing text or routes.
 - Keep templates readable and HTMX interactions progressive. Avoid adding client-side complexity unless it simplifies a real interaction.
+- For user-facing UI changes, verify the interface on both desktop and mobile viewports before handoff.
 - Tailwind is currently loaded from the CDN; do not introduce a build pipeline unless the task calls for it.
 
 ## Data And Deployment
