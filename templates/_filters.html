@@ -1,24 +1,28 @@
-<aside class="rounded-[2rem] border border-ink/10 bg-white p-5 shadow-sm">
-  <div class="mb-4">
-    <p class="text-xs uppercase tracking-[0.25em] text-ink/50">{{ t("filters.browse") }}</p>
-    <h2 class="font-display text-2xl">{{ t("filters.title") }}</h2>
+<aside class="filter-rail order-2 lg:order-1">
+  <div class="mb-5 border-b border-ink/10 pb-4">
+    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
+      {{ t("filters.browse") }}
+    </p>
+    <h2 class="mt-1 text-lg font-semibold tracking-tight">{{ t("filters.title") }}</h2>
   </div>
   <listing-filters data-default-summary="{{ t('filters.default_summary') }}">
-    <form class="space-y-4"
+    <form class="space-y-5"
           hx-get="{{ url_for('listings') }}"
           hx-target="#listing-grid"
           hx-push-url="true">
       <div>
-        <label class="mb-1 block text-sm font-medium" for="q">{{ t("filters.search") }}</label>
-        <input class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+               for="q">{{ t("filters.search") }}</label>
+        <input class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
                id="q"
                name="q"
                value="{{ filters.q }}"
                placeholder="{{ t('filters.search_placeholder') }}">
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium" for="shop">{{ t("filters.shop") }}</label>
-        <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+               for="shop">{{ t("filters.shop") }}</label>
+        <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
                 id="shop"
                 name="shop">
           <option value="">{{ t("filters.all_shops") }}</option>
@@ -30,16 +34,18 @@
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="mb-1 block text-sm font-medium" for="price_min">{{ t("filters.min_price") }}</label>
-          <input class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                 for="price_min">{{ t("filters.min_price") }}</label>
+          <input class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
                  id="price_min"
                  name="price_min"
                  value="{{ filters.price_min }}"
                  placeholder="500">
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium" for="price_max">{{ t("filters.max_price") }}</label>
-          <input class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                 for="price_max">{{ t("filters.max_price") }}</label>
+          <input class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
                  id="price_max"
                  name="price_max"
                  value="{{ filters.price_max }}"
@@ -47,8 +53,9 @@
         </div>
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium" for="category">{{ t("filters.category") }}</label>
-        <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+               for="category">{{ t("filters.category") }}</label>
+        <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
                 id="category"
                 name="category">
           <option value="">{{ t("filters.all_categories") }}</option>
@@ -61,8 +68,9 @@
         </select>
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium" for="material">{{ t("filters.material") }}</label>
-        <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+               for="material">{{ t("filters.material") }}</label>
+        <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
                 id="material"
                 name="material">
           <option value="">{{ t("filters.all_materials") }}</option>
@@ -75,8 +83,9 @@
         </select>
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium" for="designer">{{ t("filters.designer") }}</label>
-        <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+               for="designer">{{ t("filters.designer") }}</label>
+        <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
                 id="designer"
                 name="designer">
           <option value="">{{ t("filters.all_designers") }}</option>
@@ -89,8 +98,9 @@
         </select>
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium" for="location">{{ t("filters.location") }}</label>
-        <input class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+               for="location">{{ t("filters.location") }}</label>
+        <input class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
                id="location"
                name="location"
                value="{{ filters.location }}"
@@ -98,10 +108,9 @@
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="mb-1 block text-sm font-medium" for="availability">
-            {{ t("filters.availability") }}
-          </label>
-          <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                 for="availability">{{ t("filters.availability") }}</label>
+          <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
                   id="availability"
                   name="availability">
             <option value="available"
@@ -122,8 +131,9 @@
           </select>
         </div>
         <div>
-          <label class="mb-1 block text-sm font-medium" for="sort">{{ t("filters.sort") }}</label>
-          <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                 for="sort">{{ t("filters.sort") }}</label>
+          <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
                   id="sort"
                   name="sort">
             <option value="newest" {% if filters.sort == "newest" %}selected{% endif %}>
@@ -148,7 +158,7 @@
           </select>
         </div>
       </div>
-      <label class="flex items-center gap-2 rounded-2xl bg-moss/10 px-4 py-3 text-sm text-moss">
+      <label class="flex items-center gap-2 text-sm font-medium text-ink/75">
         <input type="checkbox"
                name="ships_to_montreal"
                value="1"
@@ -156,13 +166,13 @@
         {{ t("filters.ships_to_montreal") }}
       </label>
       <div class="flex gap-3">
-        <button class="flex-1 rounded-full bg-ink px-4 py-3 text-white" type="submit">
+        <button class="button-primary flex-1 px-4 py-3 text-sm" type="submit">
           {{ t("filters.apply") }}
         </button>
-        <a class="rounded-full border border-ink/10 px-4 py-3"
+        <a class="button-secondary border px-4 py-3 text-sm font-semibold"
            href="{{ url_for('listings') }}">{{ t("filters.reset") }}</a>
       </div>
-      <filter-summary class="block rounded-2xl bg-oat px-4 py-3 text-sm text-ink/70"></filter-summary>
+      <filter-summary class="block border-t border-ink/10 pt-4 text-sm text-ink/55"></filter-summary>
     </form>
   </listing-filters>
 </aside>

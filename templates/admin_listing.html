@@ -2,15 +2,19 @@
 {% block title %}{{ t("admin.listing_inspection") }} | Montreal MCM{% endblock %}
 {% block content %}
   <section class="mx-auto max-w-4xl space-y-6">
-    <div class="rounded-[2rem] border border-ink/10 bg-white p-6 shadow-sm">
-      <p class="text-xs uppercase tracking-[0.25em] text-ink/50">{{ t("admin.listing_inspection") }}</p>
-      <h1 class="mt-2 font-display text-4xl">{{ listing.title }}</h1>
-      <p class="mt-2 text-sm text-ink/70">
+    <div class="catalog-band pb-6">
+      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
+        {{ t("admin.listing_inspection") }}
+      </p>
+      <h1 class="mt-2 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
+        {{ listing.title }}
+      </h1>
+      <p class="mt-3 text-sm leading-6 text-ink/60">
         {{ listing.shop_name }} · {{ t("admin.parse_confidence", value="%.0f"|format(listing.parse_confidence * 100) ) }}
       </p>
     </div>
     <div class="grid gap-6 lg:grid-cols-[0.9fr,1.1fr]">
-      <div class="rounded-[2rem] border border-ink/10 bg-white p-6 shadow-sm">
+      <div class="border-t border-ink/10 pt-5">
         <dl class="space-y-4 text-sm">
           <div>
             <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("admin.source_url") }}</dt>
@@ -52,15 +56,14 @@
           </div>
         </dl>
       </div>
-      <form class="rounded-[2rem] border border-ink/10 bg-white p-6 shadow-sm"
-            method="post">
-        <h2 class="font-display text-2xl">{{ t("admin.manual_overrides") }}</h2>
+      <form class="border-t border-ink/10 pt-5" method="post">
+        <h2 class="text-xl font-semibold tracking-tight">{{ t("admin.manual_overrides") }}</h2>
         <div class="mt-5 space-y-4">
           <div>
             <label class="mb-1 block text-sm font-medium" for="category_override">
               {{ t("admin.category_override") }}
             </label>
-            <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+            <select class="w-full border border-ink/15 bg-white px-4 py-3"
                     id="category_override"
                     name="category_override">
               <option value="">{{ t("admin.use_parsed_category") }}</option>
@@ -76,7 +79,7 @@
             <label class="mb-1 block text-sm font-medium" for="availability_override">
               {{ t("admin.availability_override") }}
             </label>
-            <select class="w-full rounded-2xl border border-ink/10 px-4 py-3"
+            <select class="w-full border border-ink/15 bg-white px-4 py-3"
                     id="availability_override"
                     name="availability_override">
               <option value="">{{ t("admin.use_parsed_status") }}</option>
@@ -88,7 +91,7 @@
               {% endfor %}
             </select>
           </div>
-          <label class="flex items-center gap-2 rounded-2xl bg-oat px-4 py-3 text-sm">
+          <label class="flex items-center gap-2 text-sm">
             <input type="checkbox"
                    name="is_featured"
                    value="1"
@@ -99,11 +102,11 @@
             <label class="mb-1 block text-sm font-medium" for="manual_notes">
               {{ t("admin.manual_notes") }}
             </label>
-            <textarea class="min-h-36 w-full rounded-2xl border border-ink/10 px-4 py-3"
+            <textarea class="min-h-36 w-full border border-ink/15 bg-white px-4 py-3"
                       id="manual_notes"
                       name="manual_notes">{{ listing.manual_notes }}</textarea>
           </div>
-          <button class="rounded-full bg-ink px-5 py-3 text-white" type="submit">
+          <button class="button-primary px-5 py-3 text-sm" type="submit">
             {{ t("admin.save_overrides") }}
           </button>
         </div>
