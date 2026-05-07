@@ -34,6 +34,9 @@ Currently active launch sources in code:
 3. Montreal Moderne
 4. Le Centerpiece
 
+Morceau should be treated as Vintage-collection-only ingestion. Its broader furniture and
+new-arrivals collections include current-production design inventory outside the app scope.
+
 Still missing from the originally recommended first-wave source set:
 
 1. Green Wall Vintage

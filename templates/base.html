@@ -53,7 +53,9 @@
             <a class="nav-link" href="{{ lang_url_fr }}">FR</a>
             <a class="nav-link" href="{{ url_for('listings') }}">{{ t("nav.listings") }}</a>
             <a class="nav-link" href="{{ url_for('shops') }}">{{ t("nav.shops") }}</a>
-            <a class="nav-link" href="{{ url_for('favourites') }}">{{ t("nav.favourites") }} <span class="text-ink/60">({{ favourite_counts.listings }})</span></a>
+            <a class="nav-link" href="{{ url_for('favourites') }}">{{ t("nav.favourites") }}
+              {% include "_favourite_listing_count.html" %}
+            </a>
           </nav>
         </div>
       </header>

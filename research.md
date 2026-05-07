@@ -166,6 +166,8 @@ Nice-to-have fields:
 - Notes:
   - Vintage collection page is visible: https://www.morceau.ca/collections/vintage
   - This looks like one of the strongest launch sources.
+  - As of 2026-05-07, ingestion should use only the Vintage collection. Broader Morceau
+    collections include current-production design pieces that do not fit the vintage/MCM scope.
 
 ### 2. Showroom Montreal
 

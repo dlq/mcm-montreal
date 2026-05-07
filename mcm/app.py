@@ -113,6 +113,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         listing = get_listing(g.db, listing_id)
         if not listing:
             abort(404)
+        availability = listing["availability_override"] or listing["availability_status"]
+        if not listing["is_active"] or availability == "removed":
+            abort(404)
         canonical_item_number = public_item_number(listing["id"])
         if item_number.upper() != canonical_item_number:
             return redirect(url_for("listing_detail", item_number=canonical_item_number))
@@ -156,6 +159,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         toggle_favourite_listing(listing_id)
         return render_template(
             "_favourite_listing_button.html", listing=get_listing(g.db, listing_id)
+        ) + render_template("_favourite_listing_count.html").replace(
+            'id="favourite-listing-count"',
+            'id="favourite-listing-count" hx-swap-oob="true"',
         )
 
     @app.post("/favourites/shop/<int:shop_id>")

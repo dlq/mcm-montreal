@@ -114,14 +114,17 @@
       <div class="mt-6 border-t border-ink/10 pt-5">
         <p class="text-sm font-medium">{{ t("listing.freshness") }}</p>
         <p class="mt-1 text-sm text-ink/70">
-          {{ freshness_label(listing.last_checked_at) }} · {{ t("listing.last_checked", value=listing.last_checked_at) }}
+          {{ freshness_label(listing.last_checked_at) }} · {{ t("listing.first_seen", value=listing.first_seen_at[:10]) }}
         </p>
       </div>
       <div class="mt-6 flex flex-wrap gap-3">
+        {% set has_item_page = not listing.source_listing_key.startswith("showroom:") %}
         <a class="button-primary px-5 py-3 text-sm"
            href="{{ listing.source_listing_url }}"
            target="_blank"
-           rel="noreferrer">{{ t("listing.view_original") }}</a>
+           rel="noreferrer">
+          {{ t("listing.view_original") if has_item_page else t("listing.view_source_page") }}
+        </a>
         <a class="button-secondary border px-5 py-3 text-sm font-semibold"
            href="{{ shop.website }}"
            target="_blank"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,9 +10,13 @@ from mcm.app import create_app
 from mcm.db import get_db
 from mcm.refresh import listing_id_from_item_number, public_item_number, refresh_all_sources
 from mcm.sources import (
+    SOURCE_DEFINITIONS,
     _extract_condition,
     _extract_designer_and_maker,
     _extract_materials,
+    _extract_showroom_gallery_listings,
+    _fetch_shopify_collection_products,
+    _parse_shopify_collection_product,
 )
 
 
@@ -96,6 +101,13 @@ class AppTests(unittest.TestCase):
         shop_response = self.client.post("/favourites/shop/1")
         self.assertEqual(listing_response.status_code, 200)
         self.assertEqual(shop_response.status_code, 200)
+
+    def test_listing_favourite_toggle_updates_nav_count(self) -> None:
+        response = self.client.post(f"/favourites/listing/{self.listing_id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('hx-swap-oob="true"', response.text)
+        self.assertIn('id="favourite-listing-count"', response.text)
+        self.assertIn("(1)", response.text)
 
     def test_refresh_runs_without_request_context(self) -> None:
         with self.app.app_context():
@@ -240,6 +252,54 @@ class AppTests(unittest.TestCase):
         response = self.client.get(f"/listing/{public_item_number(self.listing_id)}")
         self.assertIn(public_item_number(self.listing_id), response.text)
 
+    def test_detail_page_shows_first_seen_date_in_freshness(self) -> None:
+        response = self.client.get(f"/listing/{public_item_number(self.listing_id)}")
+        self.assertIn("first seen 2026-05-06", response.text)
+        self.assertNotIn("last checked 2026-05-06T00:00:00+00:00", response.text)
+
+    def test_showroom_detail_uses_source_page_label(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                shop = db.execute(
+                    "SELECT id FROM shops WHERE slug = 'showroom-montreal'"
+                ).fetchone()
+                db.execute(
+                    """
+                    INSERT INTO listings (
+                        source_shop_id, source_listing_url, source_listing_key, title,
+                        normalized_title, price_raw, price_value, currency, primary_image_url,
+                        additional_image_urls, availability_status, shipping_scope,
+                        ships_to_montreal, shipping_note, last_seen_at, last_checked_at,
+                        first_seen_at, category, subcategory, designer, maker, era,
+                        materials, dimensions_text, condition_text, location_text,
+                        source_description, ingest_source_type, parse_confidence,
+                        dedupe_group_id, is_active, is_featured, manual_notes,
+                        availability_override, category_override
+                    ) VALUES (
+                        ?, 'https://www.showroommtl.com/nouveaute', 'showroom:dataItem-test',
+                        'Showroom Chair', 'showroom chair', '$250', 250, 'CAD',
+                        'https://example.com/image.jpg', '[]', 'available', 'local_quote',
+                        1, 'Local source', '2026-05-06T00:00:00+00:00',
+                        '2026-05-06T00:00:00+00:00', '2026-05-06T00:00:00+00:00',
+                        'dining chairs', '', '', '', '', 'teak', '', 'Restored',
+                        'Montreal, QC', 'Sample description', 'test', 1.0,
+                        '', 1, 0, '', '', ''
+                    )
+                    """,
+                    (shop["id"],),
+                )
+                db.commit()
+                listing_id = db.execute(
+                    "SELECT id FROM listings WHERE source_listing_key = 'showroom:dataItem-test'"
+                ).fetchone()["id"]
+            finally:
+                db.close()
+
+        response = self.client.get(f"/listing/{public_item_number(listing_id)}")
+        self.assertIn("View source page", response.text)
+        self.assertNotIn("View original listing", response.text)
+
     def test_numeric_listing_url_redirects_to_item_number(self) -> None:
         response = self.client.get(f"/listing/{self.listing_id}")
         self.assertEqual(response.status_code, 302)
@@ -252,6 +312,25 @@ class AppTests(unittest.TestCase):
         self.assertEqual(listing_id_from_item_number("1912"), 1912)
         self.assertIsNone(listing_id_from_item_number("not-an-item"))
 
+    def test_removed_listing_detail_returns_404(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET is_active = 0, availability_status = 'removed'
+                    WHERE id = ?
+                    """,
+                    (self.listing_id,),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.get(f"/listing/{public_item_number(self.listing_id)}")
+        self.assertEqual(response.status_code, 404)
+
     def test_extractors_prefer_french_source_patterns(self) -> None:
         description = (
             "Chaises en teck '60s Arne Hovmand-Olsen pour Onsild Møbelfabrik, "
@@ -263,6 +342,148 @@ class AppTests(unittest.TestCase):
         )
         self.assertEqual(_extract_materials(description), "teak")
         self.assertEqual(_extract_condition(description), "Restored")
+
+    def test_extractors_keep_english_by_title_out_of_source_notes(self) -> None:
+        description = (
+            "Designed by Alessandro Gnocchi, Tiki Parete is based on an "
+            "op-art triangular shape. View our store policies for more "
+            "information prior to checkout."
+        )
+        self.assertEqual(
+            _extract_designer_and_maker("Tiki Parete by Alessandro Gnocchi", description),
+            ("Alessandro Gnocchi", ""),
+        )
+
+    def test_extractors_parse_english_by_for_title(self) -> None:
+        self.assertEqual(
+            _extract_designer_and_maker(
+                "Anfibio Folding Sofa Bed by Alessandro Becchi for Giovannetti",
+                "Italian convertible sofa bed.",
+            ),
+            ("Alessandro Becchi", "Giovannetti"),
+        )
+
+    def test_morceau_source_only_uses_vintage_collection(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "morceau")
+        self.assertEqual(source.listing_urls, ("https://www.morceau.ca/collections/vintage",))
+
+    def test_showroom_gallery_items_use_source_page_url(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")
+        gallery_item = {
+            "id": "dataItem-test",
+            "uri": "fc24cc_test~mv2.jpg",
+            "description": "Chaises en teck '60s\nArne Hovmand-Olsen\n3500 $ / 6",
+        }
+        with (
+            patch("mcm.sources._fetch_html", return_value="<html></html>"),
+            patch(
+                "mcm.sources._extract_showroom_siteassets_url",
+                return_value="https://example.com/assets",
+            ),
+            patch("mcm.sources._extract_showroom_gallery_items", return_value=[gallery_item]),
+        ):
+            listings = _extract_showroom_gallery_listings(
+                source,
+                "https://www.showroommtl.com/nouveaute",
+            )
+
+        self.assertEqual(listings[0]["source_listing_url"], "https://www.showroommtl.com/nouveaute")
+
+    def test_shopify_collection_product_uses_variant_availability(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "morceau")
+        listing = _parse_shopify_collection_product(
+            source,
+            {
+                "title": "Large teak mirror",
+                "handle": "large-teak-mirror",
+                "body_html": (
+                    "<p>Large teak frame, 1960s.</p>"
+                    "<p><span>MATERIALS</span><br>Teak and mirror</p>"
+                    '<p><span>DIMENSIONS</span><br>31"W x 42"H</p>'
+                ),
+                "variants": [{"available": True, "price": "500.00"}],
+                "images": [{"src": "https://cdn.shopify.com/image.jpg"}],
+            },
+        )
+
+        self.assertEqual(
+            listing["source_listing_url"],
+            "https://www.morceau.ca/products/large-teak-mirror",
+        )
+        self.assertEqual(listing["availability_status"], "available")
+        self.assertEqual(listing["price_value"], 500)
+        self.assertEqual(listing["materials"], "Teak and mirror")
+        self.assertEqual(listing["dimensions_text"], '31"W x 42"H')
+
+    def test_shopify_collection_product_skips_gift_cards(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "morceau")
+        with self.assertRaises(ValueError):
+            _parse_shopify_collection_product(
+                source,
+                {
+                    "title": "Gift Card",
+                    "handle": "gift-card",
+                    "variants": [{"available": True, "price": "100.00"}],
+                },
+            )
+
+    def test_shopify_collection_product_skips_current_production(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "morceau")
+        with self.assertRaises(ValueError):
+            _parse_shopify_collection_product(
+                source,
+                {
+                    "title": "Tiki Terra by Alessandro Gnocchi",
+                    "handle": "tiki-terra-by-alessandro-gnocchi",
+                    "body_html": "<p>Made in Italy, current production, on order.</p>",
+                    "variants": [{"available": True, "price": "525.00"}],
+                },
+            )
+
+    def test_shopify_collection_products_walk_pages_until_empty(self) -> None:
+        payloads = [
+            json.dumps({"products": [{"handle": "one"}]}),
+            json.dumps({"products": [{"handle": "two"}]}),
+            json.dumps({"products": []}),
+        ]
+        with patch("mcm.sources._fetch_html", side_effect=payloads):
+            products = _fetch_shopify_collection_products(
+                "https://www.morceau.ca/collections/furniture"
+            )
+
+        self.assertEqual([product["handle"] for product in products], ["one", "two"])
+
+    def test_showroom_gallery_skips_generated_dataitem_titles(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")
+        gallery_items = [
+            {"id": "dataItem-header1", "uri": "fc24cc_header1~mv2.jpg", "title": ""},
+            {"id": "dataItem-header2", "uri": "fc24cc_header2~mv2.jpg", "title": ""},
+            {
+                "id": "dataItem-placeholder",
+                "uri": "fc24cc_placeholder~mv2.jpg",
+                "description": "Contactez nous pour les détails",
+            },
+            {
+                "id": "dataItem-real",
+                "uri": "fc24cc_real~mv2.jpg",
+                "description": "Chaises en teck '60s\n1200 $ / 4",
+            },
+        ]
+        with (
+            patch("mcm.sources._fetch_html", return_value="<html></html>"),
+            patch(
+                "mcm.sources._extract_showroom_siteassets_url",
+                return_value="https://example.com/assets",
+            ),
+            patch("mcm.sources._extract_showroom_gallery_items", return_value=gallery_items),
+        ):
+            listings = _extract_showroom_gallery_listings(
+                source,
+                "https://www.showroommtl.com/nouveaute",
+            )
+
+        self.assertEqual(len(listings), 1)
+        self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-real")
 
 
 if __name__ == "__main__":

@@ -53,12 +53,7 @@ SOURCE_DEFINITIONS = [
         notes="Strong Shopify-style vintage collection.",
         description="Montreal-based vintage and design shop with a strong MCM furniture mix.",
         style_focus="Vintage, Scandinavian, Italian, collectible design.",
-        listing_urls=(
-            "https://www.morceau.ca/collections/furniture",
-            "https://www.morceau.ca/collections/furniture-1",
-            "https://www.morceau.ca/collections/new-arrivals",
-            "https://www.morceau.ca/collections/vintage",
-        ),
+        listing_urls=("https://www.morceau.ca/collections/vintage",),
         parser="shopify_collection",
     ),
     SourceDefinition(
@@ -180,9 +175,24 @@ def _seed_fallback(source: SourceDefinition) -> list[dict[str, Any]]:
 
 
 def _fetch_shopify_collection(source: SourceDefinition) -> list[dict[str, Any]]:
+    listings_by_url: dict[str, dict[str, Any]] = {}
+    for entry_url in source.listing_urls:
+        for product in _fetch_shopify_collection_products(entry_url):
+            try:
+                listing = _parse_shopify_collection_product(source, product)
+            except ValueError:
+                continue
+            listings_by_url[listing["source_listing_url"]] = listing
+
+    if listings_by_url:
+        return list(listings_by_url.values())[:200]
+
     product_urls: list[str] = []
     for entry_url in source.listing_urls:
-        html = _fetch_html(entry_url)
+        try:
+            html = _fetch_html(entry_url)
+        except Exception:
+            continue
         soup = BeautifulSoup(html, "html.parser")
         for anchor in soup.select("a[href]"):
             href = anchor.get("href", "")
@@ -195,11 +205,87 @@ def _fetch_shopify_collection(source: SourceDefinition) -> list[dict[str, Any]]:
     for url in product_urls[:200]:
         try:
             listings.append(_parse_shopify_product(source, url))
-        except Exception:
+        except ValueError:
             continue
     if not listings:
         raise ValueError(f"No listings parsed from {source.listing_urls[0]}")
     return listings
+
+
+def _fetch_shopify_collection_products(entry_url: str) -> list[dict[str, Any]]:
+    all_products: list[dict[str, Any]] = []
+    for page in range(1, 11):
+        products_url = f"{entry_url.rstrip('/')}/products.json?limit=250&page={page}"
+        try:
+            payload = json.loads(_fetch_html(products_url))
+        except (json.JSONDecodeError, urllib.error.URLError):
+            break
+        products = [product for product in payload.get("products", []) if isinstance(product, dict)]
+        if not products:
+            break
+        all_products.extend(products)
+    return all_products
+
+
+def _parse_shopify_collection_product(
+    source: SourceDefinition, product: dict[str, Any]
+) -> dict[str, Any]:
+    title = _clean_text(product.get("title", ""))
+    handle = _clean_text(product.get("handle", ""))
+    if _normalize_lookup(title) == "gift card":
+        raise ValueError("Skipping Shopify gift card")
+    url = urllib.parse.urljoin(source.website, f"/products/{handle}")
+    description_text = BeautifulSoup(product.get("body_html") or "", "html.parser").get_text(
+        "\n", strip=True
+    )
+    description = _clean_text(description_text)
+    if _is_current_production(description):
+        raise ValueError("Skipping current-production Shopify item")
+    variants = [variant for variant in product.get("variants", []) if isinstance(variant, dict)]
+    images = [
+        image.get("src", "")
+        for image in product.get("images", [])
+        if isinstance(image, dict) and image.get("src")
+    ]
+    price_value = next(
+        (_to_float(str(variant.get("price", ""))) for variant in variants if variant.get("price")),
+        None,
+    )
+    availability = (
+        "available" if any(variant.get("available") for variant in variants) else "sold_out"
+    )
+    designer, maker = _extract_designer_and_maker(title, description)
+    materials = _extract_labeled_section(
+        description_text, ("materials", "materiaux", "matériaux")
+    ) or _extract_materials(f"{title} {description}")
+    dimensions = _extract_labeled_section(description_text, ("dimensions",)) or _extract_dimensions(
+        description
+    )
+    return {
+        "source_listing_url": url,
+        "source_listing_key": url,
+        "title": title,
+        "price_raw": f"${price_value:,.2f} CAD" if price_value is not None else "",
+        "price_value": price_value,
+        "currency": "CAD",
+        "primary_image_url": images[0] if images else "",
+        "additional_image_urls": images[1:6],
+        "availability_status": availability,
+        "shipping_scope": _shipping_scope_for(source),
+        "ships_to_montreal": 1,
+        "shipping_note": source.shipping_summary,
+        "category": _categorize_listing(title, description),
+        "designer": designer,
+        "maker": maker,
+        "materials": materials,
+        "dimensions_text": dimensions,
+        "condition_text": _extract_condition(description),
+        "source_description": description,
+        "location_text": f"{source.city}, {source.province}",
+        "era": _extract_era(f"{title} {description}"),
+        "parse_confidence": 0.86,
+        "ingest_source_type": "live_fetch",
+    }
 
 
 def _parse_shopify_product(source: SourceDefinition, url: str) -> dict[str, Any]:
@@ -214,14 +300,17 @@ def _parse_shopify_product(source: SourceDefinition, url: str) -> dict[str, Any]
         or _safe_text(soup.select_one("h1"))
         or _slug_to_title(url.rsplit("/", 1)[-1])
     )
-    description = _clean_text(
-        product_data.get("description")
-        or _safe_text(
-            soup.select_one(
-                '[data-product-description], .product__description, .rte, [itemprop="description"]'
-            )
-        )
+    description_node = soup.select_one(
+        '[data-product-description], .product__description, .rte, [itemprop="description"]'
     )
+    description_text = (
+        BeautifulSoup(str(description_node), "html.parser").get_text("\n", strip=True)
+        if description_node
+        else _clean_text(str(product_data.get("description") or ""))
+    )
+    description = _clean_text(product_data.get("description") or description_text)
+    if _is_current_production(description):
+        raise ValueError("Skipping current-production Shopify item")
     images = product_data.get("image") or []
     if isinstance(images, str):
         images = [images]
@@ -232,7 +321,12 @@ def _parse_shopify_product(source: SourceDefinition, url: str) -> dict[str, Any]
     )
     shipping_scope = _shipping_scope_for(source)
     designer, maker = _extract_designer_and_maker(title, description)
-    materials = _extract_materials(f"{title} {description}")
+    materials = _extract_labeled_section(
+        description_text, ("materials", "materiaux", "matériaux")
+    ) or _extract_materials(f"{title} {description}")
+    dimensions = _extract_labeled_section(description_text, ("dimensions",)) or _extract_dimensions(
+        description
+    )
     category = _categorize_listing(title, description)
     return {
         "source_listing_url": url,
@@ -251,7 +345,7 @@ def _parse_shopify_product(source: SourceDefinition, url: str) -> dict[str, Any]
         "designer": designer,
         "maker": maker,
         "materials": materials,
-        "dimensions_text": _extract_dimensions(description),
+        "dimensions_text": dimensions,
         "condition_text": _extract_condition(description),
         "source_description": description,
         "location_text": f"{source.city}, {source.province}",
@@ -295,10 +389,14 @@ def _extract_showroom_gallery_listings(
         image_uri = _clean_text(item.get("uri", ""))
         raw_description = (item.get("description") or "").replace("\r", "\n")
         description = _clean_text(raw_description)
+        if not description:
+            continue
         title = _showroom_title(item)
         if not title or not item_id:
             continue
         normalized_title = _normalize_lookup(title)
+        if normalized_title.startswith("dataitem"):
+            continue
         if normalized_title.startswith("contactez nous"):
             continue
         price_line = _showroom_price_line(raw_description)
@@ -308,7 +406,7 @@ def _extract_showroom_gallery_listings(
         designer, maker = _extract_designer_and_maker(title, description)
         listings.append(
             {
-                "source_listing_url": f"{entry_url}?lightbox={item_id}",
+                "source_listing_url": entry_url,
                 "source_listing_key": f"showroom:{item_id}",
                 "title": title,
                 "price_raw": price_line
@@ -614,6 +712,11 @@ def _normalize_availability(offer_value: Any, page_text: str) -> str:
     return "available"
 
 
+def _is_current_production(text: str) -> bool:
+    normalized = _normalize_lookup(text)
+    return "current production" in normalized
+
+
 def _extract_price_text(soup: BeautifulSoup) -> str:
     text = soup.get_text(" ", strip=True)
     match = re.search(r"\$[\d,]+(?:\.\d{2})?\s*CAD", text)
@@ -624,18 +727,52 @@ def _extract_price_text(soup: BeautifulSoup) -> str:
 
 
 def _extract_designer_and_maker(title: str, description: str) -> tuple[str, str]:
-    combined = f"{title} {description}"
     match = re.search(r"(.+?)\s+pour\s+(.+?)(?:$|,|\||\.)", description, flags=re.IGNORECASE)
     if match:
         designer = _last_person_name(match.group(1))
         if designer:
             return designer, _clean_text(match.group(2))
 
-    match = re.search(r"\bby\s+(.+?)\s+for\s+(.+?)(?:$|,|\||\.)", combined, flags=re.IGNORECASE)
+    match = re.search(r"\bby\s+(.+?)(?:\s+for\s+(.+?))?$", title, flags=re.IGNORECASE)
     if match:
-        return _clean_text(match.group(1)), _clean_text(match.group(2))
+        designer = _clean_designer_candidate(match.group(1))
+        maker = _clean_maker_candidate(match.group(2) or "")
+        if designer:
+            return designer, maker
+
+    first_sentence = re.split(r"[.\n|]", description, maxsplit=1)[0]
+    match = re.search(
+        r"\bdesigned\s+by\s+(.+?)(?:,|\s+for\s+(.+?))?$",
+        first_sentence,
+        flags=re.IGNORECASE,
+    )
+    if match:
+        designer = _clean_designer_candidate(match.group(1))
+        maker = _clean_maker_candidate(match.group(2) or "")
+        if designer:
+            return designer, maker
 
     return "", _clean_text(description) if len(description.split()) < 6 else ""
+
+
+def _clean_designer_candidate(value: str) -> str:
+    candidate = _clean_text(value)
+    if not candidate or len(candidate.split()) > 5:
+        return ""
+    if re.search(r"[.;:!?]", candidate):
+        return ""
+    return candidate
+
+
+def _clean_maker_candidate(value: str) -> str:
+    candidate = _clean_text(value)
+    if not candidate:
+        return ""
+    if len(candidate.split()) > 6:
+        return ""
+    if re.search(r"\b(more information|details|checkout|shipping|policies)\b", candidate, re.I):
+        return ""
+    return candidate
 
 
 def _extract_era(text: str) -> str:
@@ -645,12 +782,47 @@ def _extract_era(text: str) -> str:
 
 def _extract_dimensions(text: str) -> str:
     match = re.search(
-        r"(\d+(?:\.\d+)?\s*(?:in|\"|''|”)\s*[xX]\s*\d+(?:\.\d+)?(?:.*?)(?:H|W|D)?)", text
+        r"(\d+(?:[.,]\d+)?\s*(?:in|\"|''|”)\s*[WLDH]?\s*[xX]\s*"
+        r"\d+(?:[.,]\d+)?(?:\s*(?:in|\"|''|”))?\s*[WLDH]?(?:.*?)(?:H|W|D)?)",
+        text,
     )
     if match:
         return match.group(1)
     match = re.search(r"\d+(?:\.\d+)?\s*[WLDH]\s*x?\s*\d+(?:\.\d+)?", text)
     return match.group(0) if match else ""
+
+
+SECTION_LABELS = {
+    "materials",
+    "materiaux",
+    "dimensions",
+    "features",
+    "lead time",
+    "condition",
+    "designer",
+    "maker",
+    "made in",
+    "provenance",
+}
+
+
+def _extract_labeled_section(text: str, labels: tuple[str, ...]) -> str:
+    wanted_labels = {_normalize_lookup(label) for label in labels}
+    section_labels = {_normalize_lookup(label) for label in SECTION_LABELS}
+    lines = [_clean_text(line) for line in (text or "").splitlines()]
+    for index, line in enumerate(lines):
+        if _normalize_lookup(line) not in wanted_labels:
+            continue
+        values = []
+        for following in lines[index + 1 :]:
+            normalized_following = _normalize_lookup(following)
+            if not following:
+                continue
+            if normalized_following in section_labels:
+                break
+            values.append(following)
+        return _clean_text(" ".join(values))
+    return ""
 
 
 def _extract_condition(text: str) -> str:

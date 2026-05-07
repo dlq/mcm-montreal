@@ -116,17 +116,40 @@ textarea:focus {
   display: flex;
   font-size: 0.72rem;
   font-weight: 700;
-  gap: 0.65rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }
 
-.source-kicker::before {
-  background: #4d5f4a;
-  content: "";
-  display: inline-block;
-  height: 1px;
+.favourite-icon-button {
+  align-items: center;
+  color: rgba(28, 28, 26, 0.55);
+  display: inline-flex;
+  height: 1.6rem;
+  justify-content: center;
+  padding: 0;
   width: 1.6rem;
+}
+
+.favourite-icon-button:hover {
+  color: #4d5f4a;
+}
+
+.favourite-icon {
+  display: block;
+  fill: transparent;
+  height: 1.12rem;
+  stroke: currentColor;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
+  width: 1.12rem;
+}
+
+.favourite-icon-button[data-favourited="true"] {
+  color: #8a4a3a;
+}
+
+.favourite-icon-button[data-favourited="true"] .favourite-icon {
+  fill: currentColor;
 }
 
 .provenance-row {
