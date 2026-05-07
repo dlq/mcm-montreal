@@ -6,7 +6,7 @@ from typing import Any
 from flask import has_request_context, session
 
 ALLOWED_FILTER_FIELDS = {"category", "materials", "designer"}
-ALLOWED_AVAILABILITY = {"available", "unknown", "sold_out", "all"}
+ALLOWED_AVAILABILITY = {"available", "sold_out", "all"}
 ALLOWED_SORT = {"newest", "recent_check", "price_low", "price_high", "recent_source"}
 
 
@@ -36,7 +36,7 @@ def query_listings(
     if not include_inactive:
         clauses.append("l.is_active = 1")
         clauses.append(
-            "COALESCE(NULLIF(l.availability_override, ''), l.availability_status) NOT IN ('removed', 'sold_out')"
+            "COALESCE(NULLIF(l.availability_override, ''), l.availability_status) != 'removed'"
         )
     if filters.get("q"):
         clauses.append(

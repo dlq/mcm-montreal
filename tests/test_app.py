@@ -9,6 +9,7 @@ from unittest.mock import patch
 from mcm.app import create_app
 from mcm.db import get_db
 from mcm.refresh import listing_id_from_item_number, public_item_number, refresh_all_sources
+from mcm.repository import sanitize_availability
 from mcm.sources import (
     SOURCE_DEFINITIONS,
     _extract_condition,
@@ -91,6 +92,42 @@ class AppTests(unittest.TestCase):
     def test_invalid_price_filter_does_not_error(self) -> None:
         response = self.client.get("/?price_min=abc")
         self.assertEqual(response.status_code, 200)
+
+    def test_sold_out_filter_can_show_active_sold_listings(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET availability_status = 'sold_out'
+                    WHERE id = ?
+                    """,
+                    (self.listing_id,),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        default_response = self.client.get("/")
+        sold_response = self.client.get("/?availability=sold_out")
+        all_response = self.client.get("/?availability=all")
+
+        self.assertNotIn("Sample Chair", default_response.text)
+        self.assertIn("Sample Chair", sold_response.text)
+        self.assertIn("Sample Chair", all_response.text)
+
+    def test_unknown_availability_filter_falls_back_to_available(self) -> None:
+        self.assertEqual(sanitize_availability("unknown"), "available")
+        response = self.client.get("/?availability=unknown")
+        self.assertNotIn("Unknown", response.text)
+        self.assertIn("Available only", response.text)
+
+    def test_active_filter_summary_renders_with_results_after_apply(self) -> None:
+        response = self.client.get("/?availability=sold_out&sort=price_low")
+        self.assertIn("0 listings", response.text)
+        self.assertIn("Availability: Sold out", response.text)
+        self.assertIn("Sort: Price low to high", response.text)
 
     def test_favourite_toggle_returns_404_for_missing_listing(self) -> None:
         response = self.client.post("/favourites/listing/999999")
@@ -256,6 +293,31 @@ class AppTests(unittest.TestCase):
         response = self.client.get(f"/listing/{public_item_number(self.listing_id)}")
         self.assertIn("first seen 2026-05-06", response.text)
         self.assertNotIn("last checked 2026-05-06T00:00:00+00:00", response.text)
+
+    def test_listing_grid_shows_first_seen_date(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET last_checked_at = '2026-05-07T00:00:00+00:00'
+                    WHERE id = ?
+                    """,
+                    (self.listing_id,),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.get("/")
+        self.assertIn("Since 2026-05-06", response.text)
+        self.assertNotIn("2026-05-07", response.text)
+
+    def test_listing_grid_omits_redundant_location(self) -> None:
+        response = self.client.get("/")
+        self.assertIn("lounge chairs", response.text)
+        self.assertNotIn("Montreal, QC · lounge chairs", response.text)
 
     def test_showroom_detail_uses_source_page_label(self) -> None:
         with self.app.app_context():

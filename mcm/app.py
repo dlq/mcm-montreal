@@ -46,6 +46,37 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "data" / "mcm.db"
 
 
+def filter_summary(filters: dict[str, str]) -> str:
+    t = translator_for(g.lang)
+    parts = []
+    label_keys = {
+        "q": "filters.search",
+        "shop": "filters.shop",
+        "category": "filters.category",
+        "material": "filters.material",
+        "designer": "filters.designer",
+        "location": "filters.location",
+        "price_min": "filters.min_price",
+        "price_max": "filters.max_price",
+    }
+    for key, label_key in label_keys.items():
+        if filters.get(key):
+            parts.append(f"{t(label_key)}: {filters[key]}")
+    availability = filters.get("availability", "available")
+    if availability != "available":
+        parts.append(f"{t('filters.availability')}: {status_label(availability)}")
+    sort = filters.get("sort", "newest")
+    if sort != "newest":
+        sort_labels = {
+            "recent_check": "filters.recent_check",
+            "price_low": "filters.price_low",
+            "price_high": "filters.price_high",
+            "recent_source": "filters.recent_source",
+        }
+        parts.append(f"{t('filters.sort')}: {t(sort_labels[sort])}")
+    return " · ".join(parts)
+
+
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(
         __name__,
@@ -83,6 +114,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "t": translator_for(g.lang),
             "status_label": status_label,
             "category_label": category_label,
+            "filter_summary": filter_summary,
             "public_item_number": public_item_number,
             "shop_text": shop_text,
             "lang_url_en": language_url("en"),

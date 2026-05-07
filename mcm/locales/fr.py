@@ -56,6 +56,7 @@ TRANSLATIONS_FR = {
     "listing.freshness": "Fraîcheur",
     "listing.last_checked": "dernière vérification {value}",
     "listing.first_seen": "première vue {value}",
+    "listing.since": "Depuis {value}",
     "listing.shop": "Boutique",
     "listing.item_number": "No d’article",
     "listing.location": "Lieu",

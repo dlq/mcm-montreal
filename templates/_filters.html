@@ -111,10 +111,6 @@
                     {% if filters.availability == "available" %}selected{% endif %}>
               {{ t("filters.available_only") }}
             </option>
-            <option value="unknown"
-                    {% if filters.availability == "unknown" %}selected{% endif %}>
-              {{ t("filters.unknown") }}
-            </option>
             <option value="sold_out"
                     {% if filters.availability == "sold_out" %}selected{% endif %}>
               {{ t("filters.sold_out") }}
@@ -152,13 +148,6 @@
           </select>
         </div>
       </div>
-      <label class="flex items-center gap-2 text-sm font-medium text-ink/75">
-        <input type="checkbox"
-               name="ships_to_montreal"
-               value="1"
-               {% if filters.ships_to_montreal %}checked{% endif %}>
-        {{ t("filters.ships_to_montreal") }}
-      </label>
       <div class="flex gap-3">
         <button class="button-primary flex-1 px-4 py-3 text-sm" type="submit">
           {{ t("filters.apply") }}
@@ -166,7 +155,6 @@
         <a class="button-secondary border px-4 py-3 text-sm font-semibold"
            href="{{ url_for('listings') }}">{{ t("filters.reset") }}</a>
       </div>
-      <filter-summary class="block border-t border-ink/10 pt-4 text-sm text-ink/55"></filter-summary>
     </form>
   </listing-filters>
 </aside>

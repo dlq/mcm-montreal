@@ -110,6 +110,16 @@ textarea:focus {
   transform: scale(1.01);
 }
 
+.listing-card-date {
+  flex: 0 0 6.25rem;
+  line-height: 1.5rem;
+}
+
+.listing-card-since {
+  font-size: 0.68rem;
+  line-height: 1.25rem;
+}
+
 .source-kicker {
   align-items: center;
   color: rgba(28, 28, 26, 0.48);

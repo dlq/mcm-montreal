@@ -56,6 +56,7 @@ TRANSLATIONS_EN = {
     "listing.freshness": "Freshness",
     "listing.last_checked": "last checked {value}",
     "listing.first_seen": "first seen {value}",
+    "listing.since": "Since {value}",
     "listing.shop": "Shop",
     "listing.item_number": "Item no.",
     "listing.location": "Location",
