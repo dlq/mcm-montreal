@@ -625,9 +625,16 @@ def _extract_price_text(soup: BeautifulSoup) -> str:
 
 def _extract_designer_and_maker(title: str, description: str) -> tuple[str, str]:
     combined = f"{title} {description}"
+    match = re.search(r"(.+?)\s+pour\s+(.+?)(?:$|,|\||\.)", description, flags=re.IGNORECASE)
+    if match:
+        designer = _last_person_name(match.group(1))
+        if designer:
+            return designer, _clean_text(match.group(2))
+
     match = re.search(r"\bby\s+(.+?)\s+for\s+(.+?)(?:$|,|\||\.)", combined, flags=re.IGNORECASE)
     if match:
         return _clean_text(match.group(1)), _clean_text(match.group(2))
+
     return "", _clean_text(description) if len(description.split()) < 6 else ""
 
 
@@ -649,9 +656,9 @@ def _extract_dimensions(text: str) -> str:
 def _extract_condition(text: str) -> str:
     lowered = text.lower()
     conditions = []
-    if "restored" in lowered or "restaur" in lowered:
+    if "restaur" in lowered or "restored" in lowered:
         conditions.append("Restored")
-    if "reupholstered" in lowered or "recouvrement" in lowered:
+    if "recouvrement" in lowered or "reupholstered" in lowered:
         conditions.append("Reupholstered")
     if "refinished" in lowered:
         conditions.append("Refinished")
@@ -660,24 +667,31 @@ def _extract_condition(text: str) -> str:
 
 def _extract_materials(text: str) -> str:
     material_keywords = [
-        "teak",
-        "rosewood",
-        "walnut",
-        "glass",
-        "chrome",
-        "aluminum",
-        "aluminium",
-        "leather",
-        "sherpa",
-        "wood",
-        "metal",
+        ("teak", ["teck", "teak"]),
+        ("rosewood", ["palissandre", "rosewood"]),
+        ("walnut", ["noyer", "walnut"]),
+        ("glass", ["verre", "glass"]),
+        ("chrome", ["chrome"]),
+        ("aluminum", ["aluminium", "aluminum"]),
+        ("leather", ["cuir", "leather"]),
+        ("sherpa", ["sherpa"]),
+        ("wood", ["bois", "wood"]),
+        ("metal", ["metal", "métal"]),
     ]
     found = []
     lowered = text.lower()
-    for keyword in material_keywords:
-        if keyword in lowered and keyword not in found:
-            found.append(keyword)
+    for material, keywords in material_keywords:
+        if any(keyword in lowered for keyword in keywords) and material not in found:
+            found.append(material)
     return ", ".join(found)
+
+
+def _last_person_name(text: str) -> str:
+    names = re.findall(
+        r"\b[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+(?:\s+[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'’.-]+)+",
+        text,
+    )
+    return _clean_text(names[-1]) if names else ""
 
 
 def _categorize_listing(title: str, description: str) -> str:

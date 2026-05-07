@@ -100,6 +100,16 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL,
             error_message TEXT NOT NULL DEFAULT ''
         );
+        CREATE TABLE IF NOT EXISTS listing_identity_reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            shop_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            source_listing_key TEXT NOT NULL,
+            title TEXT NOT NULL,
+            candidate_listing_ids TEXT NOT NULL DEFAULT '',
+            reason TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'open'
+        );
         """
     )
     db.commit()

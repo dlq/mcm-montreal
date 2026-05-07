@@ -23,6 +23,7 @@ def refresh_all_sources(
         listings, error = fetch_source_listings(source)
         seen_keys: set[str] = set()
         new_count = 0
+        reconciled_count = 0
         for item in listings:
             source_url = item["source_listing_url"]
             key = item.get("source_listing_key") or source_url.rstrip("/").lower()
@@ -31,7 +32,85 @@ def refresh_all_sources(
                 "SELECT id, first_seen_at FROM listings WHERE source_shop_id = ? AND source_listing_key = ?",
                 (shop["id"], key),
             ).fetchone()
+
+            if not existing:
+                existing = find_reconciliation_candidate(
+                    db,
+                    int(shop["id"]),
+                    item,
+                    seen_keys,
+                    timestamp,
+                    key,
+                )
+                if existing:
+                    reconciled_count += 1
+
             first_seen = existing["first_seen_at"] if existing else timestamp
+            if existing:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET source_listing_url = ?,
+                        source_listing_key = ?,
+                        title = ?,
+                        normalized_title = ?,
+                        price_raw = ?,
+                        price_value = ?,
+                        currency = ?,
+                        primary_image_url = ?,
+                        additional_image_urls = ?,
+                        availability_status = ?,
+                        shipping_scope = ?,
+                        ships_to_montreal = ?,
+                        shipping_note = ?,
+                        last_seen_at = ?,
+                        last_checked_at = ?,
+                        category = ?,
+                        designer = ?,
+                        maker = ?,
+                        era = ?,
+                        materials = ?,
+                        dimensions_text = ?,
+                        condition_text = ?,
+                        location_text = ?,
+                        source_description = ?,
+                        ingest_source_type = ?,
+                        parse_confidence = ?,
+                        is_active = 1
+                    WHERE id = ?
+                    """,
+                    (
+                        source_url,
+                        key,
+                        item["title"],
+                        normalize_text(item["title"]),
+                        item.get("price_raw", ""),
+                        item.get("price_value"),
+                        item.get("currency", "CAD"),
+                        item.get("primary_image_url", ""),
+                        json.dumps(item.get("additional_image_urls", [])),
+                        item.get("availability_status", "unknown"),
+                        item.get("shipping_scope", ""),
+                        item.get("ships_to_montreal", 0),
+                        item.get("shipping_note", ""),
+                        timestamp,
+                        timestamp,
+                        item.get("category", ""),
+                        item.get("designer", ""),
+                        item.get("maker", ""),
+                        item.get("era", ""),
+                        item.get("materials", ""),
+                        item.get("dimensions_text", ""),
+                        item.get("condition_text", ""),
+                        item.get("location_text", f"{shop['city']}, {shop['province']}"),
+                        item.get("source_description", ""),
+                        item.get("ingest_source_type", "refresh"),
+                        float(item.get("parse_confidence", 0.4)),
+                        existing["id"],
+                    ),
+                )
+                continue
+
             if not existing:
                 new_count += 1
             db.execute(
@@ -112,7 +191,7 @@ def refresh_all_sources(
                 ),
             )
         deactivated = db.execute(
-            "UPDATE listings SET is_active = 0, last_checked_at = ? WHERE source_shop_id = ? AND source_listing_key NOT IN ({})".format(
+            "UPDATE listings SET is_active = 0, availability_status = 'removed', last_checked_at = ? WHERE source_shop_id = ? AND source_listing_key NOT IN ({})".format(
                 ",".join("?" for _ in seen_keys) if seen_keys else "''"
             ),
             [timestamp, shop["id"], *seen_keys],
@@ -128,6 +207,8 @@ def refresh_all_sources(
         )
         if progress:
             summary = f"{source.name}: {len(listings)} listings, {new_count} new"
+            if reconciled_count > 0:
+                summary += f", {reconciled_count} reconciled"
             if deactivated > 0:
                 summary += f", {deactivated} hidden"
             if error:
@@ -138,3 +219,110 @@ def refresh_all_sources(
 
 def normalize_text(text: str) -> str:
     return "".join(ch.lower() if ch.isalnum() else " " for ch in text).strip()
+
+
+def public_item_number(listing_id: int | str) -> str:
+    return f"MCM-{int(listing_id):06d}"
+
+
+def find_reconciliation_candidate(
+    db: sqlite3.Connection,
+    shop_id: int,
+    item: dict[str, object],
+    seen_keys: set[str],
+    timestamp: str,
+    source_listing_key: str,
+) -> sqlite3.Row | None:
+    normalized_title = normalize_text(str(item["title"]))
+    rows = db.execute(
+        """
+        SELECT id, source_listing_key, first_seen_at, price_value, primary_image_url, source_description
+        FROM listings
+        WHERE source_shop_id = ?
+          AND normalized_title = ?
+        ORDER BY last_checked_at DESC, id DESC
+        """,
+        (shop_id, normalized_title),
+    ).fetchall()
+
+    candidates = [row for row in rows if row["source_listing_key"] not in seen_keys]
+    scored = []
+    for row in candidates:
+        score = reconciliation_score(row, item)
+        if score >= 2:
+            scored.append((score, row))
+    if not scored:
+        return None
+
+    scored.sort(key=lambda candidate: candidate[0], reverse=True)
+    best_score = scored[0][0]
+    best_matches = [row for score, row in scored if score == best_score]
+    if len(best_matches) == 1:
+        return best_matches[0]
+
+    log_identity_review(
+        db,
+        shop_id,
+        timestamp,
+        source_listing_key,
+        str(item["title"]),
+        [int(row["id"]) for row in best_matches],
+        f"Ambiguous source-key reconciliation at score {best_score}",
+    )
+    return None
+
+
+def reconciliation_score(row: sqlite3.Row, item: dict[str, object]) -> int:
+    score = 0
+    item_image = str(item.get("primary_image_url") or "")
+    if item_image and item_image == row["primary_image_url"]:
+        score += 2
+
+    item_description = str(item.get("source_description") or "")
+    if item_description and item_description == row["source_description"]:
+        score += 2
+
+    item_price = item.get("price_value")
+    if item_price is not None and item_price == row["price_value"]:
+        score += 1
+
+    return score
+
+
+def log_identity_review(
+    db: sqlite3.Connection,
+    shop_id: int,
+    timestamp: str,
+    source_listing_key: str,
+    title: str,
+    candidate_listing_ids: list[int],
+    reason: str,
+) -> None:
+    existing = db.execute(
+        """
+        SELECT id
+        FROM listing_identity_reviews
+        WHERE shop_id = ?
+          AND source_listing_key = ?
+          AND status = 'open'
+        """,
+        (shop_id, source_listing_key),
+    ).fetchone()
+    if existing:
+        return
+
+    db.execute(
+        """
+        INSERT INTO listing_identity_reviews (
+            shop_id, created_at, source_listing_key, title, candidate_listing_ids, reason
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            shop_id,
+            timestamp,
+            source_listing_key,
+            title,
+            ",".join(str(listing_id) for listing_id in candidate_listing_ids),
+            reason,
+        ),
+    )

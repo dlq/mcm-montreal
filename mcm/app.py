@@ -22,7 +22,7 @@ from .i18n import (
     status_label,
     translator_for,
 )
-from .refresh import refresh_all_sources
+from .refresh import public_item_number, refresh_all_sources
 from .repository import (
     admin_sources,
     build_listing_filters,
@@ -83,6 +83,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "t": translator_for(g.lang),
             "status_label": status_label,
             "category_label": category_label,
+            "public_item_number": public_item_number,
             "shop_text": shop_text,
             "lang_url_en": language_url("en"),
             "lang_url_fr": language_url("fr"),

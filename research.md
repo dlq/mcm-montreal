@@ -585,3 +585,26 @@ Very close next additions:
 
 1. Vintage Home Boutique
 2. Le Centerpiece
+
+## Showroom Montreal French Parser Evidence
+
+Checked on: 2026-05-07
+
+- Showroom Montreal listing `1912` stored source text: `Chaises en teck '60s Arne Hovmand-Olsen pour Onsild Møbelfabrik , Denmark restaurées 3500 $ / 6`.
+- Prior extractors missed material and designer/maker because they leaned English-first: materials recognized `teak` but not `teck`, and designer/maker recognized `by ... for ...` but not French `... pour ...`.
+- Category and condition worked because category mapping already included `chaises`, and condition matched `restaur`.
+- Dimensions remain unavailable for this item because the source text does not include measurements.
+- After switching extractor priority to French-first with English fallback and rerunning refresh, listing `1912` parsed as designer `Arne Hovmand-Olsen`, maker `Onsild Møbelfabrik`, material `teak`, condition `Restored`.
+
+## Showroom Montreal Identity And Removal Behavior
+
+Checked on: 2026-05-07
+
+- Showroom Montreal source keys are built as `showroom:{item_id}` from Wix gallery item ids.
+- Listing `1912` currently uses source key `showroom:dataItem-monbyc3y` and source URL `https://www.showroommtl.com/nouveaute?lightbox=dataItem-monbyc3y`.
+- Refresh upserts by `(source_shop_id, source_listing_key)`, so a stable Wix gallery item id preserves the same local listing row and `first_seen_at`.
+- If a same-key item remains in the gallery and source text includes `vendu`, refresh sets `availability_status = sold_out`.
+- If a previously seen source key disappears from a later refresh, refresh now sets `is_active = 0`, `availability_status = removed`, and updates `last_checked_at`; the detail URL remains addressable and should show `Removed`.
+- App-facing item numbers are deterministic from the preserved listing row id, e.g. listing `1912` renders as `MCM-001912`.
+- Source-key drift reconciliation now checks same-shop exact normalized title first, then requires a high-confidence same image or same source description match before updating the existing row with the new source key.
+- Ambiguous high-confidence matches are not merged; they are recorded in internal SQLite table `listing_identity_reviews` for later inspection outside the user-facing UI.

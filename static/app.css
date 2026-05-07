@@ -83,13 +83,10 @@ textarea:focus {
 }
 
 .film-frame {
-  background: #ffffff;
   box-sizing: border-box;
-  padding: 1rem;
 }
 
 .film-frame img {
-  background: #ffffff;
   transition:
     opacity 180ms ease,
     transform 260ms ease;
@@ -103,11 +100,9 @@ textarea:focus {
 
 .listing-thumb img {
   display: block;
-  height: auto;
-  max-height: calc(100% - 1.25rem);
-  max-width: calc(100% - 1.25rem);
-  object-fit: contain;
-  width: auto;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
 }
 
 .listing-card:hover img {
