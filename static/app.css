@@ -112,11 +112,10 @@ textarea:focus {
 
 .listing-card-date {
   flex: 0 0 6.25rem;
-  line-height: 1.5rem;
 }
 
 .listing-card-since {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   line-height: 1.25rem;
 }
 

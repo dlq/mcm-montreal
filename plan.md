@@ -52,6 +52,10 @@ The biggest remaining product gaps versus the original roadmap are:
 - editorial / SEO content
 - second-wave source expansion
 
+Implementation note for source expansion: listing cards can omit repeated `Montreal, QC`
+while all launch inventory is Montreal-local, but card-level location should come back when
+adding Ottawa, Toronto, Quebec City, or other regional vintage shops that ship to Montreal.
+
 ## Product Goal
 
 Create a site focused on resale and vintage mid-century modern furniture that is available in Montreal or can realistically be shipped to Montreal.

@@ -40,8 +40,7 @@
             <p class="text-base font-semibold">{{ listing.price_raw or t("listing.quote_required") }}</p>
             <p class="text-sm text-ink/60">{{ category_label(category_name) }}</p>
           </div>
-          <div class="listing-card-date text-right text-xs text-ink/40">
-            <p class="whitespace-nowrap">{{ freshness_label(listing.last_checked_at) }}</p>
+          <div class="listing-card-date text-right text-ink/40">
             <p class="listing-card-since whitespace-nowrap">
               {{ t("listing.since", value=listing.first_seen_at[:10]) }}
             </p>

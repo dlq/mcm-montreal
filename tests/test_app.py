@@ -313,6 +313,7 @@ class AppTests(unittest.TestCase):
         response = self.client.get("/")
         self.assertIn("Since 2026-05-06", response.text)
         self.assertNotIn("2026-05-07", response.text)
+        self.assertNotIn("Checked today", response.text)
 
     def test_listing_grid_omits_redundant_location(self) -> None:
         response = self.client.get("/")
