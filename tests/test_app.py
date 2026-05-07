@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from mcm.app import create_app
 from mcm.db import get_db
-from mcm.refresh import public_item_number, refresh_all_sources
+from mcm.refresh import listing_id_from_item_number, public_item_number, refresh_all_sources
 from mcm.sources import (
     _extract_condition,
     _extract_designer_and_maker,
@@ -77,7 +77,7 @@ class AppTests(unittest.TestCase):
             "/shops",
             "/favourites",
             "/admin",
-            f"/listing/{self.listing_id}",
+            f"/listing/{public_item_number(self.listing_id)}",
             "/?lang=fr",
         ]:
             response = self.client.get(path, follow_redirects=True)
@@ -237,8 +237,20 @@ class AppTests(unittest.TestCase):
                 db.close()
 
     def test_detail_page_shows_internal_item_number(self) -> None:
-        response = self.client.get(f"/listing/{self.listing_id}")
+        response = self.client.get(f"/listing/{public_item_number(self.listing_id)}")
         self.assertIn(public_item_number(self.listing_id), response.text)
+
+    def test_numeric_listing_url_redirects_to_item_number(self) -> None:
+        response = self.client.get(f"/listing/{self.listing_id}")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            response.headers["Location"].endswith(f"/listing/{public_item_number(self.listing_id)}")
+        )
+
+    def test_item_number_parser_accepts_canonical_and_legacy_values(self) -> None:
+        self.assertEqual(listing_id_from_item_number("MCM-001912"), 1912)
+        self.assertEqual(listing_id_from_item_number("1912"), 1912)
+        self.assertIsNone(listing_id_from_item_number("not-an-item"))
 
     def test_extractors_prefer_french_source_patterns(self) -> None:
         description = (

@@ -6,7 +6,7 @@
     {% set availability = listing.availability_override or listing.availability_status %}
     {% set category_name = listing.category_override or listing.category %}
     <article class="listing-card group">
-      <a href="{{ url_for('listing_detail', listing_id=listing.id) }}"
+      <a href="{{ url_for('listing_detail', item_number=public_item_number(listing.id) ) }}"
          class="block">
         <div class="film-frame listing-thumb aspect-[4/3] overflow-hidden">
           {% if listing.primary_image_url %}
@@ -22,7 +22,7 @@
         <div class="flex items-start justify-between gap-3">
           <div>
             <p class="source-kicker">{{ listing.shop_name }}</p>
-            <a href="{{ url_for('listing_detail', listing_id=listing.id) }}"
+            <a href="{{ url_for('listing_detail', item_number=public_item_number(listing.id) ) }}"
                class="mt-1 block text-lg font-medium leading-snug tracking-tight hover:text-moss">{{ listing.title }}</a>
           </div>
           {% include "_favourite_listing_button.html" %}

@@ -225,6 +225,15 @@ def public_item_number(listing_id: int | str) -> str:
     return f"MCM-{int(listing_id):06d}"
 
 
+def listing_id_from_item_number(item_number: str) -> int | None:
+    normalized = item_number.strip().upper()
+    if normalized.isdigit():
+        return int(normalized)
+    if normalized.startswith("MCM-") and normalized[4:].isdigit():
+        return int(normalized[4:])
+    return None
+
+
 def find_reconciliation_candidate(
     db: sqlite3.Connection,
     shop_id: int,

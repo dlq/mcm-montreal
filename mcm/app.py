@@ -22,7 +22,7 @@ from .i18n import (
     status_label,
     translator_for,
 )
-from .refresh import public_item_number, refresh_all_sources
+from .refresh import listing_id_from_item_number, public_item_number, refresh_all_sources
 from .repository import (
     admin_sources,
     build_listing_filters,
@@ -105,11 +105,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             designers=list_filter_values(g.db, "designer"),
         )
 
-    @app.get("/listing/<int:listing_id>")
-    def listing_detail(listing_id: int) -> str:
+    @app.get("/listing/<item_number>")
+    def listing_detail(item_number: str) -> Any:
+        listing_id = listing_id_from_item_number(item_number)
+        if not listing_id:
+            abort(404)
         listing = get_listing(g.db, listing_id)
         if not listing:
             abort(404)
+        canonical_item_number = public_item_number(listing["id"])
+        if item_number.upper() != canonical_item_number:
+            return redirect(url_for("listing_detail", item_number=canonical_item_number))
         shop = get_shop(g.db, listing["source_shop_id"])
         if not shop:
             abort(404)
