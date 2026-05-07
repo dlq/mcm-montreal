@@ -417,6 +417,7 @@ Internal tools should exist to review:
 - `dimensions_text` is stored, but dimension parsing and normalization still need a dedicated hardening pass.
 - `dedupe_group_id` exists in SQLite but is not yet actively assigned by the ingest pipeline.
 - some descriptive fields remain source-dependent and incomplete, especially where the source pages do not expose structured metadata cleanly.
+- listing-grid thumbnails need an image-normalization pass. CSS-only object fitting helps most items but does not consistently produce equal top/bottom/side whitespace for mixed source canvases, especially Le Centerpiece images. Future work should generate or cache normalized thumbnails with a consistent canvas and explicit crop/contain policy, potentially with source-specific rules.
 
 ## Shop Data Model
 

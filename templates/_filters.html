@@ -1,10 +1,4 @@
 <aside class="filter-rail order-2 lg:order-1">
-  <div class="mb-5 border-b border-ink/10 pb-4">
-    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">
-      {{ t("filters.browse") }}
-    </p>
-    <h2 class="mt-1 text-lg font-semibold tracking-tight">{{ t("filters.title") }}</h2>
-  </div>
   <listing-filters data-default-summary="{{ t('filters.default_summary') }}">
     <form class="space-y-5"
           hx-get="{{ url_for('listings') }}"

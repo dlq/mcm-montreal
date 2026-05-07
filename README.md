@@ -10,6 +10,21 @@ Working MVP for the Phase 1 product in [plan.md](/Users/dlq/Developer/MCM%20Mont
 - Tailwind CSS
 - Native Web Components
 
+## Architecture
+
+The codebase is intentionally small and split by responsibility:
+
+- `mcm/app.py`: Flask app factory, request lifecycle, and route handlers
+- `mcm/db.py`: SQLite connection, schema setup, and source seeding
+- `mcm/repository.py`: listing/shop queries, favourites state, admin queries, and request filter parsing
+- `mcm/refresh.py`: source refresh orchestration and ingest writes
+- `mcm/i18n.py`: language helpers and shared translation utilities
+- `mcm/locales/`: per-language UI string dictionaries
+- `mcm/sources.py`: source-specific scraping and parsing logic
+- `mcm/seed_data.py`: fallback data used when live source fetches fail
+
+The goal is that contributors can read routes first, then follow data access or source ingestion as needed without having to parse one large mixed-purpose module.
+
 ## What is implemented
 
 - Browseable listings feed
@@ -63,6 +78,14 @@ npm run lint
 npm run format
 ```
 
+## Tests
+
+The fast smoke test suite uses a temporary SQLite database and does not depend on live source fetches.
+
+```bash
+.venv/bin/python -m unittest tests.test_app
+```
+
 `uv` manages the Python environment and dev tools. Biome still lives in the Node ecosystem, so you will need Node.js and `npm` installed for the frontend lint/format commands.
 
 If you want one command per workflow, the `package.json` scripts run all three tools together:
@@ -95,5 +118,4 @@ The hooks use the same tools as local development and CI:
 
 - Tailwind is loaded from the CDN for this first pass.
 - Favourites are currently stored in the browser session rather than through a full account system.
-- The database schema includes user tables, but saved searches, alerts, and a real login flow are not implemented yet.
 - The scraper layer is intentionally conservative and stores manual-review-friendly admin notes and overrides because source markup will drift.

@@ -1,12 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="10" fill="#1c1c1a" />
-  <text
-    x="32"
-    y="38"
-    fill="#ffffff"
-    font-family="Inter, Helvetica Neue, Arial, sans-serif"
-    font-size="19"
-    font-weight="700"
-    letter-spacing="-1"
-    text-anchor="middle">mcm</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MCM">
+  <rect width="64" height="64" fill="#1c1c1a"/>
+  <text x="32" y="39"
+        fill="#ffffff"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="20"
+        font-weight="700"
+        text-anchor="middle">MCM</text>
 </svg>

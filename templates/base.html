@@ -6,6 +6,9 @@
     <title>
       {% block title %}Montreal MCM{% endblock %}
     </title>
+    <link rel="icon"
+          type="image/svg+xml"
+          href="{{ url_for('static', filename='favicon.svg') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -34,9 +37,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet">
-    <link rel="icon"
-          href="{{ url_for('static', filename='favicon.svg') }}"
-          type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
   </head>
   <body class="min-h-screen bg-oat text-ink">
@@ -54,7 +54,6 @@
             <a class="nav-link" href="{{ url_for('listings') }}">{{ t("nav.listings") }}</a>
             <a class="nav-link" href="{{ url_for('shops') }}">{{ t("nav.shops") }}</a>
             <a class="nav-link" href="{{ url_for('favourites') }}">{{ t("nav.favourites") }} <span class="text-ink/60">({{ favourite_counts.listings }})</span></a>
-            <a class="nav-link" href="{{ url_for('admin_dashboard') }}">{{ t("nav.admin") }}</a>
           </nav>
         </div>
       </header>

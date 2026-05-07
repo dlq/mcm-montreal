@@ -83,18 +83,36 @@ textarea:focus {
 }
 
 .film-frame {
-  background: #f4f3ef;
+  background: #ffffff;
+  box-sizing: border-box;
+  padding: 1rem;
 }
 
 .film-frame img {
+  background: #ffffff;
   transition:
     opacity 180ms ease,
     transform 260ms ease;
 }
 
+.listing-thumb {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.listing-thumb img {
+  display: block;
+  height: auto;
+  max-height: calc(100% - 1.25rem);
+  max-width: calc(100% - 1.25rem);
+  object-fit: contain;
+  width: auto;
+}
+
 .listing-card:hover img {
   opacity: 0.94;
-  transform: scale(1.015);
+  transform: scale(1.01);
 }
 
 .source-kicker {
