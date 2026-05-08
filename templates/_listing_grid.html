@@ -1,6 +1,6 @@
 <div class="mb-4 flex items-center justify-between border-b border-ink/10 pb-3">
   <p class="text-sm text-ink/60">
-    {{ t("listing.count", count=listings|length) }}
+    {{ listing_count_text(listings|length) }}
     {% set active_filter_summary = filter_summary(filters) if filters is defined else "" %}
     {% if active_filter_summary %}
       <span class="mx-2 text-ink/25">/</span>
@@ -37,12 +37,14 @@
         </div>
         <div class="mt-auto flex items-end justify-between gap-4 pt-4">
           <div>
-            <p class="text-base font-semibold">{{ listing.price_raw or t("listing.quote_required") }}</p>
+            <p class="{{ 'text-base font-semibold' if listing.price_value is not none else 'max-w-48 text-sm font-medium leading-snug text-ink/65' }}">
+              {{ price_text(listing) }}
+            </p>
             <p class="text-sm text-ink/60">{{ category_label(category_name) }}</p>
           </div>
           <div class="listing-card-date text-right text-ink/40">
             <p class="listing-card-since whitespace-nowrap">
-              {{ t("listing.since", value=listing.first_seen_at[:10]) }}
+              {{ t("listing.since_date", value=date_text(listing.first_seen_at) ) }}
             </p>
           </div>
         </div>

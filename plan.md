@@ -876,6 +876,24 @@ Given the current codebase, the best next order is:
 10. expand to Urbano Vintej and Banana Lab
 11. evaluate marketplace ingestion only after the direct-source product is strong
 
+## Interface Localization Follow-Ups
+
+Completed in the current i18n pass:
+
+- user-facing prices render from parsed values and active UI language, not source price text
+- known Showroom Montreal price qualifiers render as localized whole-dollar display text
+- quote-required price fallbacks render as localized, lower-prominence text
+- canonical category, material, condition, shipping-note, count, and date display go through helpers
+- filter summary presentation logic lives in the i18n layer instead of the Flask app module
+
+Remaining later work:
+
+- turn shop `categories_carried` into structured category data and render it with `category_label()`
+- consider a structured dimensions model if dimensions need unit-aware localization or metric/imperial display
+- preserve card-level location support for future Ottawa, Toronto, Quebec City, and other regional shops that ship to Montreal
+- split price display into a parsed qualifier object plus formatter if more unusual source price suffixes appear
+- consider returning display objects from helpers for value text and prominence instead of checking fields like `price_value` in templates
+
 ## MVP Success Definition
 
 The MVP is successful if:

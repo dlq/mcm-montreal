@@ -71,7 +71,7 @@
           {% for material in materials %}
             <option value="{{ material }}"
                     {% if filters.material == material %}selected{% endif %}>
-              {{ material }}
+              {{ material_label(material) }}
             </option>
           {% endfor %}
         </select>

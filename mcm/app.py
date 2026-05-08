@@ -14,10 +14,17 @@ from .db import get_db, initialize_storage
 from .i18n import (
     LAUNCH_CATEGORIES,
     category_label,
+    condition_label,
+    date_text,
+    filter_summary,
     freshness_label,
     language_url,
+    listing_count_text,
+    material_label,
     normalize_lang,
+    price_text,
     resolved_language,
+    shipping_note_text,
     shop_text,
     status_label,
     translator_for,
@@ -44,37 +51,6 @@ from .repository import (
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = BASE_DIR / "data" / "mcm.db"
-
-
-def filter_summary(filters: dict[str, str]) -> str:
-    t = translator_for(g.lang)
-    parts = []
-    label_keys = {
-        "q": "filters.search",
-        "shop": "filters.shop",
-        "category": "filters.category",
-        "material": "filters.material",
-        "designer": "filters.designer",
-        "location": "filters.location",
-        "price_min": "filters.min_price",
-        "price_max": "filters.max_price",
-    }
-    for key, label_key in label_keys.items():
-        if filters.get(key):
-            parts.append(f"{t(label_key)}: {filters[key]}")
-    availability = filters.get("availability", "available")
-    if availability != "available":
-        parts.append(f"{t('filters.availability')}: {status_label(availability)}")
-    sort = filters.get("sort", "newest")
-    if sort != "newest":
-        sort_labels = {
-            "recent_check": "filters.recent_check",
-            "price_low": "filters.price_low",
-            "price_high": "filters.price_high",
-            "recent_source": "filters.recent_source",
-        }
-        parts.append(f"{t('filters.sort')}: {t(sort_labels[sort])}")
-    return " · ".join(parts)
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
@@ -114,8 +90,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "t": translator_for(g.lang),
             "status_label": status_label,
             "category_label": category_label,
+            "condition_label": condition_label,
+            "date_text": date_text,
+            "material_label": material_label,
+            "price_text": price_text,
+            "listing_count_text": listing_count_text,
             "filter_summary": filter_summary,
             "public_item_number": public_item_number,
+            "shipping_note_text": shipping_note_text,
             "shop_text": shop_text,
             "lang_url_en": language_url("en"),
             "lang_url_fr": language_url("fr"),

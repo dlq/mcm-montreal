@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from mcm.app import create_app
 from mcm.db import get_db
+from mcm.locales import TRANSLATIONS_EN, TRANSLATIONS_FR
 from mcm.refresh import listing_id_from_item_number, public_item_number, refresh_all_sources
 from mcm.repository import sanitize_availability
 from mcm.sources import (
@@ -60,6 +61,25 @@ def seed_listing(app) -> int:
             db.close()
 
 
+def update_listing_price(app, listing_id: int, raw: str, value: float | None) -> None:
+    with app.app_context():
+        db = get_db(app)
+        try:
+            db.execute(
+                """
+                UPDATE listings
+                SET price_raw = ?,
+                    price_value = ?,
+                    currency = 'CAD'
+                WHERE id = ?
+                """,
+                (raw, value, listing_id),
+            )
+            db.commit()
+        finally:
+            db.close()
+
+
 class AppTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -88,6 +108,9 @@ class AppTests(unittest.TestCase):
         ]:
             response = self.client.get(path, follow_redirects=True)
             self.assertEqual(response.status_code, 200, path)
+
+    def test_locale_files_have_matching_keys(self) -> None:
+        self.assertEqual(set(TRANSLATIONS_EN), set(TRANSLATIONS_FR))
 
     def test_invalid_price_filter_does_not_error(self) -> None:
         response = self.client.get("/?price_min=abc")
@@ -291,8 +314,65 @@ class AppTests(unittest.TestCase):
 
     def test_detail_page_shows_first_seen_date_in_freshness(self) -> None:
         response = self.client.get(f"/listing/{public_item_number(self.listing_id)}")
-        self.assertIn("first seen 2026-05-06", response.text)
+        self.assertIn("first seen May 6, 2026", response.text)
         self.assertNotIn("last checked 2026-05-06T00:00:00+00:00", response.text)
+
+    def test_detail_page_localizes_first_seen_date(self) -> None:
+        response = self.client.get(f"/listing/{public_item_number(self.listing_id)}?lang=fr")
+        self.assertIn("première vue 6 mai 2026", response.text)
+        self.assertNotIn("May 6, 2026", response.text)
+
+    def test_price_display_uses_locale_not_source_format(self) -> None:
+        update_listing_price(self.app, self.listing_id, "3500 $ / 6", 3500)
+
+        english_response = self.client.get(
+            f"/listing/{public_item_number(self.listing_id)}?lang=en"
+        )
+        french_response = self.client.get(f"/listing/{public_item_number(self.listing_id)}?lang=fr")
+
+        self.assertIn("$3,500 CAD for set of 6", english_response.text)
+        self.assertNotIn("3500 $ / 6", english_response.text)
+        self.assertIn("3 500 $ CA pour l’ensemble de 6", french_response.text)
+
+    def test_price_display_localizes_known_showroom_qualifiers(self) -> None:
+        cases = [
+            ("3250 $ / paire", 3250, "$3,250 CAD for pair", "3 250 $ CA pour la paire"),
+            ("550 $ ch.", 550, "$550 CAD each", "550 $ CA chaque"),
+            ("425 $ / l'ens.", 425, "$425 CAD for the set", "425 $ CA pour l’ensemble"),
+            ("1200 $ / 4", 1200, "$1,200 CAD for set of 4", "1 200 $ CA pour l’ensemble de 4"),
+        ]
+        for raw, value, expected_en, expected_fr in cases:
+            with self.subTest(raw=raw):
+                update_listing_price(self.app, self.listing_id, raw, value)
+                english_response = self.client.get(
+                    f"/listing/{public_item_number(self.listing_id)}?lang=en"
+                )
+                french_response = self.client.get(
+                    f"/listing/{public_item_number(self.listing_id)}?lang=fr"
+                )
+                self.assertIn(expected_en, english_response.text)
+                self.assertIn(expected_fr, french_response.text)
+
+    def test_quote_required_price_fallback_is_localized(self) -> None:
+        update_listing_price(self.app, self.listing_id, "Contactez nous pour les details", None)
+
+        english_response = self.client.get(
+            f"/listing/{public_item_number(self.listing_id)}?lang=en"
+        )
+        french_response = self.client.get(f"/listing/{public_item_number(self.listing_id)}?lang=fr")
+
+        self.assertIn("Contact us for details", english_response.text)
+        self.assertNotIn("Contactez nous pour les details", english_response.text)
+        self.assertIn("Contactez-nous pour les détails", french_response.text)
+
+    def test_favourites_page_uses_localized_price_display(self) -> None:
+        update_listing_price(self.app, self.listing_id, "3250 $ / paire", 3250)
+        self.client.post(f"/favourites/listing/{self.listing_id}")
+
+        response = self.client.get("/favourites?lang=en")
+
+        self.assertIn("$3,250 CAD for pair", response.text)
+        self.assertNotIn("3250 $ / paire", response.text)
 
     def test_listing_grid_shows_first_seen_date(self) -> None:
         with self.app.app_context():
@@ -311,14 +391,50 @@ class AppTests(unittest.TestCase):
                 db.close()
 
         response = self.client.get("/")
-        self.assertIn("Since 2026-05-06", response.text)
+        self.assertIn("Since May 6, 2026", response.text)
         self.assertNotIn("2026-05-07", response.text)
         self.assertNotIn("Checked today", response.text)
+
+    def test_listing_count_uses_singular_label(self) -> None:
+        response = self.client.get("/")
+        self.assertIn("1 listing", response.text)
+        self.assertNotIn("1 listings", response.text)
 
     def test_listing_grid_omits_redundant_location(self) -> None:
         response = self.client.get("/")
         self.assertIn("lounge chairs", response.text)
         self.assertNotIn("Montreal, QC · lounge chairs", response.text)
+
+    def test_detail_page_localizes_canonical_ingest_values(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                shop = db.execute(
+                    "SELECT shipping_summary FROM shops WHERE slug = 'morceau'"
+                ).fetchone()
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET materials = 'teak',
+                        condition_text = 'Restored',
+                        shipping_note = ?
+                    WHERE id = ?
+                    """,
+                    (shop["shipping_summary"], self.listing_id),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.get(f"/listing/{public_item_number(self.listing_id)}?lang=fr")
+        self.assertIn("teck", response.text)
+        self.assertIn("Restauré", response.text)
+        self.assertIn("Livraison internationale offerte", response.text)
+        self.assertNotIn("International shipping available", response.text)
+
+    def test_filter_summary_localizes_material_value(self) -> None:
+        response = self.client.get("/?lang=fr&material=teak")
+        self.assertIn("Matériau: teck", response.text)
 
     def test_showroom_detail_uses_source_page_label(self) -> None:
         with self.app.app_context():

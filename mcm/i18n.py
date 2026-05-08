@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sqlite3
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -65,6 +66,56 @@ LAUNCH_CATEGORIES = [
     "furniture",
 ]
 
+MATERIAL_LABELS = {
+    "teak": "material.teak",
+    "rosewood": "material.rosewood",
+    "walnut": "material.walnut",
+    "glass": "material.glass",
+    "chrome": "material.chrome",
+    "aluminum": "material.aluminum",
+    "leather": "material.leather",
+    "wool": "material.wool",
+    "steel": "material.steel",
+    "ceramic": "material.ceramic",
+}
+
+CONDITION_LABELS = {
+    "Restored": "condition.restored",
+    "Reupholstered": "condition.reupholstered",
+    "Refinished": "condition.refinished",
+}
+
+MONTH_NAMES = {
+    "en": [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ],
+    "fr": [
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    ],
+}
+
 
 def normalize_lang(value: str | None) -> str:
     if not value:
@@ -102,6 +153,20 @@ def freshness_label(iso_value: str) -> str:
     return translate("freshness.stale")
 
 
+def date_text(iso_value: str) -> str:
+    value = datetime.fromisoformat(iso_value)
+    lang = normalize_lang(getattr(g, "lang", None))
+    month = MONTH_NAMES[lang][value.month - 1]
+    if lang == "fr":
+        return f"{value.day} {month} {value.year}"
+    return f"{month} {value.day}, {value.year}"
+
+
+def listing_count_text(count: int) -> str:
+    key = "listing.count_one" if count == 1 else "listing.count_other"
+    return translate(key, count=count)
+
+
 def status_label(value: str | None) -> str:
     if not value:
         return translate("status.unknown")
@@ -120,6 +185,123 @@ def category_label(value: str | None) -> str:
         TRANSLATIONS.get(normalize_lang(getattr(g, "lang", None)), {}).get(f"category.{normalized}")
         or normalized
     )
+
+
+def material_label(value: str | None) -> str:
+    if not value:
+        return ""
+    pieces = [piece.strip() for piece in value.split(",")]
+    labels = []
+    for piece in pieces:
+        key = MATERIAL_LABELS.get(piece.lower())
+        labels.append(translate(key) if key else piece)
+    return ", ".join(label for label in labels if label)
+
+
+def condition_label(value: str | None) -> str:
+    if not value:
+        return ""
+    pieces = [piece.strip() for piece in value.split(",")]
+    labels = []
+    for piece in pieces:
+        key = CONDITION_LABELS.get(piece)
+        labels.append(translate(key) if key else piece)
+    return ", ".join(label for label in labels if label)
+
+
+def price_text(listing: sqlite3.Row | dict[str, Any]) -> str:
+    price_value = (
+        listing["price_value"] if isinstance(listing, sqlite3.Row) else listing.get("price_value")
+    )
+    raw = listing["price_raw"] if isinstance(listing, sqlite3.Row) else listing.get("price_raw", "")
+    currency = (
+        listing["currency"] if isinstance(listing, sqlite3.Row) else listing.get("currency", "CAD")
+    )
+    if price_value is None:
+        normalized_raw = (raw or "").lower()
+        if "rupture de stock" in normalized_raw or "sold out" in normalized_raw:
+            return status_label("sold_out")
+        if "contact" in normalized_raw:
+            return translate("listing.quote_required")
+        return raw or translate("listing.quote_required")
+
+    amount = float(price_value)
+    set_suffix = price_set_suffix(raw)
+    if normalize_lang(getattr(g, "lang", None)) == "fr":
+        formatted_amount = f"{amount:,.0f}".replace(",", " ")
+        currency_label = "$ CA" if currency == "CAD" else currency
+        return f"{formatted_amount} {currency_label}{set_suffix}"
+    currency_prefix = "$" if currency == "CAD" else ""
+    currency_suffix = " CAD" if currency == "CAD" else f" {currency}"
+    return f"{currency_prefix}{amount:,.0f}{currency_suffix}{set_suffix}"
+
+
+def price_set_suffix(raw: str | None) -> str:
+    numeric_match = re.search(r"/\s*([0-9]+)\b", raw or "")
+    if numeric_match:
+        return translate("price.for_set", count=numeric_match.group(1))
+    raw_value = raw or ""
+    if re.search(r"/\s*(paire|pair)\b", raw_value, flags=re.IGNORECASE):
+        return translate("price.for_pair")
+    if re.search(r"(?:^|[\s/])(ch\.?|chaque|each)(?:\s|$)", raw_value, flags=re.IGNORECASE):
+        return translate("price.each")
+    if re.search(r"/\s*(l['’]ens\.?|ensemble|set)\b", raw_value, flags=re.IGNORECASE):
+        return translate("price.for_whole_set")
+    return ""
+
+
+def filter_summary(filters: dict[str, str]) -> str:
+    t = translator_for(normalize_lang(getattr(g, "lang", None)))
+    parts = []
+    label_keys = {
+        "q": "filters.search",
+        "shop": "filters.shop",
+        "category": "filters.category",
+        "material": "filters.material",
+        "designer": "filters.designer",
+        "location": "filters.location",
+        "price_min": "filters.min_price",
+        "price_max": "filters.max_price",
+    }
+    for key, label_key in label_keys.items():
+        if filters.get(key):
+            value = filters[key]
+            if key == "category":
+                value = category_label(value)
+            elif key == "material":
+                value = material_label(value)
+            parts.append(f"{t(label_key)}: {value}")
+    availability = filters.get("availability", "available")
+    if availability != "available":
+        parts.append(f"{t('filters.availability')}: {status_label(availability)}")
+    sort = filters.get("sort", "newest")
+    if sort != "newest":
+        sort_labels = {
+            "recent_check": "filters.recent_check",
+            "price_low": "filters.price_low",
+            "price_high": "filters.price_high",
+            "recent_source": "filters.recent_source",
+        }
+        parts.append(f"{t('filters.sort')}: {t(sort_labels[sort])}")
+    return " · ".join(parts)
+
+
+def shipping_note_text(
+    listing: sqlite3.Row | dict[str, Any], shop: sqlite3.Row | dict[str, Any]
+) -> str:
+    note = (
+        listing["shipping_note"]
+        if isinstance(listing, sqlite3.Row)
+        else listing.get("shipping_note", "")
+    )
+    shop_summary = (
+        shop["shipping_summary"]
+        if isinstance(shop, sqlite3.Row)
+        else shop.get("shipping_summary", "")
+    )
+    if not note or note == shop_summary:
+        return shop_text(shop, "shipping_summary")
+    return note
 
 
 def shop_text(shop: sqlite3.Row | dict[str, Any], field: str) -> str:
