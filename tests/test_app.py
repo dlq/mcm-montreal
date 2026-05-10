@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -153,7 +154,7 @@ class AppTests(unittest.TestCase):
     def test_active_filter_summary_renders_with_results_after_apply(self) -> None:
         response = self.client.get("/?availability=sold_out&sort=price_low")
         self.assertIn("0 listings", response.text)
-        self.assertIn("Availability: Sold out", response.text)
+        self.assertIn("Availability: sold out", response.text)
         self.assertIn("Sort: Price low to high", response.text)
 
     def test_favourite_toggle_returns_404_for_missing_listing(self) -> None:
@@ -326,6 +327,26 @@ class AppTests(unittest.TestCase):
         self.assertIn("première vue 6 mai 2026", response.text)
         self.assertNotIn("May 6, 2026", response.text)
 
+    def test_detail_page_uses_lowercase_freshness_status(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET last_checked_at = ?
+                    WHERE id = ?
+                    """,
+                    (datetime.now(UTC).isoformat(), self.listing_id),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.get(f"/listing/{public_item_number(self.listing_id)}")
+        self.assertIn("checked today", response.text)
+        self.assertNotIn("Checked today", response.text)
+
     def test_price_display_uses_locale_not_source_format(self) -> None:
         update_listing_price(self.app, self.listing_id, "3500 $ / 6", 3500)
 
@@ -395,7 +416,8 @@ class AppTests(unittest.TestCase):
                 db.close()
 
         response = self.client.get("/")
-        self.assertIn("Since May 6, 2026", response.text)
+        self.assertIn("first seen May 6, 2026", response.text)
+        self.assertNotIn("Since May 6, 2026", response.text)
         self.assertNotIn("2026-05-07", response.text)
         self.assertNotIn("Checked today", response.text)
 

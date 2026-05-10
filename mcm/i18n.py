@@ -297,7 +297,7 @@ def filter_summary_parts(filters: dict[str, str]) -> list[str]:
             parts.append(f"{t(label_key)}: {value}")
     availability = filters.get("availability", "available")
     if availability != "available":
-        parts.append(f"{t('filters.availability')}: {status_label(availability)}")
+        parts.append(f"{t('filters.availability')}: {status_label(availability).lower()}")
     sort = filters.get("sort", "newest")
     if sort != "newest":
         sort_labels = {
