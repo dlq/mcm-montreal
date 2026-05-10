@@ -399,6 +399,8 @@ def _extract_showroom_gallery_listings(
             continue
         if normalized_title.startswith("contactez nous"):
             continue
+        if _is_showroom_promotional_item(title, raw_description):
+            continue
         price_line = _showroom_price_line(raw_description)
         price_match = re.search(r"(\d[\d\s]*(?:[.,]\d{2})?)\s*\$", price_line)
         price_value = _to_float(price_match.group(1)) if price_match else None
@@ -551,6 +553,52 @@ def _showroom_price_line(description: str) -> str:
         if "vendu" in _normalize_lookup(line):
             return line
     return ""
+
+
+def _is_showroom_promotional_item(title: str, description: str) -> bool:
+    normalized = _normalize_lookup(f"{title} {description}")
+    if not normalized:
+        return True
+
+    announcement_markers = (
+        "joyeuses paques",
+        "joyeux noel",
+        "bonne annee",
+        "horaire",
+        "ouvert",
+        "ferme",
+        "fermee",
+        "closed",
+        "open",
+    )
+    if not any(marker in normalized for marker in announcement_markers):
+        return False
+
+    inventory_markers = (
+        "buffet",
+        "table",
+        "chaises",
+        "chaise",
+        "sofa",
+        "fauteuil",
+        "biblio",
+        "bibliotheque",
+        "lit",
+        "commode",
+        "lampe",
+        "luminaire",
+        "teck",
+        "noyer",
+        "palissandre",
+        "rosewood",
+        "danmark",
+        "denmark",
+        "norway",
+        "canada",
+        "modele",
+        "model",
+    )
+    return not any(marker in normalized for marker in inventory_markers)
 
 
 def _showroom_media_url(uri: str) -> str:
