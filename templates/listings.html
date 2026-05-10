@@ -1,7 +1,20 @@
 {% extends "base.html" %}
 {% block title %}{{ t("nav.listings") }} | Montreal MCM{% endblock %}
 {% block content %}
+  <details class="filter-drawer mb-6 border-y border-ink/10 py-4 lg:hidden">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold">
+      <span>{{ t("filters.mobile_summary") }}</span>
+      <span class="text-xl leading-none text-ink/45">+</span>
+    </summary>
+    <div class="mt-5">
+      {% set filter_panel_class = "block" %}
+      {% set filter_id_prefix = "mobile-" %}
+      {% include "_filters.html" %}
+    </div>
+  </details>
   <section class="mb-6 grid gap-8 lg:grid-cols-[260px,1fr]">
+    {% set filter_panel_class = "filter-rail hidden lg:block" %}
+    {% set filter_id_prefix = "" %}
     {% include "_filters.html" %}
     <div class="order-1 lg:order-2">
       <div id="listing-grid">{% include "_listing_grid.html" %}</div>

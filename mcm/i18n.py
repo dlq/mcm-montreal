@@ -250,7 +250,7 @@ def price_set_suffix(raw: str | None) -> str:
     return ""
 
 
-def filter_summary(filters: dict[str, str]) -> str:
+def filter_summary_parts(filters: dict[str, str]) -> list[str]:
     t = translator_for(normalize_lang(getattr(g, "lang", None)))
     parts = []
     label_keys = {
@@ -283,7 +283,11 @@ def filter_summary(filters: dict[str, str]) -> str:
             "recent_source": "filters.recent_source",
         }
         parts.append(f"{t('filters.sort')}: {t(sort_labels[sort])}")
-    return " · ".join(parts)
+    return parts
+
+
+def filter_summary(filters: dict[str, str]) -> str:
+    return " · ".join(filter_summary_parts(filters))
 
 
 def shipping_note_text(

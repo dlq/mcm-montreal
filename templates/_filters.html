@@ -1,159 +1,167 @@
-<aside class="filter-rail order-2 lg:order-1">
+{% set panel_class = filter_panel_class|default("filter-rail order-2 lg:order-1") %}
+{% set id_prefix = filter_id_prefix|default("") %}
+<aside class="{{ panel_class }}">
   <listing-filters data-default-summary="{{ t('filters.default_summary') }}">
-    <form class="space-y-5"
+    <form class="space-y-6"
           hx-get="{{ url_for('listings') }}"
           hx-target="#listing-grid"
           hx-push-url="true">
       <div>
         <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
-               for="q">{{ t("filters.search") }}</label>
-        <input class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
-               id="q"
+               for="{{ id_prefix }}q">{{ t("filters.search") }}</label>
+        <input class="w-full bg-transparent px-0 py-2 text-sm"
+               id="{{ id_prefix }}q"
                name="q"
                value="{{ filters.q }}"
                placeholder="{{ t('filters.search_placeholder') }}">
       </div>
       <div>
-        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
-               for="shop">{{ t("filters.shop") }}</label>
-        <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
-                id="shop"
-                name="shop">
-          <option value="">{{ t("filters.all_shops") }}</option>
-          {% for shop in shops %}
-            <option value="{{ shop.slug }}"
-                    {% if filters.shop == shop.slug %}selected{% endif %}>{{ shop.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
-                 for="price_min">{{ t("filters.min_price") }}</label>
-          <input class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
-                 id="price_min"
-                 name="price_min"
-                 value="{{ filters.price_min }}"
-                 placeholder="500">
-        </div>
-        <div>
-          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
-                 for="price_max">{{ t("filters.max_price") }}</label>
-          <input class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
-                 id="price_max"
-                 name="price_max"
-                 value="{{ filters.price_max }}"
-                 placeholder="2500">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                   for="{{ id_prefix }}price_min">{{ t("filters.min_price") }}</label>
+            <input class="w-full bg-transparent px-0 py-2 text-sm"
+                   id="{{ id_prefix }}price_min"
+                   name="price_min"
+                   value="{{ filters.price_min }}"
+                   placeholder="500">
+          </div>
+          <div>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                   for="{{ id_prefix }}price_max">{{ t("filters.max_price") }}</label>
+            <input class="w-full bg-transparent px-0 py-2 text-sm"
+                   id="{{ id_prefix }}price_max"
+                   name="price_max"
+                   value="{{ filters.price_max }}"
+                   placeholder="2500">
+          </div>
         </div>
       </div>
-      <div>
-        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
-               for="category">{{ t("filters.category") }}</label>
-        <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
-                id="category"
-                name="category">
-          <option value="">{{ t("filters.all_categories") }}</option>
-          {% for category in categories %}
-            <option value="{{ category }}"
-                    {% if filters.category == category %}selected{% endif %}>
-              {{ category_label(category) }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
-               for="material">{{ t("filters.material") }}</label>
-        <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
-                id="material"
-                name="material">
-          <option value="">{{ t("filters.all_materials") }}</option>
-          {% for material in materials %}
-            <option value="{{ material }}"
-                    {% if filters.material == material %}selected{% endif %}>
-              {{ material_label(material) }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
-               for="designer">{{ t("filters.designer") }}</label>
-        <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
-                id="designer"
-                name="designer">
-          <option value="">{{ t("filters.all_designers") }}</option>
-          {% for designer in designers %}
-            <option value="{{ designer }}"
-                    {% if filters.designer == designer %}selected{% endif %}>
-              {{ designer }}
-            </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
-               for="location">{{ t("filters.location") }}</label>
-        <input class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
-               id="location"
-               name="location"
-               value="{{ filters.location }}"
-               placeholder="{{ t('filters.location_placeholder') }}">
-      </div>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="space-y-5">
         <div>
           <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
-                 for="availability">{{ t("filters.availability") }}</label>
-          <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
-                  id="availability"
-                  name="availability">
-            <option value="available"
-                    {% if filters.availability == "available" %}selected{% endif %}>
-              {{ t("filters.available_only") }}
-            </option>
-            <option value="sold_out"
-                    {% if filters.availability == "sold_out" %}selected{% endif %}>
-              {{ t("filters.sold_out") }}
-            </option>
-            <option value="all" {% if filters.availability == "all" %}selected{% endif %}>
-              {{ t("filters.all_statuses") }}
-            </option>
+                 for="{{ id_prefix }}shop">{{ t("filters.shop") }}</label>
+          <select class="w-full bg-transparent px-0 py-2 text-sm"
+                  id="{{ id_prefix }}shop"
+                  name="shop">
+            <option value="">{{ t("filters.all_shops") }}</option>
+            {% for shop in shops %}
+              <option value="{{ shop.slug }}"
+                      {% if filters.shop == shop.slug %}selected{% endif %}>
+                {{ shop.name }}
+              </option>
+            {% endfor %}
           </select>
         </div>
         <div>
           <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
-                 for="sort">{{ t("filters.sort") }}</label>
-          <select class="w-full border-b border-ink/20 bg-transparent px-0 py-2 text-sm"
-                  id="sort"
-                  name="sort">
-            <option value="newest" {% if filters.sort == "newest" %}selected{% endif %}>
-              {{ t("filters.newest") }}
-            </option>
-            <option value="recent_check"
-                    {% if filters.sort == "recent_check" %}selected{% endif %}>
-              {{ t("filters.recent_check") }}
-            </option>
-            <option value="price_low"
-                    {% if filters.sort == "price_low" %}selected{% endif %}>
-              {{ t("filters.price_low") }}
-            </option>
-            <option value="price_high"
-                    {% if filters.sort == "price_high" %}selected{% endif %}>
-              {{ t("filters.price_high") }}
-            </option>
-            <option value="recent_source"
-                    {% if filters.sort == "recent_source" %}selected{% endif %}>
-              {{ t("filters.recent_source") }}
-            </option>
+                 for="{{ id_prefix }}category">{{ t("filters.category") }}</label>
+          <select class="w-full bg-transparent px-0 py-2 text-sm"
+                  id="{{ id_prefix }}category"
+                  name="category">
+            <option value="">{{ t("filters.all_categories") }}</option>
+            {% for category in categories %}
+              <option value="{{ category }}"
+                      {% if filters.category == category %}selected{% endif %}>
+                {{ category_label(category) }}
+              </option>
+            {% endfor %}
           </select>
         </div>
+        <div>
+          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                 for="{{ id_prefix }}material">{{ t("filters.material") }}</label>
+          <select class="w-full bg-transparent px-0 py-2 text-sm"
+                  id="{{ id_prefix }}material"
+                  name="material">
+            <option value="">{{ t("filters.all_materials") }}</option>
+            {% for material in materials %}
+              <option value="{{ material }}"
+                      {% if filters.material == material %}selected{% endif %}>
+                {{ material_label(material) }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                 for="{{ id_prefix }}designer">{{ t("filters.designer") }}</label>
+          <select class="w-full bg-transparent px-0 py-2 text-sm"
+                  id="{{ id_prefix }}designer"
+                  name="designer">
+            <option value="">{{ t("filters.all_designers") }}</option>
+            {% for designer in designers %}
+              <option value="{{ designer }}"
+                      {% if filters.designer == designer %}selected{% endif %}>
+                {{ designer }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                 for="{{ id_prefix }}location">{{ t("filters.location") }}</label>
+          <input class="w-full bg-transparent px-0 py-2 text-sm"
+                 id="{{ id_prefix }}location"
+                 name="location"
+                 value="{{ filters.location }}"
+                 placeholder="{{ t('filters.location_placeholder') }}">
+        </div>
       </div>
-      <div class="flex gap-3">
-        <button class="button-primary flex-1 px-4 py-3 text-sm" type="submit">
+      <div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                   for="{{ id_prefix }}availability">{{ t("filters.availability") }}</label>
+            <select class="w-full bg-transparent px-0 py-2 text-sm"
+                    id="{{ id_prefix }}availability"
+                    name="availability">
+              <option value="available"
+                      {% if filters.availability == "available" %}selected{% endif %}>
+                {{ t("filters.available_only") }}
+              </option>
+              <option value="sold_out"
+                      {% if filters.availability == "sold_out" %}selected{% endif %}>
+                {{ t("filters.sold_out") }}
+              </option>
+              <option value="all" {% if filters.availability == "all" %}selected{% endif %}>
+                {{ t("filters.all_statuses") }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+                   for="{{ id_prefix }}sort">{{ t("filters.sort") }}</label>
+            <select class="w-full bg-transparent px-0 py-2 text-sm"
+                    id="{{ id_prefix }}sort"
+                    name="sort">
+              <option value="newest" {% if filters.sort == "newest" %}selected{% endif %}>
+                {{ t("filters.newest") }}
+              </option>
+              <option value="recent_check"
+                      {% if filters.sort == "recent_check" %}selected{% endif %}>
+                {{ t("filters.recent_check") }}
+              </option>
+              <option value="price_low"
+                      {% if filters.sort == "price_low" %}selected{% endif %}>
+                {{ t("filters.price_low") }}
+              </option>
+              <option value="price_high"
+                      {% if filters.sort == "price_high" %}selected{% endif %}>
+                {{ t("filters.price_high") }}
+              </option>
+              <option value="recent_source"
+                      {% if filters.sort == "recent_source" %}selected{% endif %}>
+                {{ t("filters.recent_source") }}
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div>
+        <button class="filter-apply-button text-sm font-semibold" type="submit">
           {{ t("filters.apply") }}
         </button>
-        <a class="button-secondary border px-4 py-3 text-sm font-semibold"
-           href="{{ url_for('listings') }}">{{ t("filters.reset") }}</a>
       </div>
     </form>
   </listing-filters>

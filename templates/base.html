@@ -25,7 +25,6 @@
               paper: "#ffffff"
             },
             fontFamily: {
-              display: ["Inter", "Helvetica Neue", "Arial", "sans-serif"],
               sans: ["Inter", "Helvetica Neue", "Arial", "sans-serif"]
             }
           }
@@ -33,31 +32,30 @@
       }
     </script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
   </head>
   <body class="min-h-screen bg-oat text-ink">
     <div class="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 md:px-8 lg:px-10">
-      <header class="mb-8 border-b border-ink/10 pb-5">
-        <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <a href="{{ url_for('listings') }}"
-               class="site-mark inline-block text-2xl font-semibold tracking-tight">Montreal MCM</a>
-            <p class="mt-1 max-w-2xl text-sm leading-6 text-ink/60">{{ t("site.tagline") }}</p>
-          </div>
-          <nav class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium">
-            <a class="nav-link" href="{{ lang_url_en }}">EN</a>
-            <a class="nav-link" href="{{ lang_url_fr }}">FR</a>
-            <a class="nav-link" href="{{ url_for('listings') }}">{{ t("nav.listings") }}</a>
-            <a class="nav-link" href="{{ url_for('shops') }}">{{ t("nav.shops") }}</a>
-            <a class="nav-link" href="{{ url_for('favourites') }}">{{ t("nav.favourites") }}
+      <header class="mb-8 pb-5">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <a href="{{ url_for('listings') }}" class="site-mark inline-block">Montreal MCM</a>
+          {% set endpoint = request.endpoint or "" %}
+          <nav class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium sm:justify-end">
+            <a class="nav-link {% if lang == 'en' %}nav-link-active{% endif %}"
+               href="{{ lang_url_en }}">EN</a>
+            <a class="nav-link {% if lang == 'fr' %}nav-link-active{% endif %}"
+               href="{{ lang_url_fr }}">FR</a>
+            <a class="nav-link {% if endpoint in ['listings', 'listing_detail'] %}nav-link-active{% endif %}"
+               href="{{ url_for('listings') }}">{{ t("nav.listings") }}</a>
+            <a class="nav-link {% if endpoint in ['shops', 'shop_detail'] %}nav-link-active{% endif %}"
+               href="{{ url_for('shops') }}">{{ t("nav.shops") }}</a>
+            <a class="nav-link {% if endpoint == 'favourites' %}nav-link-active{% endif %}"
+               href="{{ url_for('favourites') }}">{{ t("nav.favourites") }}
               {% include "_favourite_listing_count.html" %}
             </a>
           </nav>
         </div>
+        <p class="mt-2 max-w-2xl text-[0.95rem] leading-7 text-ink/60">{{ t("site.tagline") }}</p>
       </header>
       {% block content %}{% endblock %}
     </div>

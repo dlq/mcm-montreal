@@ -1,7 +1,7 @@
 # Montreal MCM Listings Site Plan
 
 Date: 2026-04-26
-Updated: 2026-05-06
+Updated: 2026-05-08
 
 ## Purpose
 
@@ -25,6 +25,8 @@ Already implemented:
 - browser-session favourites without user accounts
 - freshness and availability labels
 - bilingual English / French UI
+- localized parsed price display, first-seen dates, and plural-aware listing counts
+- default sans-serif item titles and current wordmark, with external Google font loading removed for now
 - admin tools for refreshes, failures, overrides, and duplicate review
 
 Currently active launch sources in code:
@@ -51,6 +53,10 @@ The biggest remaining product gaps versus the original roadmap are:
 - richer shop and discovery pages
 - editorial / SEO content
 - second-wave source expansion
+
+Current source inventory may include some relevant lighting and decor from direct-shop pages.
+Whether the public scope should remain furniture-first or explicitly include selected lighting
+and decor remains an open product decision.
 
 Implementation note for source expansion: listing cards can omit repeated `Montreal, QC`
 while all launch inventory is Montreal-local, but card-level location should come back when
@@ -186,14 +192,19 @@ Each card should include:
 
 - primary image
 - title
-- price
+- localized price or localized quote fallback
 - currency
 - shop name
-- location
 - category
-- availability
-- last checked date
+- first seen date
 - favourite button
+
+Current implementation note:
+
+- the desktop listings page is acceptable for now after the May 8 UI pass: compact sticky filters, no redundant catalog intro, sticky result count / active-filter status, and cleaner card-first browsing
+- mobile still needs a dedicated detailed review before launch, especially filter drawer ergonomics, first-screen density, sticky status behavior, and whether the current default-font wordmark should be replaced with a stronger display face
+- repeated `Montreal, QC`, card-level availability badges, and `Checked today` are omitted from listing cards while the active launch inventory is Montreal-local or Montreal-first
+- card-level location should return when adding Ottawa, Toronto, Quebec City, or other regional vintage shops that ship to Montreal
 
 ### Filters
 
@@ -206,7 +217,10 @@ Launch filters should include:
 - material
 - designer / maker
 - in stock / available
-- ships to Montreal
+
+Current implementation note:
+
+- the old "Ships to Montreal" checkbox was removed because shipping to Montreal is part of the site premise
 
 Optional early filters if data quality is good enough:
 
@@ -230,7 +244,7 @@ Each item page should include:
 
 - all available images
 - full title
-- price and currency
+- localized price and currency, or a localized lower-prominence quote fallback
 - shop name
 - source link
 - location
@@ -241,7 +255,7 @@ Each item page should include:
 - era / approximate decade
 - condition
 - shipping note
-- last checked timestamp
+- freshness and first seen date
 - favourite button
 
 Helpful detail page labels:
@@ -279,8 +293,8 @@ Current implementation status:
 
 Minimum favourites behavior:
 
-- save listing to account
-- remove listing from account
+- save listing in browser session
+- remove listing from browser session
 - see all saved listings in one dashboard
 
 Useful additions:
@@ -298,18 +312,22 @@ Examples:
 - `teak sideboard under $2000`
 - `Hans Wegner chairs`
 - `Montreal only`
-- `dining table ships to Montreal`
+- `Ottawa dining table that ships to Montreal`
 
 ### Freshness / Status Indicators
 
 Every listing should have a freshness signal.
 
-Recommended states:
+Current implementation:
 
-- `Checked today`
-- `Checked this week`
-- `Needs refresh`
+- listing cards show localized `Since {first_seen_date}`
+- item detail pages show freshness plus localized first seen date
+- sold out and removed items can still be represented internally and through availability filtering
+
+Possible future states:
+
 - `Unavailable / possibly sold`
+- `Needs refresh`
 
 This is important because resale inventory changes fast.
 
@@ -886,11 +904,19 @@ Completed in the current i18n pass:
 - canonical category, material, condition, shipping-note, count, and date display go through helpers
 - filter summary presentation logic lives in the i18n layer instead of the Flask app module
 
+Completed in the current visual pass:
+
+- listing card item names use the default sans-serif font again while the display-font direction is reconsidered
+- listing detail item titles use the default sans-serif font again at a restrained larger scale
+- the `Montreal MCM` wordmark uses the default sans-serif font, bold weight, and a subtle green hue
+- header navigation is placed in the top header row with the wordmark, with the tagline below
+
 Remaining later work:
 
 - turn shop `categories_carried` into structured category data and render it with `category_label()`
 - consider a structured dimensions model if dimensions need unit-aware localization or metric/imperial display
 - preserve card-level location support for future Ottawa, Toronto, Quebec City, and other regional shops that ship to Montreal
+- clean legacy Showroom fallback and override URLs so seeded data follows the same source-page URL convention as live parsing
 - split price display into a parsed qualifier object plus formatter if more unusual source price suffixes appear
 - consider returning display objects from helpers for value text and prominence instead of checking fields like `price_value` in templates
 
