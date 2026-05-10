@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import html
+import re
 import sqlite3
+import unicodedata
 from typing import Any
 
 from flask import has_request_context, session
@@ -154,8 +157,17 @@ def get_shop_by_slug(db: sqlite3.Connection, slug: str) -> dict[str, Any] | None
 def list_filter_values(db: sqlite3.Connection, field: str) -> list[str]:
     if field not in ALLOWED_FILTER_FIELDS:
         raise ValueError(f"Unsupported filter field: {field}")
+    if field == "designer":
+        return list_designer_filter_values(db)
     rows = db.execute(
-        f"SELECT DISTINCT {field} AS value FROM listings WHERE {field} != '' ORDER BY {field}"
+        f"""
+        SELECT DISTINCT {field} AS value
+        FROM listings
+        WHERE {field} != ''
+          AND is_active = 1
+          AND COALESCE(NULLIF(availability_override, ''), availability_status) != 'removed'
+        ORDER BY {field}
+        """
     ).fetchall()
     values: list[str] = []
     for row in rows:
@@ -164,6 +176,77 @@ def list_filter_values(db: sqlite3.Connection, field: str) -> list[str]:
             if value and value not in values:
                 values.append(value)
     return values[:30]
+
+
+def list_designer_filter_values(db: sqlite3.Connection) -> list[str]:
+    rows = db.execute(
+        """
+        SELECT designer, maker
+        FROM listings
+        WHERE is_active = 1
+          AND COALESCE(NULLIF(availability_override, ''), availability_status) != 'removed'
+          AND (designer != '' OR maker != '')
+        """
+    ).fetchall()
+    candidates: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        for value in (row["designer"], row["maker"]):
+            cleaned = clean_designer_filter_value(str(value or ""))
+            if not cleaned:
+                continue
+            key = normalized_filter_key(cleaned)
+            if not key:
+                continue
+            payload = candidates.setdefault(key, {"value": cleaned, "count": 0})
+            payload["count"] += 1
+            if len(cleaned) < len(payload["value"]):
+                payload["value"] = cleaned
+
+    minimum_count = 2 if len(candidates) > 30 else 1
+    values = [payload for payload in candidates.values() if payload["count"] >= minimum_count]
+    values.sort(key=lambda payload: (-payload["count"], normalized_filter_key(payload["value"])))
+    return sorted(payload["value"] for payload in values[:24])
+
+
+def clean_designer_filter_value(value: str) -> str:
+    cleaned = html.unescape(value)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" -–—,")
+    cleaned = re.sub(r"^design\s+", "", cleaned, flags=re.IGNORECASE)
+    if not cleaned:
+        return ""
+
+    normalized = normalized_filter_key(cleaned)
+    boilerplate = (
+        "available",
+        "based on",
+        "checkout",
+        "contactez nous",
+        "current production",
+        "details",
+        "dimensions",
+        "features",
+        "final sale",
+        "lead time",
+        "les details",
+        "materials",
+        "more information",
+        "on order",
+        "policies",
+        "shipping",
+        "store policies",
+    )
+    if any(term in normalized for term in boilerplate):
+        return ""
+    if len(cleaned) > 60 or len(cleaned.split()) > 6:
+        return ""
+    return cleaned
+
+
+def normalized_filter_key(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", html.unescape(value))
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    ascii_text = ascii_text.replace("&", " and ")
+    return re.sub(r"[^a-z0-9]+", " ", ascii_text.lower()).strip()
 
 
 def toggle_favourite_listing(listing_id: int) -> None:
