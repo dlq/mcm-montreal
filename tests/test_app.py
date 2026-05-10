@@ -192,6 +192,62 @@ class AppTests(unittest.TestCase):
             finally:
                 db.close()
 
+    def test_refresh_error_does_not_deactivate_existing_inventory(self) -> None:
+        fallback_item = {
+            "source_listing_url": "https://example.com/fallback",
+            "source_listing_key": "fallback-key",
+            "title": "Fallback Chair",
+            "price_raw": "$100",
+            "price_value": 100,
+            "currency": "CAD",
+            "primary_image_url": "",
+            "additional_image_urls": [],
+            "availability_status": "available",
+            "shipping_scope": "canada",
+            "ships_to_montreal": 1,
+            "shipping_note": "Fallback seed",
+            "category": "lounge chairs",
+            "designer": "",
+            "maker": "",
+            "era": "",
+            "materials": "",
+            "dimensions_text": "",
+            "condition_text": "",
+            "location_text": "Montreal, QC",
+            "source_description": "Fallback data",
+            "ingest_source_type": "seed_fallback",
+            "parse_confidence": 0.45,
+        }
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                with patch(
+                    "mcm.refresh.fetch_source_listings",
+                    return_value=([fallback_item], "temporary source failure"),
+                ):
+                    refresh_all_sources(db, progress=lambda _message: None)
+                listing = db.execute(
+                    """
+                    SELECT is_active, availability_status
+                    FROM listings
+                    WHERE source_listing_key = 'sample-key'
+                    """
+                ).fetchone()
+                fallback = db.execute(
+                    """
+                    SELECT l.id
+                    FROM listings l
+                    JOIN shops s ON s.id = l.source_shop_id
+                    WHERE l.source_listing_key = 'fallback-key'
+                      AND s.slug = 'morceau'
+                    """,
+                ).fetchone()
+                self.assertEqual(listing["is_active"], 1)
+                self.assertEqual(listing["availability_status"], "available")
+                self.assertIsNone(fallback)
+            finally:
+                db.close()
+
     def test_refresh_reconciles_source_key_drift(self) -> None:
         refreshed_item = {
             "source_listing_url": "https://example.com/listing?lightbox=new-key",

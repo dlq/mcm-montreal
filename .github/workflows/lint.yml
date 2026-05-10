@@ -39,6 +39,9 @@ jobs:
       - name: Run Ruff
         run: uv run ruff check .
 
+      - name: Run tests
+        run: uv run python -m unittest tests.test_app
+
       - name: Run djLint
         run: uv run djlint templates --lint
 

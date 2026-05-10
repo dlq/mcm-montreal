@@ -33,7 +33,7 @@ What is already implemented in code:
 - freshness and availability labels
 - bilingual English / French UI
 - localized parsed price display independent of source language
-- Cormorant Garamond item-title and wordmark styling
+- default sans-serif item-title and wordmark styling while the display-font direction is reconsidered
 - admin review tools for refreshes, failures, overrides, and duplicate inspection
 
 What is currently live in the source layer:
@@ -612,7 +612,8 @@ Checked on: 2026-05-07
 - Legacy fallback/override data may still contain older Wix `lightbox` URLs for seeded items; clean those up when refreshing fallback fixtures.
 - Refresh upserts by `(source_shop_id, source_listing_key)`, so a stable Wix gallery item id preserves the same local listing row and `first_seen_at`.
 - If a same-key item remains in the gallery and source text includes `vendu`, refresh sets `availability_status = sold_out`.
-- If a previously seen source key disappears from a later refresh, refresh now sets `is_active = 0`, `availability_status = removed`, and updates `last_checked_at`; the detail URL remains addressable and should show `Removed`.
+- If a previously seen source key disappears from a later authoritative refresh, refresh now sets `is_active = 0`, `availability_status = removed`, and updates `last_checked_at`; public detail URLs for inactive or removed listings return 404.
+- If a source fetch or parser fails and fallback data is returned for a shop that already has listing records, refresh records a warning but does not treat the fallback set as authoritative and does not deactivate existing inventory.
 - App-facing item numbers are deterministic from the preserved listing row id, e.g. listing `1912` renders as `MCM-001912`.
 - Source-key drift reconciliation now checks same-shop exact normalized title first, then requires a high-confidence same image or same source description match before updating the existing row with the new source key.
 - Ambiguous high-confidence matches are not merged; they are recorded in internal SQLite table `listing_identity_reviews` for later inspection outside the user-facing UI.
@@ -624,6 +625,6 @@ Checked on: 2026-05-08
 - User-facing prices are displayed from parsed `price_value` and active UI language, not the raw source price text.
 - Prices display as whole-dollar CAD in both English and French.
 - Listing cards currently omit repeated Montreal location and availability badges, show first-seen dates, and use localized quote-required fallbacks.
-- Listing card item names, detail page item titles, and the `Montreal MCM` wordmark use Cormorant Garamond; utility UI remains in Inter.
+- Listing card item names, detail page item titles, and the `Montreal MCM` wordmark currently use the default sans-serif stack while the display-font direction is reconsidered.
 - The header navigation is intended to align in the top header row with the wordmark, with the tagline below it.
 - Raw source fields remain important for research and admin review: titles, source notes, unusual price text, dimensions, designer/maker text, and parser evidence should not be overwritten by display localization.

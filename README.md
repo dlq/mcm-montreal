@@ -1,6 +1,6 @@
 # Montreal MCM Phase 1
 
-Working MVP for the Phase 1 product in [plan.md](/Users/dlq/Developer/MCM%20Montreal/plan.md), grounded in the launch-source research in [research.md](/Users/dlq/Developer/MCM%20Montreal/research.md).
+Working MVP for the Phase 1 product in [plan.md](plan.md), grounded in the launch-source research in [research.md](research.md).
 
 ## Stack
 
@@ -36,7 +36,7 @@ The goal is that contributors can read routes first, then follow data access or 
 - English / French UI
 - Localized parsed price display independent of the source language
 - Localized first-seen dates and plural-aware listing counts
-- Cormorant Garamond item titles and wordmark, with Inter retained for utility UI
+- Default sans-serif item titles and wordmark, with a restrained utility-focused UI
 - Admin dashboard with:
   - source list and crawl health
   - failed refresh review
@@ -53,14 +53,14 @@ The app currently includes active source definitions for four direct-shop source
 3. Montreal Moderne
 4. Le Centerpiece
 
-It tries live fetches first, then falls back to curated seed data when a source is unreachable or parsing fails. That keeps the MVP usable in restricted or offline environments while still giving us a real ingestion path to iterate on.
+It tries live fetches first, then falls back to curated seed data when a source is unreachable or parsing fails. Fallback data can bootstrap an empty local database, but source failures do not deactivate existing inventory for a shop that already has records.
 
 The broader research-backed next sources still live in `research.md` and `plan.md`.
 
 ## Current UI conventions
 
-- Listing and detail item names use Cormorant Garamond for a more editorial furniture-catalog feel.
-- The wordmark also uses Cormorant Garamond; navigation, filters, metadata, prices, and controls stay in Inter.
+- Listing and detail item names use the default sans-serif stack while the display-font direction is reconsidered.
+- The wordmark also uses the default sans-serif stack with a restrained green treatment; navigation, filters, metadata, prices, and controls stay utility-focused.
 - Listing cards show image, shop, item name, favourite toggle, localized price or quote fallback, category, and first-seen date.
 - Repeated Montreal location and availability badges are intentionally omitted from listing cards while all active launch sources are Montreal-local or Montreal-first.
 - Detail pages keep fuller provenance: availability badges, item number, shop, location, category, materials, dimensions, designer/maker, era, condition, shipping note, freshness, and source links.

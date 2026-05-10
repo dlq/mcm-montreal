@@ -1,11 +1,11 @@
 # Montreal MCM Listings Site Plan
 
 Date: 2026-04-26
-Updated: 2026-05-08
+Updated: 2026-05-10
 
 ## Purpose
 
-This document turns the research in [research.md](/Users/dlq/Developer/MCM%20Montreal/research.md) into a practical product and delivery plan.
+This document turns the research in [research.md](research.md) into a practical product and delivery plan.
 
 This started as a planning document before implementation.
 
@@ -39,11 +39,13 @@ Currently active launch sources in code:
 Morceau should be treated as Vintage-collection-only ingestion. Its broader furniture and
 new-arrivals collections include current-production design inventory outside the app scope.
 
-Still missing from the originally recommended first-wave source set:
+Intentionally deferred from the originally recommended first-wave source set:
 
 1. Green Wall Vintage
 2. Vintage Home Boutique
 3. Maison Singulier
+
+Green Wall Vintage and Vintage Home Boutique are not Montreal-local enough for the current early build, and Maison Singulier remains a later source candidate.
 
 The biggest remaining product gaps versus the original roadmap are:
 
@@ -111,7 +113,7 @@ Avoid at launch:
 
 ## Initial Source Scope
 
-Launch sources:
+Original recommended first-wave source set:
 
 1. Morceau
 2. Showroom Montreal
@@ -437,6 +439,9 @@ Internal tools should exist to review:
 
 ### Current Implementation Caveats To Revisit
 
+- Source parser organization needs a public-repo cleanup pass. Split `mcm/sources.py` into a package with source definitions, shared HTTP/fetch helpers, shared normalization/extraction helpers, Shopify parsing, Showroom parsing, and Montreal Moderne parsing before adding more source types.
+- SQLite setup currently uses `CREATE TABLE IF NOT EXISTS` without schema versioning. Add a minimal migration mechanism with a schema version table before contributors depend on long-lived local databases.
+- Admin routes are local-MVP tools and are not protected by authentication. Before deployment, move refresh/admin operations behind authentication or a non-public operational path.
 - `subcategory` exists in SQLite but is not meaningfully populated yet.
 - `width`, `depth`, and `height` exist in SQLite but are not yet extracted into structured numeric fields for most sources.
 - `dimensions_text` is stored, but dimension parsing and normalization still need a dedicated hardening pass.
@@ -592,14 +597,14 @@ Common high-value keywords:
 
 ### Launch Version
 
-- requires user account
 - save listing
 - remove listing
 - view saved listings page
+- save shop
+- store favourites in the browser session without a user account
 
 ### Early Upgrade
 
-- save shops
 - tag favourites by room or project
 - archive sold favourites
 
@@ -621,8 +626,9 @@ At minimum, accounts should support:
 
 Current implementation status:
 
-- not implemented as a real user-facing system yet
-- the database schema has a `users` table, but the app does not currently expose account creation, login, or persisted user-specific favourites
+- not implemented yet
+- favourites currently use browser-session storage rather than account-backed persistence
+- the current SQLite schema does not include user/account tables
 
 Optional later additions:
 
@@ -886,7 +892,7 @@ Given the current codebase, the best next order is:
 1. harden the existing parsers and refresh reliability
 2. tighten availability handling and duplicate-review quality
 3. decide whether launch stays furniture-only or accepts some lighting / decor
-4. add Green Wall Vintage, Vintage Home Boutique, and Maison Singulier
+4. add Maison Singulier, then revisit Green Wall Vintage and Vintage Home Boutique only if the scope expands beyond Montreal-local sources
 5. implement saved searches
 6. add explicit price and availability change tracking
 7. add alerts and notification preferences

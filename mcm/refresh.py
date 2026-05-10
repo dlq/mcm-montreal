@@ -21,10 +21,19 @@ def refresh_all_sources(
         if not shop:
             raise RuntimeError(f"Missing shop record for source slug: {source.slug}")
         listings, error = fetch_source_listings(source)
+        existing_listing_count = db.execute(
+            "SELECT COUNT(*) AS count FROM listings WHERE source_shop_id = ?",
+            (shop["id"],),
+        ).fetchone()["count"]
+        crawl_is_authoritative = error is None
+        if error and existing_listing_count:
+            listings_to_process = []
+        else:
+            listings_to_process = listings
         seen_keys: set[str] = set()
         new_count = 0
         reconciled_count = 0
-        for item in listings:
+        for item in listings_to_process:
             source_url = item["source_listing_url"]
             key = item.get("source_listing_key") or source_url.rstrip("/").lower()
             seen_keys.add(key)
@@ -190,12 +199,14 @@ def refresh_all_sources(
                     "",
                 ),
             )
-        deactivated = db.execute(
-            "UPDATE listings SET is_active = 0, availability_status = 'removed', last_checked_at = ? WHERE source_shop_id = ? AND source_listing_key NOT IN ({})".format(
-                ",".join("?" for _ in seen_keys) if seen_keys else "''"
-            ),
-            [timestamp, shop["id"], *seen_keys],
-        ).rowcount
+        deactivated = 0
+        if crawl_is_authoritative:
+            deactivated = db.execute(
+                "UPDATE listings SET is_active = 0, availability_status = 'removed', last_checked_at = ? WHERE source_shop_id = ? AND source_listing_key NOT IN ({})".format(
+                    ",".join("?" for _ in seen_keys) if seen_keys else "''"
+                ),
+                [timestamp, shop["id"], *seen_keys],
+            ).rowcount
         if error:
             db.execute(
                 "INSERT INTO crawl_failures (shop_id, created_at, error_message) VALUES (?, ?, ?)",
@@ -203,14 +214,22 @@ def refresh_all_sources(
             )
         db.execute(
             "INSERT INTO crawl_runs (shop_id, ran_at, status, listings_found, error_message) VALUES (?, ?, ?, ?, ?)",
-            (shop["id"], timestamp, "warning" if error else "success", len(listings), error or ""),
+            (
+                shop["id"],
+                timestamp,
+                "warning" if error else "success",
+                len(listings_to_process),
+                error or "",
+            ),
         )
         if progress:
-            summary = f"{source.name}: {len(listings)} listings, {new_count} new"
+            summary = f"{source.name}: {len(listings_to_process)} listings, {new_count} new"
             if reconciled_count > 0:
                 summary += f", {reconciled_count} reconciled"
             if deactivated > 0:
                 summary += f", {deactivated} hidden"
+            if error and existing_listing_count:
+                summary += ", kept existing listings"
             if error:
                 summary += f" [warning: {error}]"
             progress(summary)
