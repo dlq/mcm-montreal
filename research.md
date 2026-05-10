@@ -1,7 +1,7 @@
 # Montreal MCM Resale Research
 
 Date: 2026-04-26
-Updated: 2026-05-06
+Updated: 2026-05-08
 
 ## Goal
 
@@ -32,6 +32,8 @@ What is already implemented in code:
 - browser-session favourites without a real account flow yet
 - freshness and availability labels
 - bilingual English / French UI
+- localized parsed price display independent of source language
+- Cormorant Garamond item-title and wordmark styling
 - admin review tools for refreshes, failures, overrides, and duplicate inspection
 
 What is currently live in the source layer:
@@ -181,6 +183,8 @@ Nice-to-have fields:
   - Example inventory page: https://www.showroommtl.com/nouveaute
   - Many listings are directly readable on-page without needing a private checkout flow.
   - Some entries say "Contactez nous pour les détails" rather than showing a price, so price completeness may vary.
+  - The app now localizes that fallback as `Contact us for details` / `Contactez-nous pour les détails` for user-facing display while preserving the raw source text for provenance.
+  - Showroom price suffixes seen so far include `/ 6`, `/ 4`, `/ paire`, `ch.`, and `/ l'ens.`. The app treats numeric suffixes as total prices for a set count, `paire` as pair, `ch.` as each, and `l'ens.` as the set.
 
 ### 3. Montreal Moderne
 
@@ -581,12 +585,13 @@ If I were choosing the exact first four sources, I would start with:
 1. Morceau
 2. Showroom Montreal
 3. Montreal Moderne
-4. Green Wall Vintage
+4. Le Centerpiece
 
 Very close next additions:
 
-1. Vintage Home Boutique
-2. Le Centerpiece
+1. Green Wall Vintage
+2. Vintage Home Boutique
+3. Maison Singulier
 
 ## Showroom Montreal French Parser Evidence
 
@@ -603,10 +608,22 @@ Checked on: 2026-05-07
 Checked on: 2026-05-07
 
 - Showroom Montreal source keys are built as `showroom:{item_id}` from Wix gallery item ids.
-- Listing `1912` currently uses source key `showroom:dataItem-monbyc3y` and source URL `https://www.showroommtl.com/nouveaute?lightbox=dataItem-monbyc3y`.
+- Live Showroom parser source URLs point to the source page where the item was found, such as `https://www.showroommtl.com/nouveaute`, because the site does not expose stable item detail pages for every gallery item.
+- Legacy fallback/override data may still contain older Wix `lightbox` URLs for seeded items; clean those up when refreshing fallback fixtures.
 - Refresh upserts by `(source_shop_id, source_listing_key)`, so a stable Wix gallery item id preserves the same local listing row and `first_seen_at`.
 - If a same-key item remains in the gallery and source text includes `vendu`, refresh sets `availability_status = sold_out`.
 - If a previously seen source key disappears from a later refresh, refresh now sets `is_active = 0`, `availability_status = removed`, and updates `last_checked_at`; the detail URL remains addressable and should show `Removed`.
 - App-facing item numbers are deterministic from the preserved listing row id, e.g. listing `1912` renders as `MCM-001912`.
 - Source-key drift reconciliation now checks same-shop exact normalized title first, then requires a high-confidence same image or same source description match before updating the existing row with the new source key.
 - Ambiguous high-confidence matches are not merged; they are recorded in internal SQLite table `listing_identity_reviews` for later inspection outside the user-facing UI.
+
+## Current UI And Localization Notes
+
+Checked on: 2026-05-08
+
+- User-facing prices are displayed from parsed `price_value` and active UI language, not the raw source price text.
+- Prices display as whole-dollar CAD in both English and French.
+- Listing cards currently omit repeated Montreal location and availability badges, show first-seen dates, and use localized quote-required fallbacks.
+- Listing card item names, detail page item titles, and the `Montreal MCM` wordmark use Cormorant Garamond; utility UI remains in Inter.
+- The header navigation is intended to align in the top header row with the wordmark, with the tagline below it.
+- Raw source fields remain important for research and admin review: titles, source notes, unusual price text, dimensions, designer/maker text, and parser evidence should not be overwritten by display localization.

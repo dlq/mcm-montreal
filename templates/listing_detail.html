@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ listing.title }} | Montreal MCM{% endblock %}
 {% block content %}
-  {% set availability = listing.availability_override or listing.availability_status %}
   <section class="grid gap-8 lg:grid-cols-[1.15fr,0.85fr]">
     <div class="space-y-4">
       <div class="overflow-hidden">
@@ -34,25 +33,10 @@
         </div>
         {% include "_favourite_listing_button.html" %}
       </div>
-      <div class="provenance-row mb-5 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-        <availability-pill data-state="{{ availability }}">{{ status_label(availability) }}</availability-pill>
-        {% if listing.ships_to_montreal %}
-          <availability-pill data-state="shipping">{{ t("listing.badge.shipping") }}</availability-pill>
-        {% endif %}
-        {% if shop.is_montreal_local %}
-          <availability-pill data-state="local">{{ t("listing.badge.local") }}</availability-pill>
-        {% endif %}
-      </div>
       <p class="mb-6 {{ 'text-2xl font-semibold tracking-tight' if listing.price_value is not none else 'text-lg font-medium text-ink/65' }}">
         {{ price_text(listing) }}
       </p>
       <dl class="grid gap-x-6 gap-y-4 border-t border-ink/10 pt-5 text-sm sm:grid-cols-2">
-        <div>
-          <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.item_number") }}</dt>
-          <dd class="mt-1">
-            {{ public_item_number(listing.id) }}
-          </dd>
-        </div>
         <div>
           <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.shop") }}</dt>
           <dd class="mt-1">
@@ -93,7 +77,7 @@
         <div>
           <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.era") }}</dt>
           <dd class="mt-1">
-            {{ listing.era or t("listing.era_unknown") }}
+            {{ era_label(listing.era) or t("listing.era_unknown") }}
           </dd>
         </div>
         <div>
@@ -115,13 +99,13 @@
       </div>
       <div class="mt-6 flex flex-wrap gap-3">
         {% set has_item_page = not listing.source_listing_key.startswith("showroom:") %}
-        <a class="button-primary px-5 py-3 text-sm"
+        <a class="detail-primary-action text-sm font-semibold"
            href="{{ listing.source_listing_url }}"
            target="_blank"
            rel="noreferrer">
           {{ t("listing.view_original") if has_item_page else t("listing.view_source_page") }}
         </a>
-        <a class="button-secondary border px-5 py-3 text-sm font-semibold"
+        <a class="detail-secondary-action text-sm font-semibold"
            href="{{ shop.website }}"
            target="_blank"
            rel="noreferrer">{{ t("listing.visit_shop") }}</a>

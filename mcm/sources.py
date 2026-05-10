@@ -824,18 +824,34 @@ def _clean_maker_candidate(value: str) -> str:
 
 
 def _extract_era(text: str) -> str:
-    match = re.search(r"\b(19[4-9]0s|20[0-2]0s|'\d0s)\b", text, flags=re.IGNORECASE)
-    return match.group(1).replace("'", "19") if match else ""
+    match = re.search(
+        r"(?<!\w)(19[4-9]0[’']?s|20[0-2]0[’']?s|[’']\d0s)(?!\w)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    value = match.group(1)
+    if value.startswith(("'", "’")):
+        return f"19{value[1:]}"
+    return re.sub(r"[’']", "", value)
 
 
 def _extract_dimensions(text: str) -> str:
+    dimension_unit = r"(?:in|\"|''|”|″)"
+    dimension_label = r"[WLDHP]"
+    dimension_part = (
+        r"\d+(?:[.,]\d+)?\s*"
+        rf"(?:(?:{dimension_unit})\s*)?"
+        rf"{dimension_label}?"
+    )
     match = re.search(
-        r"(\d+(?:[.,]\d+)?\s*(?:in|\"|''|”)\s*[WLDH]?\s*[xX]\s*"
-        r"\d+(?:[.,]\d+)?(?:\s*(?:in|\"|''|”))?\s*[WLDH]?(?:.*?)(?:H|W|D)?)",
+        rf"({dimension_part}\s*[xX]\s*{dimension_part}(?:\s*[xX]\s*{dimension_part})?)",
         text,
+        flags=re.IGNORECASE,
     )
     if match:
-        return match.group(1)
+        return _clean_text(match.group(1))
     match = re.search(r"\d+(?:\.\d+)?\s*[WLDH]\s*x?\s*\d+(?:\.\d+)?", text)
     return match.group(0) if match else ""
 

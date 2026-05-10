@@ -18,7 +18,7 @@ The codebase is intentionally small and split by responsibility:
 - `mcm/db.py`: SQLite connection, schema setup, and source seeding
 - `mcm/repository.py`: listing/shop queries, favourites state, admin queries, and request filter parsing
 - `mcm/refresh.py`: source refresh orchestration and ingest writes
-- `mcm/i18n.py`: language helpers and shared translation utilities
+- `mcm/i18n.py`: language helpers, localized display formatting, and shared translation utilities
 - `mcm/locales/`: per-language UI string dictionaries
 - `mcm/sources.py`: source-specific scraping and parsing logic
 - `mcm/seed_data.py`: fallback data used when live source fetches fail
@@ -34,6 +34,9 @@ The goal is that contributors can read routes first, then follow data access or 
 - Session-based favourite listings and shops
 - Freshness labels and availability badges
 - English / French UI
+- Localized parsed price display independent of the source language
+- Localized first-seen dates and plural-aware listing counts
+- Cormorant Garamond item titles and wordmark, with Inter retained for utility UI
 - Admin dashboard with:
   - source list and crawl health
   - failed refresh review
@@ -53,6 +56,17 @@ The app currently includes active source definitions for four direct-shop source
 It tries live fetches first, then falls back to curated seed data when a source is unreachable or parsing fails. That keeps the MVP usable in restricted or offline environments while still giving us a real ingestion path to iterate on.
 
 The broader research-backed next sources still live in `research.md` and `plan.md`.
+
+## Current UI conventions
+
+- Listing and detail item names use Cormorant Garamond for a more editorial furniture-catalog feel.
+- The wordmark also uses Cormorant Garamond; navigation, filters, metadata, prices, and controls stay in Inter.
+- Listing cards show image, shop, item name, favourite toggle, localized price or quote fallback, category, and first-seen date.
+- Repeated Montreal location and availability badges are intentionally omitted from listing cards while all active launch sources are Montreal-local or Montreal-first.
+- Detail pages keep fuller provenance: availability badges, item number, shop, location, category, materials, dimensions, designer/maker, era, condition, shipping note, freshness, and source links.
+- User-facing prices render from parsed `price_value` and the active UI language. Raw source price strings remain available to admin/provenance flows.
+- Known Showroom Montreal price suffixes are normalized for display, for example `/ 6`, `/ 4`, `/ paire`, `ch.`, and `/ l'ens.`.
+- Source titles, source notes, dimensions, and designer/maker text remain source-faithful unless we have explicit structured parsing.
 
 ## Run
 
@@ -83,7 +97,7 @@ npm run format
 The fast smoke test suite uses a temporary SQLite database and does not depend on live source fetches.
 
 ```bash
-.venv/bin/python -m unittest tests.test_app
+uv run python -m unittest tests.test_app
 ```
 
 `uv` manages the Python environment and dev tools. Biome still lives in the Node ecosystem, so you will need Node.js and `npm` installed for the frontend lint/format commands.

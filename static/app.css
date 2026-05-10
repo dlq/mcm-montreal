@@ -71,6 +71,7 @@ textarea:focus {
 }
 
 .favourite-shop-rail,
+.shop-detail-rail,
 .filter-rail {
   align-self: start;
 }
@@ -95,8 +96,29 @@ textarea:focus {
   color: #224d63;
 }
 
+.detail-primary-action {
+  color: #6d5a83;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.detail-primary-action:hover {
+  color: #57466f;
+}
+
+.detail-secondary-action {
+  color: #7b624f;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.detail-secondary-action:hover {
+  color: #604a3b;
+}
+
 @media (min-width: 1024px) {
   .favourite-shop-rail,
+  .shop-detail-rail,
   .filter-rail {
     position: sticky;
     top: 1.5rem;
@@ -131,6 +153,10 @@ textarea:focus {
 
 .listing-toolbar-reset:hover {
   color: #7f3f37;
+}
+
+.listing-sold-out-label {
+  color: #9a5a52;
 }
 
 @media (min-width: 1024px) {

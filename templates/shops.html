@@ -38,7 +38,7 @@
             <div>
               <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("shops.categories") }}</dt>
               <dd class="mt-1">
-                {{ shop.categories_carried|replace(',', ', ') if shop.categories_carried else t("shops.categories_fallback") }}
+                {{ category_list_text(shop.categories_carried) or t("shops.categories_fallback") }}
               </dd>
             </div>
           </dl>

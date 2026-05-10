@@ -19,6 +19,7 @@
 <div class="grid gap-x-6 gap-y-12 md:grid-cols-2 xl:grid-cols-3">
   {% for listing in listings %}
     {% set category_name = listing.category_override or listing.category %}
+    {% set availability = listing.availability_override or listing.availability_status %}
     <article class="listing-card group flex h-full flex-col">
       <a href="{{ url_for('listing_detail', item_number=public_item_number(listing.id) ) }}"
          class="block">
@@ -46,7 +47,11 @@
         <div class="mt-auto flex items-end justify-between gap-4 pt-4">
           <div>
             <p class="{{ 'text-base font-semibold' if listing.price_value is not none else 'max-w-48 text-sm font-medium leading-snug text-ink/65' }}">
-              {{ price_text(listing) }}
+              {% if availability == "sold_out" %}
+                <span class="listing-sold-out-label">{{ t("listing.sold_out_inline") }}</span>
+              {% else %}
+                {{ price_text(listing) }}
+              {% endif %}
             </p>
             <p class="text-sm text-ink/60">{{ category_label(category_name) }}</p>
           </div>

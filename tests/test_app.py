@@ -8,13 +8,17 @@ from unittest.mock import patch
 
 from mcm.app import create_app
 from mcm.db import get_db
+from mcm.i18n import MATERIAL_LABELS
 from mcm.locales import TRANSLATIONS_EN, TRANSLATIONS_FR
 from mcm.refresh import listing_id_from_item_number, public_item_number, refresh_all_sources
 from mcm.repository import sanitize_availability
+from mcm.seed_data import SEED_LISTINGS
 from mcm.sources import (
     SOURCE_DEFINITIONS,
     _extract_condition,
     _extract_designer_and_maker,
+    _extract_dimensions,
+    _extract_era,
     _extract_materials,
     _extract_showroom_gallery_listings,
     _fetch_shopify_collection_products,
@@ -417,6 +421,7 @@ class AppTests(unittest.TestCase):
                     UPDATE listings
                     SET materials = 'teak',
                         condition_text = 'Restored',
+                        era = '1960s',
                         shipping_note = ?
                     WHERE id = ?
                     """,
@@ -429,12 +434,49 @@ class AppTests(unittest.TestCase):
         response = self.client.get(f"/listing/{public_item_number(self.listing_id)}?lang=fr")
         self.assertIn("teck", response.text)
         self.assertIn("Restauré", response.text)
+        self.assertIn("années 1960", response.text)
+        self.assertNotIn(">1960s<", response.text)
         self.assertIn("Livraison internationale offerte", response.text)
         self.assertNotIn("International shipping available", response.text)
 
     def test_filter_summary_localizes_material_value(self) -> None:
         response = self.client.get("/?lang=fr&material=teak")
         self.assertIn("Matériau: teck", response.text)
+
+    def test_material_dropdown_localizes_canonical_materials(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET materials = 'wood, metal, upholstery, cherry wood, sherpa'
+                    WHERE id = ?
+                    """,
+                    (self.listing_id,),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.get("/?lang=fr")
+        self.assertIn("bois", response.text)
+        self.assertIn("métal", response.text)
+        self.assertIn("revêtement", response.text)
+        self.assertIn("bois de cerisier", response.text)
+        self.assertIn("sherpa", response.text)
+
+    def test_seed_materials_use_localized_material_tokens(self) -> None:
+        seed_materials = {
+            material.strip().lower()
+            for listings in SEED_LISTINGS.values()
+            for listing in listings
+            for material in listing["materials"].split(",")
+            if material.strip()
+        }
+
+        self.assertTrue(seed_materials)
+        self.assertEqual(set(), seed_materials - set(MATERIAL_LABELS))
 
     def test_showroom_detail_uses_source_page_label(self) -> None:
         with self.app.app_context():
@@ -663,6 +705,24 @@ class AppTests(unittest.TestCase):
 
         self.assertEqual(len(listings), 1)
         self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-real")
+
+    def test_showroom_french_dimensions_and_era_are_extracted(self) -> None:
+        text = (
+            "Fauteuils en teck '60s Arne Hovmand Olsen pour P Mikkelsen, Denmark "
+            "restaurés, nouveau recouvrement 26''L x 30''P x 29.5''H assise 15'' H "
+            "3250 $ / paire"
+        )
+
+        self.assertEqual(_extract_era(text), "1960s")
+        self.assertEqual(_extract_dimensions(text), "26''L x 30''P x 29.5''H")
+
+    def test_curly_apostrophe_decade_is_extracted(self) -> None:
+        text = (
+            "Teak wine/ice bucket by Jens Quistgaard for Dansk. "
+            'Made in Denmark, 1950’s. Restored. 7,5"D x 15”H'
+        )
+
+        self.assertEqual(_extract_era(text), "1950s")
 
     def test_showroom_gallery_skips_promotional_store_hours_cards(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")

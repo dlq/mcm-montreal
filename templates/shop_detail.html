@@ -2,13 +2,10 @@
 {% block title %}{{ shop.name }} | Montreal MCM{% endblock %}
 {% block content %}
   <section class="grid gap-8 lg:grid-cols-[300px,1fr]">
-    <aside class="border-t border-ink/10 pt-5">
+    <aside class="shop-detail-rail border-t border-ink/10 pt-5">
       <div class="mb-4 flex items-start justify-between gap-3">
         <div>
-          <p class="source-kicker">
-            {{ t("shops.local") if shop.is_montreal_local else t("shops.canada_friendly") }}
-          </p>
-          <h1 class="mt-2 text-3xl font-semibold tracking-tight">{{ shop.name }}</h1>
+          <h1 class="text-3xl font-semibold tracking-tight">{{ shop.name }}</h1>
         </div>
         {% include "_favourite_shop_button.html" %}
       </div>
@@ -49,9 +46,6 @@
         </div>
       </dl>
     </aside>
-    <div>
-      <h2 class="mb-4 text-xl font-semibold tracking-tight">{{ t("shop.current_listings") }}</h2>
-      {% include "_listing_grid.html" %}
-    </div>
+    <div>{% include "_listing_grid.html" %}</div>
   </section>
 {% endblock %}

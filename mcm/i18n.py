@@ -70,13 +70,18 @@ MATERIAL_LABELS = {
     "teak": "material.teak",
     "rosewood": "material.rosewood",
     "walnut": "material.walnut",
+    "cherry wood": "material.cherry_wood",
+    "wood": "material.wood",
     "glass": "material.glass",
     "chrome": "material.chrome",
     "aluminum": "material.aluminum",
     "leather": "material.leather",
+    "metal": "material.metal",
+    "upholstery": "material.upholstery",
     "wool": "material.wool",
     "steel": "material.steel",
     "ceramic": "material.ceramic",
+    "sherpa": "material.sherpa",
 }
 
 CONDITION_LABELS = {
@@ -187,6 +192,15 @@ def category_label(value: str | None) -> str:
     )
 
 
+def category_list_text(value: str | None) -> str:
+    categories = []
+    for chunk in (value or "").split(","):
+        label = category_label(chunk)
+        if label and label not in categories:
+            categories.append(label)
+    return ", ".join(categories)
+
+
 def material_label(value: str | None) -> str:
     if not value:
         return ""
@@ -196,6 +210,16 @@ def material_label(value: str | None) -> str:
         key = MATERIAL_LABELS.get(piece.lower())
         labels.append(translate(key) if key else piece)
     return ", ".join(label for label in labels if label)
+
+
+def era_label(value: str | None) -> str:
+    if not value:
+        return ""
+    normalized = value.strip()
+    match = re.fullmatch(r"((?:19|20)\d0)s", normalized)
+    if not match:
+        return normalized
+    return translate("era.decade", decade=match.group(1))
 
 
 def condition_label(value: str | None) -> str:
