@@ -322,15 +322,70 @@ def admin_sources(db: sqlite3.Connection) -> list[sqlite3.Row]:
         """
         SELECT
             s.*,
-            MAX(cr.ran_at) AS last_run_at,
-            MAX(cr.status) AS last_status,
-            MAX(cr.error_message) AS last_error,
-            SUM(CASE WHEN l.is_active = 1 THEN 1 ELSE 0 END) AS active_listing_count
+            (
+                SELECT cr.ran_at
+                FROM crawl_runs cr
+                WHERE cr.shop_id = s.id
+                ORDER BY cr.ran_at DESC, cr.id DESC
+                LIMIT 1
+            ) AS last_run_at,
+            (
+                SELECT cr.status
+                FROM crawl_runs cr
+                WHERE cr.shop_id = s.id
+                ORDER BY cr.ran_at DESC, cr.id DESC
+                LIMIT 1
+            ) AS last_status,
+            (
+                SELECT cr.error_message
+                FROM crawl_runs cr
+                WHERE cr.shop_id = s.id
+                ORDER BY cr.ran_at DESC, cr.id DESC
+                LIMIT 1
+            ) AS last_error,
+            (
+                SELECT rj.started_at
+                FROM refresh_jobs rj
+                WHERE rj.shop_id = s.id
+                ORDER BY rj.started_at DESC, rj.id DESC
+                LIMIT 1
+            ) AS last_job_started_at,
+            (
+                SELECT rj.finished_at
+                FROM refresh_jobs rj
+                WHERE rj.shop_id = s.id
+                ORDER BY rj.started_at DESC, rj.id DESC
+                LIMIT 1
+            ) AS last_job_finished_at,
+            (
+                SELECT rj.status
+                FROM refresh_jobs rj
+                WHERE rj.shop_id = s.id
+                ORDER BY rj.started_at DESC, rj.id DESC
+                LIMIT 1
+            ) AS last_job_status,
+            (
+                SELECT rj.new_count
+                FROM refresh_jobs rj
+                WHERE rj.shop_id = s.id
+                ORDER BY rj.started_at DESC, rj.id DESC
+                LIMIT 1
+            ) AS last_job_new_count,
+            (
+                SELECT rj.hidden_count
+                FROM refresh_jobs rj
+                WHERE rj.shop_id = s.id
+                ORDER BY rj.started_at DESC, rj.id DESC
+                LIMIT 1
+            ) AS last_job_hidden_count,
+            (
+                SELECT COUNT(*)
+                FROM listings l
+                WHERE l.source_shop_id = s.id
+                  AND l.is_active = 1
+            ) AS active_listing_count
         FROM shops s
-        LEFT JOIN crawl_runs cr ON cr.shop_id = s.id
-        LEFT JOIN listings l ON l.source_shop_id = s.id
         WHERE s.active = 1
-        GROUP BY s.id
         ORDER BY s.crawl_priority ASC, s.name ASC
         """
     ).fetchall()

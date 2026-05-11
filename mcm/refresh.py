@@ -3,166 +3,139 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from .repository import get_shop_by_slug
-from .sources import SOURCE_DEFINITIONS, fetch_source_listings
+from .sources import SOURCE_DEFINITIONS, SourceDefinition, fetch_source_listings
+
+
+@dataclass(frozen=True)
+class RefreshResult:
+    source_name: str
+    source_slug: str
+    listings_found: int
+    new_count: int
+    reconciled_count: int
+    hidden_count: int
+    error: str
+    kept_existing: bool
+
+
+@dataclass(frozen=True)
+class RefreshJobRef:
+    shop_id: int
+    source_slug: str
+    started_at: str
 
 
 def refresh_all_sources(
     db: sqlite3.Connection,
     progress: Callable[[str], None] | None = None,
 ) -> None:
-    timestamp = datetime.now(UTC).isoformat()
     for source in SOURCE_DEFINITIONS:
         if progress:
             progress(f"Checking {source.name} ...")
-        shop = get_shop_by_slug(db, source.slug)
-        if not shop:
-            raise RuntimeError(f"Missing shop record for source slug: {source.slug}")
-        listings, error = fetch_source_listings(source)
-        existing_listing_count = db.execute(
-            "SELECT COUNT(*) AS count FROM listings WHERE source_shop_id = ?",
-            (shop["id"],),
-        ).fetchone()["count"]
-        crawl_is_authoritative = error is None
-        if error and existing_listing_count:
-            listings_to_process = []
-        else:
-            listings_to_process = listings
-        seen_keys: set[str] = set()
-        new_count = 0
-        reconciled_count = 0
-        for item in listings_to_process:
-            source_url = item["source_listing_url"]
-            key = item.get("source_listing_key") or source_url.rstrip("/").lower()
-            seen_keys.add(key)
-            existing = db.execute(
-                "SELECT id, first_seen_at FROM listings WHERE source_shop_id = ? AND source_listing_key = ?",
-                (shop["id"], key),
-            ).fetchone()
+        result = refresh_source(db, source)
+        if progress:
+            summary = (
+                f"{result.source_name}: {result.listings_found} listings, {result.new_count} new"
+            )
+            if result.reconciled_count > 0:
+                summary += f", {result.reconciled_count} reconciled"
+            if result.hidden_count > 0:
+                summary += f", {result.hidden_count} hidden"
+            if result.kept_existing:
+                summary += ", kept existing listings"
+            if result.error:
+                summary += f" [warning: {result.error}]"
+            progress(summary)
+    db.commit()
 
-            if not existing:
-                existing = find_reconciliation_candidate(
-                    db,
-                    int(shop["id"]),
-                    item,
-                    seen_keys,
-                    timestamp,
-                    key,
-                )
-                if existing:
-                    reconciled_count += 1
 
-            first_seen = existing["first_seen_at"] if existing else timestamp
+def refresh_source_by_slug(db: sqlite3.Connection, source_slug: str) -> RefreshResult:
+    source = next((source for source in SOURCE_DEFINITIONS if source.slug == source_slug), None)
+    if source is None:
+        raise ValueError(f"Unknown source slug: {source_slug}")
+    result = refresh_source(db, source)
+    db.commit()
+    return result
+
+
+def refresh_source(db: sqlite3.Connection, source: SourceDefinition) -> RefreshResult:
+    started_at = datetime.now(UTC).isoformat()
+    timestamp = started_at
+    shop = get_shop_by_slug(db, source.slug)
+    if not shop:
+        raise RuntimeError(f"Missing shop record for source slug: {source.slug}")
+    job = start_refresh_job(db, int(shop["id"]), source.slug, started_at)
+    listings, error = fetch_source_listings(source)
+    existing_listing_count = db.execute(
+        "SELECT COUNT(*) AS count FROM listings WHERE source_shop_id = ?",
+        (shop["id"],),
+    ).fetchone()["count"]
+    crawl_is_authoritative = error is None
+    kept_existing = bool(error and existing_listing_count)
+    listings_to_process = [] if kept_existing else listings
+    seen_keys: set[str] = set()
+    new_count = 0
+    reconciled_count = 0
+    for item in listings_to_process:
+        source_url = item["source_listing_url"]
+        key = item.get("source_listing_key") or source_url.rstrip("/").lower()
+        seen_keys.add(key)
+        existing = db.execute(
+            "SELECT id, first_seen_at FROM listings WHERE source_shop_id = ? AND source_listing_key = ?",
+            (shop["id"], key),
+        ).fetchone()
+
+        if not existing:
+            existing = find_reconciliation_candidate(
+                db,
+                int(shop["id"]),
+                item,
+                seen_keys,
+                timestamp,
+                key,
+            )
             if existing:
-                db.execute(
-                    """
-                    UPDATE listings
-                    SET source_listing_url = ?,
-                        source_listing_key = ?,
-                        title = ?,
-                        normalized_title = ?,
-                        price_raw = ?,
-                        price_value = ?,
-                        currency = ?,
-                        primary_image_url = ?,
-                        additional_image_urls = ?,
-                        availability_status = ?,
-                        shipping_scope = ?,
-                        ships_to_montreal = ?,
-                        shipping_note = ?,
-                        last_seen_at = ?,
-                        last_checked_at = ?,
-                        category = ?,
-                        designer = ?,
-                        maker = ?,
-                        era = ?,
-                        materials = ?,
-                        dimensions_text = ?,
-                        condition_text = ?,
-                        location_text = ?,
-                        source_description = ?,
-                        ingest_source_type = ?,
-                        parse_confidence = ?,
-                        is_active = 1
-                    WHERE id = ?
-                    """,
-                    (
-                        source_url,
-                        key,
-                        item["title"],
-                        normalize_text(item["title"]),
-                        item.get("price_raw", ""),
-                        item.get("price_value"),
-                        item.get("currency", "CAD"),
-                        item.get("primary_image_url", ""),
-                        json.dumps(item.get("additional_image_urls", [])),
-                        item.get("availability_status", "unknown"),
-                        item.get("shipping_scope", ""),
-                        item.get("ships_to_montreal", 0),
-                        item.get("shipping_note", ""),
-                        timestamp,
-                        timestamp,
-                        item.get("category", ""),
-                        item.get("designer", ""),
-                        item.get("maker", ""),
-                        item.get("era", ""),
-                        item.get("materials", ""),
-                        item.get("dimensions_text", ""),
-                        item.get("condition_text", ""),
-                        item.get("location_text", f"{shop['city']}, {shop['province']}"),
-                        item.get("source_description", ""),
-                        item.get("ingest_source_type", "refresh"),
-                        float(item.get("parse_confidence", 0.4)),
-                        existing["id"],
-                    ),
-                )
-                continue
+                reconciled_count += 1
 
-            if not existing:
-                new_count += 1
+        first_seen = existing["first_seen_at"] if existing else timestamp
+        if existing:
             db.execute(
                 """
-                INSERT INTO listings (
-                    source_shop_id, source_listing_url, source_listing_key, title, normalized_title,
-                    price_raw, price_value, currency, primary_image_url, additional_image_urls,
-                    availability_status, shipping_scope, ships_to_montreal, shipping_note,
-                    last_seen_at, last_checked_at, first_seen_at, category, subcategory, designer,
-                    maker, era, materials, dimensions_text, condition_text, location_text,
-                    source_description, ingest_source_type, parse_confidence, dedupe_group_id,
-                    is_active, is_featured, manual_notes, availability_override, category_override
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(source_shop_id, source_listing_key) DO UPDATE SET
-                    source_listing_url = excluded.source_listing_url,
-                    title = excluded.title,
-                    normalized_title = excluded.normalized_title,
-                    price_raw = excluded.price_raw,
-                    price_value = excluded.price_value,
-                    currency = excluded.currency,
-                    primary_image_url = excluded.primary_image_url,
-                    additional_image_urls = excluded.additional_image_urls,
-                    availability_status = excluded.availability_status,
-                    shipping_scope = excluded.shipping_scope,
-                    ships_to_montreal = excluded.ships_to_montreal,
-                    shipping_note = excluded.shipping_note,
-                    last_seen_at = excluded.last_seen_at,
-                    last_checked_at = excluded.last_checked_at,
-                    category = excluded.category,
-                    designer = excluded.designer,
-                    maker = excluded.maker,
-                    era = excluded.era,
-                    materials = excluded.materials,
-                    dimensions_text = excluded.dimensions_text,
-                    condition_text = excluded.condition_text,
-                    location_text = excluded.location_text,
-                    source_description = excluded.source_description,
-                    ingest_source_type = excluded.ingest_source_type,
-                    parse_confidence = excluded.parse_confidence,
+                UPDATE listings
+                SET source_listing_url = ?,
+                    source_listing_key = ?,
+                    title = ?,
+                    normalized_title = ?,
+                    price_raw = ?,
+                    price_value = ?,
+                    currency = ?,
+                    primary_image_url = ?,
+                    additional_image_urls = ?,
+                    availability_status = ?,
+                    shipping_scope = ?,
+                    ships_to_montreal = ?,
+                    shipping_note = ?,
+                    last_seen_at = ?,
+                    last_checked_at = ?,
+                    category = ?,
+                    designer = ?,
+                    maker = ?,
+                    era = ?,
+                    materials = ?,
+                    dimensions_text = ?,
+                    condition_text = ?,
+                    location_text = ?,
+                    source_description = ?,
+                    ingest_source_type = ?,
+                    parse_confidence = ?,
                     is_active = 1
+                WHERE id = ?
                 """,
                 (
-                    shop["id"],
                     source_url,
                     key,
                     item["title"],
@@ -178,9 +151,7 @@ def refresh_all_sources(
                     item.get("shipping_note", ""),
                     timestamp,
                     timestamp,
-                    first_seen,
                     item.get("category", ""),
-                    "",
                     item.get("designer", ""),
                     item.get("maker", ""),
                     item.get("era", ""),
@@ -191,49 +162,175 @@ def refresh_all_sources(
                     item.get("source_description", ""),
                     item.get("ingest_source_type", "refresh"),
                     float(item.get("parse_confidence", 0.4)),
-                    "",
-                    1,
-                    0,
-                    "",
-                    "",
-                    "",
+                    existing["id"],
                 ),
             )
-        deactivated = 0
-        if crawl_is_authoritative:
-            deactivated = db.execute(
-                "UPDATE listings SET is_active = 0, availability_status = 'removed', last_checked_at = ? WHERE source_shop_id = ? AND source_listing_key NOT IN ({})".format(
-                    ",".join("?" for _ in seen_keys) if seen_keys else "''"
-                ),
-                [timestamp, shop["id"], *seen_keys],
-            ).rowcount
-        if error:
-            db.execute(
-                "INSERT INTO crawl_failures (shop_id, created_at, error_message) VALUES (?, ?, ?)",
-                (shop["id"], timestamp, error),
-            )
+            continue
+
+        new_count += 1
         db.execute(
-            "INSERT INTO crawl_runs (shop_id, ran_at, status, listings_found, error_message) VALUES (?, ?, ?, ?, ?)",
+            """
+            INSERT INTO listings (
+                source_shop_id, source_listing_url, source_listing_key, title, normalized_title,
+                price_raw, price_value, currency, primary_image_url, additional_image_urls,
+                availability_status, shipping_scope, ships_to_montreal, shipping_note,
+                last_seen_at, last_checked_at, first_seen_at, category, subcategory, designer,
+                maker, era, materials, dimensions_text, condition_text, location_text,
+                source_description, ingest_source_type, parse_confidence, dedupe_group_id,
+                is_active, is_featured, manual_notes, availability_override, category_override
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(source_shop_id, source_listing_key) DO UPDATE SET
+                source_listing_url = excluded.source_listing_url,
+                title = excluded.title,
+                normalized_title = excluded.normalized_title,
+                price_raw = excluded.price_raw,
+                price_value = excluded.price_value,
+                currency = excluded.currency,
+                primary_image_url = excluded.primary_image_url,
+                additional_image_urls = excluded.additional_image_urls,
+                availability_status = excluded.availability_status,
+                shipping_scope = excluded.shipping_scope,
+                ships_to_montreal = excluded.ships_to_montreal,
+                shipping_note = excluded.shipping_note,
+                last_seen_at = excluded.last_seen_at,
+                last_checked_at = excluded.last_checked_at,
+                category = excluded.category,
+                designer = excluded.designer,
+                maker = excluded.maker,
+                era = excluded.era,
+                materials = excluded.materials,
+                dimensions_text = excluded.dimensions_text,
+                condition_text = excluded.condition_text,
+                location_text = excluded.location_text,
+                source_description = excluded.source_description,
+                ingest_source_type = excluded.ingest_source_type,
+                parse_confidence = excluded.parse_confidence,
+                is_active = 1
+            """,
             (
                 shop["id"],
+                source_url,
+                key,
+                item["title"],
+                normalize_text(item["title"]),
+                item.get("price_raw", ""),
+                item.get("price_value"),
+                item.get("currency", "CAD"),
+                item.get("primary_image_url", ""),
+                json.dumps(item.get("additional_image_urls", [])),
+                item.get("availability_status", "unknown"),
+                item.get("shipping_scope", ""),
+                item.get("ships_to_montreal", 0),
+                item.get("shipping_note", ""),
                 timestamp,
-                "warning" if error else "success",
-                len(listings_to_process),
-                error or "",
+                timestamp,
+                first_seen,
+                item.get("category", ""),
+                "",
+                item.get("designer", ""),
+                item.get("maker", ""),
+                item.get("era", ""),
+                item.get("materials", ""),
+                item.get("dimensions_text", ""),
+                item.get("condition_text", ""),
+                item.get("location_text", f"{shop['city']}, {shop['province']}"),
+                item.get("source_description", ""),
+                item.get("ingest_source_type", "refresh"),
+                float(item.get("parse_confidence", 0.4)),
+                "",
+                1,
+                0,
+                "",
+                "",
+                "",
             ),
         )
-        if progress:
-            summary = f"{source.name}: {len(listings_to_process)} listings, {new_count} new"
-            if reconciled_count > 0:
-                summary += f", {reconciled_count} reconciled"
-            if deactivated > 0:
-                summary += f", {deactivated} hidden"
-            if error and existing_listing_count:
-                summary += ", kept existing listings"
-            if error:
-                summary += f" [warning: {error}]"
-            progress(summary)
-    db.commit()
+    deactivated = 0
+    if crawl_is_authoritative:
+        deactivated = db.execute(
+            "UPDATE listings SET is_active = 0, availability_status = 'removed', last_checked_at = ? WHERE source_shop_id = ? AND source_listing_key NOT IN ({})".format(
+                ",".join("?" for _ in seen_keys) if seen_keys else "''"
+            ),
+            [timestamp, shop["id"], *seen_keys],
+        ).rowcount
+    if error:
+        db.execute(
+            "INSERT INTO crawl_failures (shop_id, created_at, error_message) VALUES (?, ?, ?)",
+            (shop["id"], timestamp, error),
+        )
+    db.execute(
+        "INSERT INTO crawl_runs (shop_id, ran_at, status, listings_found, error_message) VALUES (?, ?, ?, ?, ?)",
+        (
+            shop["id"],
+            timestamp,
+            "warning" if error else "success",
+            len(listings_to_process),
+            error or "",
+        ),
+    )
+    result = RefreshResult(
+        source_name=source.name,
+        source_slug=source.slug,
+        listings_found=len(listings_to_process),
+        new_count=new_count,
+        reconciled_count=reconciled_count,
+        hidden_count=deactivated,
+        error=error or "",
+        kept_existing=kept_existing,
+    )
+    finish_refresh_job(db, job, datetime.now(UTC).isoformat(), result)
+    return result
+
+
+def start_refresh_job(
+    db: sqlite3.Connection,
+    shop_id: int,
+    source_slug: str,
+    started_at: str,
+) -> RefreshJobRef:
+    db.execute(
+        """
+        INSERT INTO refresh_jobs (shop_id, source_slug, started_at, status)
+        VALUES (?, ?, ?, 'running')
+        """,
+        (shop_id, source_slug, started_at),
+    )
+    return RefreshJobRef(shop_id=shop_id, source_slug=source_slug, started_at=started_at)
+
+
+def finish_refresh_job(
+    db: sqlite3.Connection,
+    job: RefreshJobRef,
+    finished_at: str,
+    result: RefreshResult,
+) -> None:
+    db.execute(
+        """
+        UPDATE refresh_jobs
+        SET finished_at = ?,
+            status = ?,
+            listings_found = ?,
+            new_count = ?,
+            reconciled_count = ?,
+            hidden_count = ?,
+            error_message = ?
+        WHERE shop_id = ?
+          AND source_slug = ?
+          AND started_at = ?
+        """,
+        (
+            finished_at,
+            "warning" if result.error else "success",
+            result.listings_found,
+            result.new_count,
+            result.reconciled_count,
+            result.hidden_count,
+            result.error,
+            job.shop_id,
+            job.source_slug,
+            job.started_at,
+        ),
+    )
 
 
 def normalize_text(text: str) -> str:

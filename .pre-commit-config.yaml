@@ -29,4 +29,4 @@ repos:
         name: biome check
         entry: ./node_modules/.bin/biome check --write
         language: system
-        files: ^static/.*\.(js|css)$
+        files: ^(static/.*\.(js|css)|src/.*\.js)$

@@ -89,6 +89,9 @@ Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
 Production runs the existing Flask app in a Cloudflare Container. The Worker owns the D1 binding and exposes an authenticated internal bridge to the container, so the deployed Flask app reads and writes D1 instead of a local SQLite file.
 
+See [docs/operations.md](docs/operations.md) for the deploy checklist, health checks, D1 backup
+command, and bad-deploy recovery steps.
+
 Current production resources:
 
 - Worker: `montreal-mcm`
@@ -112,9 +115,12 @@ Create or update Cloudflare secrets:
 ```bash
 npx wrangler secret put MCM_SECRET_KEY
 npx wrangler secret put D1_BRIDGE_TOKEN
+npx wrangler secret put MCM_ADMIN_TOKEN
 ```
 
-Use a long random value for `D1_BRIDGE_TOKEN`; the same secret is used by the Worker and injected into the container. Do not commit secret values.
+Use long random values for `D1_BRIDGE_TOKEN` and `MCM_ADMIN_TOKEN`. `D1_BRIDGE_TOKEN`
+protects the Worker-to-D1 bridge, and `MCM_ADMIN_TOKEN` protects admin and deep-health routes in
+production. Do not commit secret values.
 
 Apply D1 migrations:
 
@@ -133,17 +139,25 @@ Verify production health and D1 state:
 
 ```bash
 curl -fsS https://montreal-mcm.dalaque.workers.dev/healthz
+curl -fsS -H "Authorization: Bearer $MCM_ADMIN_TOKEN" https://montreal-mcm.dalaque.workers.dev/admin/healthz
 curl -fsS -o /tmp/mcm-home.html https://montreal-mcm.dalaque.workers.dev/
 npx wrangler d1 execute montreal-mcm --remote --command "SELECT COUNT(*) AS listings FROM listings;"
 ```
 
 The production image intentionally excludes `data/mcm.db`. If the homepage works after deployment, the app is reading through D1.
 
-The current cron calls the container refresh endpoint directly. It writes to D1, but source refresh can take long enough that the next hardening step is a queue-backed refresh: the cron should enqueue one job per source and return quickly.
+Admin routes are open in local development when `MCM_ADMIN_TOKEN` is unset. In production, set
+`MCM_ADMIN_TOKEN` and authenticate with HTTP Basic auth using any username and the token as the
+password, or send `Authorization: Bearer <token>` / `X-MCM-Admin-Token: <token>`.
+
+Cloudflare cron triggers one private Worker-to-container refresh request per launch source. Each
+source refresh records `refresh_jobs`, `crawl_runs`, and any `crawl_failures` rows in D1 so the
+admin dashboard can show source-level status.
 
 ## Lint and format
 
-Python uses Ruff, Jinja templates use djLint, and frontend files in `static/` use Biome.
+Python uses Ruff, Jinja templates use djLint, and JavaScript/CSS files in `static/` and `src/`
+use Biome.
 
 ```bash
 uv run ruff check .

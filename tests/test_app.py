@@ -117,6 +117,53 @@ class AppTests(unittest.TestCase):
     def test_locale_files_have_matching_keys(self) -> None:
         self.assertEqual(set(TRANSLATIONS_EN), set(TRANSLATIONS_FR))
 
+    def test_process_health_does_not_require_database_or_auth(self) -> None:
+        response = self.client.get("/healthz")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, "ok")
+
+    def test_admin_health_checks_database(self) -> None:
+        response = self.client.get("/admin/healthz")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["status"], "ok")
+        self.assertEqual(response.json["database"], "ok")
+        self.assertGreaterEqual(response.json["shops"], 1)
+        self.assertGreaterEqual(response.json["listings"], 1)
+
+    def test_admin_routes_require_token_when_configured(self) -> None:
+        protected_app = create_app(
+            {
+                "TESTING": True,
+                "DATABASE": str(Path(self.temp_dir.name) / "protected.db"),
+                "SECRET_KEY": "test-secret",
+                "MCM_ADMIN_TOKEN": "admin-secret",
+            }
+        )
+        protected_listing_id = seed_listing(protected_app)
+        client = protected_app.test_client()
+
+        self.assertEqual(client.get("/healthz").status_code, 200)
+
+        for path in [
+            "/admin",
+            "/admin/healthz",
+            f"/admin/listings/{protected_listing_id}",
+        ]:
+            response = client.get(path)
+            self.assertEqual(response.status_code, 401, path)
+
+        response = client.get("/admin", headers={"X-MCM-Admin-Token": "admin-secret"})
+        self.assertEqual(response.status_code, 200)
+
+        response = client.get("/admin/healthz", headers={"Authorization": "Bearer admin-secret"})
+        self.assertEqual(response.status_code, 200)
+
+        response = client.get(
+            f"/admin/listings/{protected_listing_id}",
+            headers={"Authorization": "Basic YWRtaW46YWRtaW4tc2VjcmV0"},
+        )
+        self.assertEqual(response.status_code, 200)
+
     def test_invalid_price_filter_does_not_error(self) -> None:
         response = self.client.get("/?price_min=abc")
         self.assertEqual(response.status_code, 200)
@@ -191,6 +238,49 @@ class AppTests(unittest.TestCase):
                 self.assertEqual(listing["availability_status"], "removed")
             finally:
                 db.close()
+
+    def test_refresh_records_per_source_job_status(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                with patch("mcm.refresh.fetch_source_listings", return_value=([], None)):
+                    refresh_all_sources(db, progress=lambda _message: None)
+                job = db.execute(
+                    """
+                    SELECT source_slug, status, listings_found, hidden_count, finished_at
+                    FROM refresh_jobs
+                    WHERE source_slug = 'morceau'
+                    ORDER BY started_at DESC
+                    LIMIT 1
+                    """
+                ).fetchone()
+                self.assertEqual(job["source_slug"], "morceau")
+                self.assertEqual(job["status"], "success")
+                self.assertEqual(job["listings_found"], 0)
+                self.assertGreaterEqual(job["hidden_count"], 1)
+                self.assertTrue(job["finished_at"])
+            finally:
+                db.close()
+
+    def test_cron_can_refresh_one_source(self) -> None:
+        response = self.client.post("/cron/refresh/morceau")
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.post(
+            "/cron/refresh/not-a-source",
+            headers={"X-Cloudflare-Scheduled": "1"},
+        )
+        self.assertEqual(response.status_code, 404)
+
+        with patch("mcm.refresh.fetch_source_listings", return_value=([], None)):
+            response = self.client.post(
+                "/cron/refresh/morceau",
+                headers={"X-Cloudflare-Scheduled": "1"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["source"], "morceau")
+        self.assertEqual(response.json["listings"], 0)
 
     def test_refresh_error_does_not_deactivate_existing_inventory(self) -> None:
         fallback_item = {

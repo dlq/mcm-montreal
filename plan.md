@@ -63,6 +63,7 @@ data.
 - D1 database id: `564167b2-abc1-4a66-8a26-0c95153eb72b`
 - No R2 bucket is configured for this app.
 - Worker secrets required: `MCM_SECRET_KEY`, `D1_BRIDGE_TOKEN`
+- Production admin routes should also have `MCM_ADMIN_TOKEN` set.
 - Cron trigger: `23 9 * * *`, which is 09:23 UTC daily. In Montreal/Toronto time that is 5:23 AM
   during daylight time and 4:23 AM during standard time.
 - Local `data/mcm.db` was refreshed and imported into D1 on 2026-05-10.
@@ -111,19 +112,25 @@ Questions to settle:
   batched D1 bridge calls?
 - What is the minimum monitoring needed before sharing the site more broadly?
 
-Likely work:
+Completed in `0.1.1`:
 
-- verify custom-domain DNS and TLS
-- add a small deployment checklist to keep local, D1, and live health checks repeatable
-- document recovery steps for a bad deploy
-- add basic uptime checks or a scheduled health monitor
 - make `/healthz` verify app process health without requiring D1
 - add a separate deeper health endpoint or admin check that verifies D1 connectivity
+- protect admin routes when `MCM_ADMIN_TOKEN` is configured
+- add a repeatable operations runbook with deploy, health-check, backup, and bad-deploy recovery
+  steps
+- add `npm run d1:backup` and ignore local backup exports
+
+Remaining follow-up:
+
+- verify custom-domain DNS and TLS
+- add basic uptime checks or a scheduled health monitor
 
 ### Refresh Reliability
 
-The current cron calls the container refresh endpoint directly. It writes to D1, but source refresh
-can take long enough that it is not safe to treat as a simple request/response cron forever.
+The current cron triggers one private container refresh request per source. It writes to D1 and is
+acceptable for the current launch-source set, but real production timing should decide whether this
+needs Cloudflare Queues or Workflows later.
 
 Questions to settle:
 
@@ -133,14 +140,20 @@ Questions to settle:
 - What status should the admin dashboard show while refresh is running?
 - Should refresh failures alert the owner, or is admin-dashboard visibility enough for `0.1.x`?
 
-Likely work:
+Completed in `0.1.1`:
 
 - split refresh into per-source jobs
-- make the cron enqueue or trigger source jobs and return quickly
+- make the cron trigger one private container refresh request per source instead of one long
+  all-source request
 - record refresh job status in D1
-- expose last successful refresh per source in admin
+- expose last refresh job status per source in admin
 - preserve existing conservative behavior: source failures should not deactivate existing inventory
   when a shop already has records
+
+Remaining follow-up:
+
+- decide whether queue/workflow-backed refreshes are needed after real production timing data exists
+- add owner alerting if admin-dashboard visibility is not enough
 
 ### Admin Safety
 
@@ -152,11 +165,15 @@ Questions to settle:
 - Which admin routes should be public-impossible versus merely hidden?
 - Should manual overrides require a lightweight audit trail?
 
-Likely work:
+Completed in `0.1.1`:
 
-- protect refresh and admin routes
-- keep `/cron/*` and `/internal/*` unguessable and non-public
+- protect admin routes, including manual admin refresh, when `MCM_ADMIN_TOKEN` is configured
+- keep public Worker traffic from reaching `/cron/*` or `/internal/*`
+
+Remaining follow-up:
+
 - keep manual notes, availability overrides, category overrides, and duplicate review durable in D1
+- decide whether manual overrides need an explicit audit table
 
 ### Data And Schema Hygiene
 
@@ -166,12 +183,17 @@ Questions to settle:
 - Should local SQLite migrations be formalized, or is D1 migration history enough for now?
 - Which fields are genuinely source-derived versus admin-authored?
 
-Likely work:
+Completed in `0.1.1`:
 
 - add a repeatable D1 export/backup command
 - keep migrations small and reviewable
 - make seed/import paths explicit and avoid hand-editing derived data
 - keep local `data/mcm.db` as development data, not a source of permanent facts
+- add D1 migration `0003_refresh_jobs.sql` for source-level refresh job tracking
+
+Remaining follow-up:
+
+- decide whether local SQLite migrations need a first-class migration runner beyond `ensure_schema`
 
 ### Source Parser Maintenance
 
@@ -190,6 +212,12 @@ Likely work:
 - clean legacy Showroom fallback and override URLs so seeded data follows the same source-page URL
   convention as live parsing
 
+Decision after `0.1.1` review:
+
+- keep the current source module for `0.1.x` because the live-dependability work is now covered and
+  splitting parser files is a larger readability refactor with higher churn; revisit before adding
+  more sources
+
 ### UX Polish
 
 Questions to settle:
@@ -204,6 +232,11 @@ Likely work:
 - refine mobile filter ergonomics
 - add a clear stale-data/freshness presentation where useful
 - normalize listing-grid thumbnails enough that mixed source image canvases feel intentional
+
+Decision after `0.1.1` review:
+
+- keep UX polish out of the final `0.1.x` hardening pass unless a concrete browsing bug appears;
+  move broader card-density, mobile-filter, and image-canvas refinements into `0.2.x` planning
 
 ### 0.1.x Success Criteria
 

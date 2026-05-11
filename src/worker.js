@@ -1,6 +1,7 @@
 import { Container } from "@cloudflare/containers";
 
 const CONTAINER_INSTANCE_NAME = "web-d1";
+const SOURCE_SLUGS = ["morceau", "showroom-montreal", "montreal-moderne", "le-centerpiece"];
 
 export class McmContainer extends Container {
   defaultPort = 8080;
@@ -14,6 +15,7 @@ export class McmContainer extends Container {
       APP_PORT: "8080",
       D1_BRIDGE_URL: "https://montreal-mcm.dalaque.workers.dev/internal/d1/query",
       D1_BRIDGE_TOKEN: env.D1_BRIDGE_TOKEN || "",
+      MCM_ADMIN_TOKEN: env.MCM_ADMIN_TOKEN || "",
     };
   }
 
@@ -47,7 +49,9 @@ export default {
   },
 
   async scheduled(_controller, env, ctx) {
-    ctx.waitUntil(callContainerCron(env, "/cron/refresh"));
+    for (const sourceSlug of SOURCE_SLUGS) {
+      ctx.waitUntil(callContainerCron(env, `/cron/refresh/${sourceSlug}`));
+    }
   },
 };
 
@@ -72,7 +76,9 @@ async function queryD1(request, env) {
   }
 
   try {
-    const result = await env.DB.prepare(payload.sql).bind(...payload.params).all();
+    const result = await env.DB.prepare(payload.sql)
+      .bind(...payload.params)
+      .all();
     return Response.json({
       success: result.success,
       results: result.results || [],
@@ -96,7 +102,9 @@ async function callContainerCron(env, path) {
   );
   const text = await response.text();
   if (!response.ok) {
-    throw new Error(`container cron ${path} returned HTTP ${response.status}: ${text.slice(0, 300)}`);
+    throw new Error(
+      `container cron ${path} returned HTTP ${response.status}: ${text.slice(0, 300)}`,
+    );
   }
   console.log(
     JSON.stringify({

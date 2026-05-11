@@ -26,6 +26,8 @@
                   <th class="pb-3 pr-4">{{ t("admin.status") }}</th>
                   <th class="pb-3 pr-4">{{ t("admin.listings") }}</th>
                   <th class="pb-3 pr-4">{{ t("admin.last_run") }}</th>
+                  <th class="pb-3 pr-4">{{ t("admin.last_job") }}</th>
+                  <th class="pb-3 pr-4">{{ t("admin.actions") }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -35,6 +37,23 @@
                     <td class="py-3 pr-4">{{ source.last_status or t("admin.not_run_yet") }}</td>
                     <td class="py-3 pr-4">{{ source.active_listing_count }}</td>
                     <td class="py-3 pr-4">{{ source.last_run_at or t("admin.pending") }}</td>
+                    <td class="py-3 pr-4">
+                      {% if source.last_job_status %}
+                        {{ source.last_job_status }}
+                        <span class="text-ink/45">
+                          · +{{ source.last_job_new_count or 0 }} / -{{ source.last_job_hidden_count or 0 }}
+                        </span>
+                      {% else %}
+                        {{ t("admin.pending") }}
+                      {% endif %}
+                    </td>
+                    <td class="py-3 pr-4">
+                      <form method="post"
+                            action="{{ url_for('admin_refresh_source', source_slug=source.slug) }}">
+                        <button class="text-xs font-semibold uppercase tracking-[0.16em] text-moss"
+                                type="submit">{{ t("admin.refresh_source") }}</button>
+                      </form>
+                    </td>
                   </tr>
                 {% endfor %}
               </tbody>
