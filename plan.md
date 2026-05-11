@@ -251,7 +251,44 @@ The `0.1.x` line is successful when:
 ## 0.2.x Development: Retention And Better Discovery
 
 The `0.2.x` line should make the product useful after the first visit. This is where saved searches,
-alerts, history, and richer browsing should land.
+alerts, history, richer browsing, and production-grade refresh orchestration should land.
+
+### Queued Refresh And Monitoring
+
+The `0.1.x` per-source cron model is adequate for the current four launch sources. It should become
+a queued model before the source list grows enough that refresh duration, retries, or partial
+failures become operationally noisy.
+
+Trigger conditions:
+
+- source count reaches roughly 8-12 active shops
+- total refresh duration regularly exceeds 2-3 minutes
+- one flaky source regularly delays or obscures other source refreshes
+- owner wants explicit alerts for missing, stuck, warning, or failing source refreshes
+
+Preferred architecture:
+
+- Cloudflare cron enqueues one refresh job per active source and returns quickly
+- Cloudflare Queues process source jobs with controlled concurrency and retries
+- Queue consumer calls the container's private per-source refresh endpoint or equivalent internal
+  refresh function
+- D1 `refresh_jobs` remains the durable status ledger for started, finished, success, warning,
+  failure, listing counts, hidden counts, and error messages
+- a later monitor cron checks D1 a couple of hours after the refresh window for missing, stuck, or
+  repeated-failure jobs
+
+Likely work:
+
+- add a Cloudflare Queue binding and producer in `src/worker.js`
+- add a queue consumer that runs one source refresh per message
+- keep direct per-source admin refresh available for manual operations
+- add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
+- document queue retry, dead-letter, and alerting behavior in `docs/operations.md`
+
+Decision:
+
+- Cloudflare Queues are the likely first step. Cloudflare Workflows should be reconsidered only if
+  refresh becomes multi-step orchestration with durable backoff, branching, or richer run history.
 
 ### Saved Searches And Alerts
 

@@ -1,93 +1,175 @@
-# Montreal MCM Phase 1
+# Montreal MCM
 
-Working MVP for the Phase 1 product in [plan.md](plan.md), grounded in the launch-source research in [research.md](research.md).
+Montreal MCM is a focused discovery site for Montreal-relevant mid-century modern furniture. It
+scrapes a small set of direct shop sources, stores listings in SQLite locally, and serves a bilingual
+English/French browsing UI with filters, favourites, listing detail pages, shop pages, and admin
+review tools.
 
-## Stack
+The product plan lives in [plan.md](plan.md), and source research lives in [research.md](research.md).
 
-- Python + Flask
-- SQLite locally
-- Cloudflare Workers + Containers + D1 in production
-- HTMX
-- Tailwind CSS
-- Native Web Components
+## Local Quick Start
 
-## Architecture
+Prerequisites:
 
-The codebase is intentionally small and split by responsibility:
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/)
+- Node.js + npm for Biome, Wrangler, and frontend checks
+
+Install dependencies:
+
+```bash
+uv sync --dev
+npm install
+```
+
+Create or refresh local listing data:
+
+```bash
+uv run app.py refresh
+```
+
+Run the local app:
+
+```bash
+uv run app.py
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+
+Local development uses `data/mcm.db`. That file is local development data and is ignored by git.
+
+## Useful Local Commands
+
+Refresh all sources:
+
+```bash
+uv run app.py refresh
+```
+
+Refresh one source:
+
+```bash
+uv run app.py refresh morceau
+uv run app.py refresh showroom-montreal
+uv run app.py refresh montreal-moderne
+uv run app.py refresh le-centerpiece
+```
+
+Run tests:
+
+```bash
+uv run python -m unittest tests.test_app
+```
+
+Run lint checks:
+
+```bash
+npm run lint
+```
+
+Format supported files:
+
+```bash
+npm run format
+```
+
+Install pre-commit hooks:
+
+```bash
+uv run pre-commit install
+```
+
+Run all hooks manually:
+
+```bash
+uv run pre-commit run --all-files
+```
+
+## Project Shape
+
+Core code is intentionally small and split by responsibility:
 
 - `mcm/app.py`: Flask app factory, request lifecycle, and route handlers
-- `mcm/db.py`: local SQLite setup and production D1 connection selection
-- `mcm/d1.py`: small DB-API-style client for the production Worker-to-D1 bridge
-- `mcm/repository.py`: listing/shop queries, favourites state, admin queries, and request filter parsing
+- `mcm/db.py`: local SQLite setup and production database connection selection
+- `mcm/d1.py`: small DB-API-style client for the production database bridge
+- `mcm/repository.py`: listing/shop queries, favourites state, admin queries, and filter parsing
 - `mcm/refresh.py`: source refresh orchestration and ingest writes
-- `mcm/i18n.py`: language helpers, localized display formatting, and shared translation utilities
-- `mcm/locales/`: per-language UI string dictionaries
+- `mcm/i18n.py`: language helpers, localized display formatting, and translation utilities
+- `mcm/locales/`: English and French UI string dictionaries
 - `mcm/sources.py`: source-specific scraping and parsing logic
 - `mcm/seed_data.py`: fallback data used when live source fetches fail
-- `src/worker.js`: Cloudflare Worker entrypoint, container proxy, cron trigger, and authenticated D1 bridge
-- `Dockerfile`: Flask container image for Cloudflare Containers
-- `migrations/`: D1 migrations applied with Wrangler
+- `templates/`: Jinja templates
+- `static/`: local JavaScript and CSS
+- `tests/`: fast unittest coverage using temporary SQLite databases
 
-The goal is that contributors can read routes first, then follow data access or source ingestion as needed without having to parse one large mixed-purpose module.
+Deployment-specific files live at the repository root and in `src/`, `migrations/`, and `docs/`.
 
-## What is implemented
+## What Is Implemented
 
-- Browseable listings feed
-- Shop index and shop detail pages
+- Browseable listings feed with filters and sorting
 - Listing detail pages
-- Filters and sorting
-- Session-based favourite listings and shops
+- Shop index and shop detail pages
+- Browser-session favourite listings and shops
 - Freshness labels and availability badges
-- English / French UI
-- Localized parsed price display independent of the source language
+- English/French UI
+- Localized parsed price display independent of source language
 - Localized first-seen dates and plural-aware listing counts
-- Default sans-serif item titles and wordmark, with a restrained utility-focused UI
-- Admin dashboard with:
-  - source list and crawl health
-  - failed refresh review
-  - listing inspection
-  - manual category / availability overrides
-  - duplicate candidate queue
+- Admin dashboard with source health, failed refresh review, listing inspection, manual overrides,
+  duplicate candidates, and per-source refresh actions
 
-## Source ingestion
+## Source Ingestion
 
-The app currently includes active source definitions for four direct-shop sources:
+The active launch sources are:
 
 1. Morceau
 2. Showroom Montreal
 3. Montreal Moderne
 4. Le Centerpiece
 
-It tries live fetches first, then falls back to curated seed data when a source is unreachable or parsing fails. Fallback data can bootstrap an empty local database, but source failures do not deactivate existing inventory for a shop that already has records.
+The app tries live fetches first, then falls back to curated seed data when a source is unreachable
+or parsing fails. Fallback data can bootstrap an empty local database, but source failures do not
+deactivate existing inventory for a shop that already has records.
 
-The broader research-backed next sources still live in `research.md` and `plan.md`.
+Source additions should stay conservative and review-friendly. Preserve provenance, source URLs,
+admin notes, overrides, and parser evidence instead of hand-editing derived listing data.
 
-## Current UI conventions
+## UI Notes
 
-- Listing and detail item names use the default sans-serif stack while the display-font direction is reconsidered.
-- The wordmark also uses the default sans-serif stack with a restrained green treatment; navigation, filters, metadata, prices, and controls stay utility-focused.
-- Listing cards show image, shop, item name, favourite toggle, localized price or quote fallback, category, and first-seen date.
-- Repeated Montreal location and availability badges are intentionally omitted from listing cards while all active launch sources are Montreal-local or Montreal-first.
-- Detail pages keep fuller provenance: availability badges, item number, shop, location, category, materials, dimensions, designer/maker, era, condition, shipping note, freshness, and source links.
-- User-facing prices render from parsed `price_value` and the active UI language. Raw source price strings remain available to admin/provenance flows.
-- Known Showroom Montreal price suffixes are normalized for display, for example `/ 6`, `/ 4`, `/ paire`, `ch.`, and `/ l'ens.`.
-- Source titles, source notes, dimensions, and designer/maker text remain source-faithful unless we have explicit structured parsing.
+- Tailwind is loaded from the CDN for now.
+- HTMX handles progressive interactions.
+- Native Web Components are used where small client-side components help.
+- Favourites are stored in the browser session rather than user accounts.
+- Listing cards show image, shop, item name, favourite toggle, localized price or quote fallback,
+  category, and first-seen date.
+- Detail pages keep fuller provenance: item number, source link, shop, location, category,
+  materials, dimensions, designer/maker, era, condition, shipping note, and freshness.
 
-## Run
+## Tooling
 
-Local development uses `data/mcm.db`. Production does not use or ship this file.
+Python uses Ruff, Jinja templates use djLint, and JavaScript/CSS files in `static/` and `src/` use
+Biome. The combined npm scripts run the project-standard checks:
 
 ```bash
-uv sync --dev
-uv run app.py refresh
-uv run app.py
+npm run lint
+npm run format
 ```
 
-Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+The individual commands are:
 
-## Cloudflare deployment
+```bash
+uv run ruff check .
+uv run ruff format .
+uv run djlint templates --lint
+uv run djlint templates --reformat
+npx biome check static src
+npx biome check --write static src
+```
 
-Production runs the existing Flask app in a Cloudflare Container. The Worker owns the D1 binding and exposes an authenticated internal bridge to the container, so the deployed Flask app reads and writes D1 instead of a local SQLite file.
+## Cloudflare Deployment
+
+Production runs the Flask app in a Cloudflare Container. The Worker owns the D1 binding and exposes
+an authenticated internal bridge to the container, so the deployed Flask app reads and writes D1
+instead of local SQLite. The production image intentionally excludes `data/mcm.db`.
 
 See [docs/operations.md](docs/operations.md) for the deploy checklist, health checks, D1 backup
 command, and bad-deploy recovery steps.
@@ -102,15 +184,7 @@ Current production resources:
 - Custom domains configured in `wrangler.jsonc`: `montrealmcm.ca`, `www.montrealmcm.ca`
 - Cron: `23 9 * * *`, which is 09:23 UTC daily
 
-Install deployment tooling:
-
-```bash
-uv sync --dev
-npm install
-npx wrangler whoami
-```
-
-Create or update Cloudflare secrets:
+Required secrets:
 
 ```bash
 npx wrangler secret put MCM_SECRET_KEY
@@ -118,9 +192,9 @@ npx wrangler secret put D1_BRIDGE_TOKEN
 npx wrangler secret put MCM_ADMIN_TOKEN
 ```
 
-Use long random values for `D1_BRIDGE_TOKEN` and `MCM_ADMIN_TOKEN`. `D1_BRIDGE_TOKEN`
-protects the Worker-to-D1 bridge, and `MCM_ADMIN_TOKEN` protects admin and deep-health routes in
-production. Do not commit secret values.
+Use long random values for `D1_BRIDGE_TOKEN` and `MCM_ADMIN_TOKEN`. `D1_BRIDGE_TOKEN` protects the
+Worker-to-D1 bridge, and `MCM_ADMIN_TOKEN` protects admin and deep-health routes in production. Do
+not commit secret values.
 
 Apply D1 migrations:
 
@@ -128,14 +202,14 @@ Apply D1 migrations:
 npx wrangler d1 migrations apply montreal-mcm --remote
 ```
 
-Deploy the Worker and container:
+Deploy:
 
 ```bash
 npm run deploy:dry-run
 npm run deploy
 ```
 
-Verify production health and D1 state:
+Verify production:
 
 ```bash
 curl -fsS https://montreal-mcm.dalaque.workers.dev/healthz
@@ -144,8 +218,6 @@ curl -fsS -o /tmp/mcm-home.html https://montreal-mcm.dalaque.workers.dev/
 npx wrangler d1 execute montreal-mcm --remote --command "SELECT COUNT(*) AS listings FROM listings;"
 ```
 
-The production image intentionally excludes `data/mcm.db`. If the homepage works after deployment, the app is reading through D1.
-
 Admin routes are open in local development when `MCM_ADMIN_TOKEN` is unset. In production, set
 `MCM_ADMIN_TOKEN` and authenticate with HTTP Basic auth using any username and the token as the
 password, or send `Authorization: Bearer <token>` / `X-MCM-Admin-Token: <token>`.
@@ -153,60 +225,3 @@ password, or send `Authorization: Bearer <token>` / `X-MCM-Admin-Token: <token>`
 Cloudflare cron triggers one private Worker-to-container refresh request per launch source. Each
 source refresh records `refresh_jobs`, `crawl_runs`, and any `crawl_failures` rows in D1 so the
 admin dashboard can show source-level status.
-
-## Lint and format
-
-Python uses Ruff, Jinja templates use djLint, and JavaScript/CSS files in `static/` and `src/`
-use Biome.
-
-```bash
-uv run ruff check .
-uv run ruff format .
-uv run djlint templates --lint
-uv run djlint templates --reformat
-npm install
-npm run lint
-npm run format
-```
-
-## Tests
-
-The fast smoke test suite uses a temporary SQLite database and does not depend on live source fetches.
-
-```bash
-uv run python -m unittest tests.test_app
-```
-
-`uv` manages the Python environment and dev tools. Biome still lives in the Node ecosystem, so you will need Node.js and `npm` installed for the frontend lint/format commands.
-
-If you want one command per workflow, the `package.json` scripts run all three tools together:
-
-```bash
-npm run lint
-npm run format
-```
-
-## Pre-commit hooks
-
-The repo includes a `.pre-commit-config.yaml` so formatting and linting can run automatically on each commit.
-
-```bash
-uv sync --dev
-npm install
-uv run pre-commit install
-uv run pre-commit run --all-files
-```
-
-The hooks use the same tools as local development and CI:
-
-- `ruff format`
-- `ruff check`
-- `djlint --reformat`
-- `djlint --lint`
-- `biome check --write`
-
-## Notes
-
-- Tailwind is loaded from the CDN for this first pass.
-- Favourites are currently stored in the browser session rather than through a full account system.
-- The scraper layer is intentionally conservative and stores manual-review-friendly admin notes and overrides because source markup will drift.
