@@ -1,126 +1,79 @@
-# Montreal MCM Listings Site Plan
+# Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-05-10
+Updated: 2026-05-11
+Current release: `0.1.0`
 
 ## Purpose
 
-This document turns the research in [research.md](research.md) into a practical product and delivery plan.
+This document is the durable roadmap for Montreal MCM: a focused discovery site for resale and
+vintage mid-century modern furniture that is available in Montreal or can realistically be shipped
+to Montreal.
 
-This started as a planning document before implementation.
+The project started as a planning document. It now has a live MVP, so this file should stay
+practical: current facts, release tracks, risks, and decisions that should survive chat context loss.
 
-The project now has a working MVP foundation, so this document should be read as both:
+## Product Thesis
 
-- the original product plan
-- the current roadmap from the codebase that now exists
+The site should not try to out-marketplace `1stDibs`, `Chairish`, or `Pamono`.
 
-## Current Build Status
+It should win by being:
 
-Already implemented:
+- Montreal-specific
+- direct-source-first
+- cleaner and more focused than broad vintage marketplaces
+- better at surfacing local Scandinavian, Danish, teak, and walnut inventory
+- better at showing current availability from smaller local shops
 
-- listings feed with filters and sorting
+The user promise is simple: browse a focused, live-looking catalogue of Montreal-relevant MCM
+inventory without visiting each shop one by one.
+
+## Current State
+
+Release `0.1.0` is live and includes:
+
+- listings feed with filtering and sorting
 - listing detail pages
-- shop pages
-- favourites for listings and shops
-- browser-session favourites without user accounts
+- shop index and shop detail pages
+- browser-session favourite listings and shops
 - freshness and availability labels
 - bilingual English / French UI
 - localized parsed price display, first-seen dates, and plural-aware listing counts
-- default sans-serif item titles and current wordmark, with external Google font loading removed for now
 - admin tools for refreshes, failures, overrides, and duplicate review
+- Cloudflare Worker + Container deployment
+- Cloudflare D1 production database
+- daily Cloudflare cron trigger
 
-## Cloudflare-Native Deployment Track
+The local development app remains Flask + SQLite at `data/mcm.db`.
 
-The planned production direction is Cloudflare-native rather than a traditional Flask host.
+The production app runs the same Flask code in a Cloudflare Container and reads/writes D1 through an
+authenticated Worker bridge. The production container must not depend on local disk for persistent
+data.
 
-Deployment state as of 2026-05-10:
+## Production Facts
 
-- Cloudflare Worker `montreal-mcm` is deployed.
-- Container application `montreal-mcm-mcmcontainer` exists and is active.
-- Live workers.dev URL after account subdomain change:
-  `https://montreal-mcm.dalaque.workers.dev`
-- Old workers.dev URL `https://montreal-mcm.pannes-historiques-dq.workers.dev` no longer resolves.
-- Immediately after the dashboard change, plain HTTP on `montreal-mcm.dalaque.workers.dev`
-  returned 200, while HTTPS was still returning a TLS handshake failure. Expect workers.dev TLS
-  propagation to settle, then recheck HTTPS.
-- Cloudflare accepted custom-domain routes for `montrealmcm.ca` and `www.montrealmcm.ca`.
-- Public DNS still returns NXDOMAIN for `montrealmcm.ca`, so the registrar/registry side has not
-  propagated or the registered domain string needs confirmation.
+- GitHub repo: `dlq/mcm-montreal`
+- Release tag `0.1.0`: Cloudflare container deployment baseline
+- Cloudflare Worker: `montreal-mcm`
+- Container application: `montreal-mcm-mcmcontainer`
+- Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
+- Custom domains configured in Wrangler: `montrealmcm.ca`, `www.montrealmcm.ca`
+- D1 database: `montreal-mcm`
+- D1 binding: `DB`
+- D1 database id: `564167b2-abc1-4a66-8a26-0c95153eb72b`
 - No R2 bucket is configured for this app.
-- `MCM_SECRET_KEY` is set as a Cloudflare Worker secret.
-- D1 database `montreal-mcm` exists with binding `DB` and database id
-  `564167b2-abc1-4a66-8a26-0c95153eb72b`.
+- Worker secrets required: `MCM_SECRET_KEY`, `D1_BRIDGE_TOKEN`
+- Cron trigger: `23 9 * * *`, which is 09:23 UTC daily. In Montreal/Toronto time that is 5:23 AM
+  during daylight time and 4:23 AM during standard time.
 - Local `data/mcm.db` was refreshed and imported into D1 on 2026-05-10.
-- Current D1 core-table counts after import: 6 shops, 850 listings, 116 crawl runs, 17 crawl
-  failures, 25 listing identity reviews.
-- Worker cron trigger is `23 9 * * *`, which is 09:23 UTC daily. In Montreal/Toronto time that is
-  5:23 AM during daylight time and 4:23 AM during standard time.
-- The Flask container now reads and writes through an authenticated Worker D1 bridge in production.
-  D1 is populated and bound; the deployed container uses `D1_BRIDGE_URL` / `D1_BRIDGE_TOKEN` and
-  no longer includes `data/mcm.db` in the image.
+- D1 core-table counts after import: 6 shops, 850 listings, 116 crawl runs, 17 crawl failures, 25
+  listing identity reviews.
 - Legacy local-account favourite tables (`users`, `favourite_listings`, `favourite_shops`) are not
-  part of the production model. D1 migration `0002_drop_legacy_favourites.sql` drops them if present,
-  and the local development database copy has also had those tables removed.
-- The current scheduled refresh path is too long-running to trust as a single request/response cron
-  call: a manual live refresh stayed open for several minutes. Before relying on production cron,
-  split refresh into queue-backed source jobs. The Worker cron should enqueue one job per source,
-  return quickly, and workers/container endpoints should process each source independently while
-  recording progress, failures, and last successful refresh in D1.
+  part of the production model. D1 migration `0002_drop_legacy_favourites.sql` drops them if present.
 
-Observed current shape:
+## Active Source Scope
 
-- The MVP is a Flask/Jinja application with SQLite at `data/mcm.db`.
-- The schema is straightforward SQL and should map well to Cloudflare D1.
-- Server-side templates, sessions, admin routes, and refresh jobs need deliberate porting because
-  Cloudflare Workers are not a drop-in Flask runtime.
-
-Assumption:
-
-- Keep the product behavior close to the current MVP while migrating runtime and persistence.
-- Do not rewrite in TypeScript for deployment.
-- Evaluate two Python-first Cloudflare paths before committing:
-  - Cloudflare Container running the existing Flask app, with D1/R2 for persistence.
-  - Cloudflare Python Worker with D1, if the request/DB adapters stay small.
-- Treat the current Python code as the source implementation, but expect adapters around request
-  handling, D1 access, sessions, static assets, and scheduled refreshes.
-
-Migration checklist:
-
-1. Prototype the lowest-risk Cloudflare Container path by running the existing Flask app image with
-   D1/R2-backed persistence and no local-disk dependency.
-2. In parallel or afterward, prototype a single Python Worker route using `workers-py` / `pywrangler`
-   to measure adapter complexity.
-3. Confirm whether Flask can be adapted acceptably in Python Workers; if not, do not force a route
-   framework migration unless it is clearly less work than the Container path.
-4. Extract the current SQLite schema into versioned D1 migrations.
-5. Create a D1 database and import existing local data from `data/mcm.db`.
-6. Add a D1-backed repository adapter that preserves the existing query/update contract as much as
-   practical, replacing direct `sqlite3.Connection` use in the Worker path. First version uses an
-   authenticated Worker bridge endpoint because D1 is a Worker binding, not a direct container mount.
-7. Port or adapt read-only public routes first: listings, listing detail, shops, shop detail, favourites page shell.
-8. Serve static CSS, JS, and images through Workers static assets or the Flask container, depending
-   on the chosen path.
-9. Replace Flask session favourites with signed cookies or a small D1-backed anonymous favourite token.
-10. Port admin review routes behind Cloudflare Access or another explicit admin gate.
-11. Port source refresh to a Worker `scheduled()` handler, Queue, Workflow, or container-triggered
-    task, splitting long-running ingestion if source
-    fetches exceed normal Worker execution limits.
-12. Keep the Flask app as the local/reference implementation until route parity, data parity, and
-    refresh behavior are verified.
-
-Initial risk areas:
-
-- Flask is WSGI-oriented; Python Workers document a native `fetch` entrypoint and FastAPI/ASGI
-  support, so a thin compatibility adapter may or may not be worth maintaining.
-- D1 is accessed through Workers bindings, not through a local SQLite file, so the existing
-  `sqlite3` repository layer needs an async D1 path or adapter.
-- Source refresh code uses synchronous fetching today; Python Workers require async-compatible HTTP
-  clients such as `httpx`, `aiohttp`, or the Workers `fetch()` API.
-- Containers preserve the existing Flask runtime better, but they have container cold starts, active
-  runtime billing, and ephemeral disk; persistence must stay in D1/R2 rather than local SQLite.
-- Admin writes and refreshes must preserve provenance, overrides, and conservative fallback behavior.
-
-Currently active launch sources in code:
+Current active launch sources in code:
 
 1. Morceau
 2. Showroom Montreal
@@ -130,921 +83,379 @@ Currently active launch sources in code:
 Morceau should be treated as Vintage-collection-only ingestion. Its broader furniture and
 new-arrivals collections include current-production design inventory outside the app scope.
 
-Intentionally deferred from the originally recommended first-wave source set:
+Deferred from the originally recommended first-wave source set:
 
 1. Green Wall Vintage
 2. Vintage Home Boutique
 3. Maison Singulier
 
-Green Wall Vintage and Vintage Home Boutique are not Montreal-local enough for the current early build, and Maison Singulier remains a later source candidate.
+Green Wall Vintage and Vintage Home Boutique are not Montreal-local enough for the current early
+build. Maison Singulier remains a later candidate.
 
-The biggest remaining product gaps versus the original roadmap are:
+Current source inventory may include some relevant lighting and decor from direct-shop pages. The
+product scope should remain furniture-first until there is a deliberate decision to include selected
+lighting and decor as first-class categories.
 
-- saved searches
-- alerts and notifications
-- explicit price / availability history
-- richer shop and discovery pages
-- editorial / SEO content
-- second-wave source expansion
+## 0.1.x Development: Stabilize The Live MVP
 
-Current source inventory may include some relevant lighting and decor from direct-shop pages.
-Whether the public scope should remain furniture-first or explicitly include selected lighting
-and decor remains an open product decision.
+The `0.1.x` line should make the live product dependable. Prefer small, concrete fixes over broad
+feature expansion.
 
-Implementation note for source expansion: listing cards can omit repeated `Montreal, QC`
-while all launch inventory is Montreal-local, but card-level location should come back when
-adding Ottawa, Toronto, Quebec City, or other regional vintage shops that ship to Montreal.
+### Deployment And Operations
 
-## Product Goal
+Questions to settle:
 
-Create a site focused on resale and vintage mid-century modern furniture that is available in Montreal or can realistically be shipped to Montreal.
+- Is `montrealmcm.ca` resolving consistently, and should `www` redirect to apex or stay equivalent?
+- Is the current Worker-to-container-to-D1 bridge fast enough for public browse traffic?
+- Do we need a cheaper/faster read path for high-traffic pages, such as cached rendered pages or
+  batched D1 bridge calls?
+- What is the minimum monitoring needed before sharing the site more broadly?
 
-The product should make it easier than existing broad marketplaces to:
+Likely work:
 
-- discover local and Canada-friendly inventory
-- compare pieces from multiple shops in one place
-- track interesting items before they sell
-- revisit saved pieces and shops
-- understand whether a listing is likely available and shippable
+- verify custom-domain DNS and TLS
+- add a small deployment checklist to keep local, D1, and live health checks repeatable
+- document recovery steps for a bad deploy
+- add basic uptime checks or a scheduled health monitor
+- make `/healthz` verify app process health without requiring D1
+- add a separate deeper health endpoint or admin check that verifies D1 connectivity
 
-## Core Product Thesis
+### Refresh Reliability
 
-The site should not try to out-marketplace `1stDibs`, `Chairish`, or `Pamono`.
+The current cron calls the container refresh endpoint directly. It writes to D1, but source refresh
+can take long enough that it is not safe to treat as a simple request/response cron forever.
 
-Instead, it should win by being:
+Questions to settle:
 
-- Montreal-specific
-- direct-source-first
-- cleaner and more focused than general vintage marketplaces
-- better at surfacing local Scandinavian / Danish / teak / walnut inventory
-- better at showing current availability from smaller local shops
+- Should refresh run as one source per queue message, one source per scheduled request, or a
+  Cloudflare Workflow?
+- How much partial-refresh behavior is acceptable if one source fails?
+- What status should the admin dashboard show while refresh is running?
+- Should refresh failures alert the owner, or is admin-dashboard visibility enough for `0.1.x`?
 
-## Recommended Launch Scope
+Likely work:
 
-Start narrow.
+- split refresh into per-source jobs
+- make the cron enqueue or trigger source jobs and return quickly
+- record refresh job status in D1
+- expose last successful refresh per source in admin
+- preserve existing conservative behavior: source failures should not deactivate existing inventory
+  when a shop already has records
 
-Launch with:
+### Admin Safety
 
-- furniture only
-- available items only
-- direct-shop listings first
-- Montreal shops plus a small set of Canada-friendly shops
-- simple item cards and item detail pages
-- favourites for users
-- regular listing refreshes
+Admin routes are useful but should not remain casually reachable as production traffic grows.
 
-Avoid at launch:
+Questions to settle:
 
-- lighting and decor as primary inventory categories
-- broad marketplace ingestion beyond research/testing
-- auctions
-- dealer logins
-- user-submitted listings
-- price prediction or valuation tools
+- Use Cloudflare Access, a simple signed admin token, or another owner-only gate?
+- Which admin routes should be public-impossible versus merely hidden?
+- Should manual overrides require a lightweight audit trail?
 
-## Initial Source Scope
+Likely work:
 
-Original recommended first-wave source set:
+- protect refresh and admin routes
+- keep `/cron/*` and `/internal/*` unguessable and non-public
+- keep manual notes, availability overrides, category overrides, and duplicate review durable in D1
 
-1. Morceau
-2. Showroom Montreal
-3. Montreal Moderne
-4. Green Wall Vintage
-5. Vintage Home Boutique
-6. Le Centerpiece
+### Data And Schema Hygiene
 
-Second-wave sources:
+Questions to settle:
 
-1. Maison Singulier
-2. Urbano Vintej
-3. Banana Lab
+- Do we need a D1 backup/export routine before adding more write-heavy features?
+- Should local SQLite migrations be formalized, or is D1 migration history enough for now?
+- Which fields are genuinely source-derived versus admin-authored?
 
-Manual / later sources:
+Likely work:
 
-1. Chez Lamothe
-2. Style Labo Antiquites
-3. Trianon Boutique
-4. Eco-Depot Montreal
-5. Antiquites Van Horne
-6. Bien Beau
+- add a repeatable D1 export/backup command
+- keep migrations small and reviewable
+- make seed/import paths explicit and avoid hand-editing derived data
+- keep local `data/mcm.db` as development data, not a source of permanent facts
 
-## User Types
+### Source Parser Maintenance
 
-### 1. Casual Browser
+Questions to settle:
 
-Wants:
+- Should `mcm/sources.py` be split before adding more sources?
+- Which parser failures deserve fallback data versus a visible source warning?
+- Are direct-shop pages enough for the next few releases, or do some sources require Shopify/Wix
+  helpers?
 
-- a beautiful feed of interesting pieces
-- the ability to browse by room or type
-- simple price visibility
-- easy click-through to seller
+Likely work:
 
-### 2. Serious Buyer
+- split source definitions, fetch helpers, normalization helpers, and parser-specific code
+- add source-level parser tests for current sources
+- keep provenance and source URLs review-friendly
+- clean legacy Showroom fallback and override URLs so seeded data follows the same source-page URL
+  convention as live parsing
 
-Wants:
+### UX Polish
 
-- only currently available items
-- ability to filter by price, dimensions, material, shop, and shipping
-- favourites and saved searches
-- confidence that the item is still live
+Questions to settle:
 
-### 3. Collector / Design Enthusiast
+- Are listing cards dense enough for repeated browsing?
+- Should cards show location only once non-Montreal sources are added?
+- Should the public scope include lighting/decor now, or stay furniture-first?
 
-Wants:
+Likely work:
 
-- designer and maker names
-- era and provenance details
-- cleaner discovery than mass marketplaces
-- rare and high-quality local inventory
+- improve empty/filter states
+- refine mobile filter ergonomics
+- add a clear stale-data/freshness presentation where useful
+- normalize listing-grid thumbnails enough that mixed source image canvases feel intentional
 
-### 4. Interior Designer / Trade User
+### 0.1.x Success Criteria
 
-Wants:
+The `0.1.x` line is successful when:
 
-- efficient cross-shop discovery
-- fast filtering
-- ability to maintain private favourites lists
-- confidence around dimensions, style, and availability
+- local development, deploy dry-run, Cloudflare deploy, and live health checks are routine
+- the production app clearly reads/writes D1, not container disk
+- refresh is reliable enough to trust daily
+- admin paths are protected
+- current source inventory feels dependable enough for repeated browsing
 
-## User Experience Principles
+## 0.2.x Development: Retention And Better Discovery
 
-- Make the site feel curated, not cluttered.
-- Keep price and photo visible immediately.
-- Make the path back to the original seller obvious.
-- Clearly separate confirmed data from inferred data.
-- Show availability freshness so users know how current a listing is.
-- Do not overwhelm users with low-quality or irrelevant decor.
+The `0.2.x` line should make the product useful after the first visit. This is where saved searches,
+alerts, history, and richer browsing should land.
 
-## Launch Features
+### Saved Searches And Alerts
 
-### Listings Feed
+Questions to settle:
 
-Users should be able to browse all current listings in one place.
+- Are anonymous saved searches enough, or do alerts force accounts/email identity?
+- Should alerts be email-only, RSS-like feeds, or browser/session notifications first?
+- What matching rules are useful without becoming noisy?
 
-Each card should include:
+Likely work:
 
-- primary image
-- title
-- localized price or localized quote fallback
-- currency
-- shop name
-- category
-- first seen date
-- favourite button
-
-Current implementation note:
-
-- the desktop listings page is acceptable for now after the May 8 UI pass: compact sticky filters, no redundant catalog intro, sticky result count / active-filter status, and cleaner card-first browsing
-- mobile still needs a dedicated detailed review before launch, especially filter drawer ergonomics, first-screen density, sticky status behavior, and whether the current default-font wordmark should be replaced with a stronger display face
-- repeated `Montreal, QC`, card-level availability badges, and `Checked today` are omitted from listing cards while the active launch inventory is Montreal-local or Montreal-first
-- card-level location should return when adding Ottawa, Toronto, Quebec City, or other regional vintage shops that ship to Montreal
-
-### Filters
-
-Launch filters should include:
-
-- shop
-- location
-- price range
-- category
-- material
-- designer / maker
-- in stock / available
-
-Current implementation note:
-
-- the old "Ships to Montreal" checkbox was removed because shipping to Montreal is part of the site premise
-
-Optional early filters if data quality is good enough:
-
-- era
-- dimensions
-- colour
-
-### Sorting
-
-Users should be able to sort by:
-
-- newest found
-- most recently checked
-- price low to high
-- price high to low
-- recently added by source
-
-### Item Detail Page
-
-Each item page should include:
-
-- all available images
-- full title
-- localized price and currency, or a localized lower-prominence quote fallback
-- shop name
-- source link
-- location
-- category
-- materials
-- dimensions
-- maker / designer
-- era / approximate decade
-- condition
-- shipping note
-- freshness and first seen date
-- favourite button
-
-Helpful detail page labels:
-
-- `Available`
-- `Possibly sold`
-- `Quote required for shipping`
-- `Ships across Canada`
-- `Montreal local source`
-
-### Shop Pages
-
-Each shop should have a profile page with:
-
-- short description
-- location
-- shipping summary
-- source site link
-- active listing count
-- categories carried
-- notes about style focus
-
-### Favourites
-
-Users should be able to favourite:
-
-- listings
-- shops
-
-Current implementation status:
-
-- users can favourite listings and shops now
-- favourites are stored in the browser session
-- there is no real account-backed persistence yet
-
-Minimum favourites behavior:
-
-- save listing in browser session
-- remove listing from browser session
-- see all saved listings in one dashboard
-
-Useful additions:
-
-- saved shops page
-- notification when a favourited item disappears
-- notification when a favourited shop posts new inventory
-
-### Saved Searches
-
-Not required for day one, but highly recommended early.
-
-Examples:
-
-- `teak sideboard under $2000`
-- `Hans Wegner chairs`
-- `Montreal only`
-- `Ottawa dining table that ships to Montreal`
-
-### Freshness / Status Indicators
-
-Every listing should have a freshness signal.
-
-Current implementation:
-
-- listing cards show localized `Since {first_seen_date}`
-- item detail pages show freshness plus localized first seen date
-- sold out and removed items can still be represented internally and through availability filtering
-
-Possible future states:
-
-- `Unavailable / possibly sold`
-- `Needs refresh`
-
-This is important because resale inventory changes fast.
-
-## Post-Launch Features
-
-### Alerts
-
-Users can subscribe to:
-
-- new listings matching a saved search
-- price changes
-- listing status changes
-- new inventory from a saved shop
-
-### Collections / Editorial Curation
-
-Examples:
-
-- Best Teak Sideboards in Montreal
-- Dining Sets Under $2,500
-- Scandinavian Lounge Chairs
-- Small-Space Pieces for Montreal Apartments
-
-This would help differentiate from generic marketplaces.
-
-### Compare Mode
-
-Allow users to compare multiple items side-by-side by:
-
-- price
-- dimensions
-- material
-- shop
-- shipping notes
-
-### History / Change Tracking
-
-For each listing, store:
-
-- first seen date
-- last seen date
-- price changes
-- availability changes
-
-This helps:
-
-- user trust
-- debugging
-- future editorial features
-
-### Admin Review Queue
-
-Internal tools should exist to review:
-
-- failed refreshes
-- duplicate listings
-- suspicious price parsing
-- broken images
-- incorrect category assignments
-
-## Listing Data Model
-
-### Core Fields
-
-- `listing_id`
-- `source_shop_id`
-- `source_shop_name`
-- `source_listing_url`
-- `title`
-- `normalized_title`
-- `price_raw`
-- `price_value`
-- `currency`
-- `primary_image_url`
-- `additional_image_urls`
-- `availability_status`
-- `shipping_scope`
-- `ships_to_montreal`
-- `last_seen_at`
-- `last_checked_at`
-- `first_seen_at`
-
-### Descriptive Fields
-
-- `category`
-- `subcategory`
-- `designer`
-- `maker`
-- `era`
-- `materials`
-- `dimensions_text`
-- `width`
-- `depth`
-- `height`
-- `condition_text`
-- `location_text`
-- `source_description`
-
-### Operational Fields
-
-- `ingest_source_type`
-- `parse_confidence`
-- `dedupe_group_id`
-- `is_active`
-- `is_featured`
-- `manual_notes`
-
-### Current Implementation Caveats To Revisit
-
-- Source parser organization needs a public-repo cleanup pass. Split `mcm/sources.py` into a package with source definitions, shared HTTP/fetch helpers, shared normalization/extraction helpers, Shopify parsing, Showroom parsing, and Montreal Moderne parsing before adding more source types.
-- SQLite setup currently uses `CREATE TABLE IF NOT EXISTS` without schema versioning. Add a minimal migration mechanism with a schema version table before contributors depend on long-lived local databases.
-- Admin routes are local-MVP tools and are not protected by authentication. Before deployment, move refresh/admin operations behind authentication or a non-public operational path.
-- `subcategory` exists in SQLite but is not meaningfully populated yet.
-- `width`, `depth`, and `height` exist in SQLite but are not yet extracted into structured numeric fields for most sources.
-- `dimensions_text` is stored, but dimension parsing and normalization still need a dedicated hardening pass.
-- `dedupe_group_id` exists in SQLite but is not yet actively assigned by the ingest pipeline.
-- some descriptive fields remain source-dependent and incomplete, especially where the source pages do not expose structured metadata cleanly.
-- `designer` and `maker` are still listing-level raw strings, not normalized entities. The browse filter now applies strict display cleanup, alias-style dedupe, and repeated-evidence thresholds to keep the dropdown usable, but the durable fix is a `creators` or `design_entities` model with aliases, source evidence, manual review, and canonical display names.
-- listing-grid thumbnails need an image-normalization pass. CSS-only object fitting helps most items but does not consistently produce equal top/bottom/side whitespace for mixed source canvases, especially Le Centerpiece images. Future work should generate or cache normalized thumbnails with a consistent canvas and explicit crop/contain policy, potentially with source-specific rules.
-
-## Shop Data Model
-
-- `shop_id`
-- `name`
-- `website`
-- `city`
-- `province`
-- `country`
-- `is_montreal_local`
-- `shipping_summary`
-- `source_type`
-- `crawl_priority`
-- `notes`
-- `active`
-
-## Availability Rules
-
-The product needs a simple, trustworthy listing-state model.
-
-Recommended states:
-
-- `available`
-- `sold_out`
-- `unknown`
-- `removed`
-
-Rules:
-
-- if source explicitly says sold out, mark `sold_out`
-- if listing disappears after prior availability, mark `removed`
-- if page still exists but state is unclear, mark `unknown`
-
-UI rule:
-
-- hide `sold_out` and `removed` from main browse by default
-- keep them in internal history
-
-## Refresh Strategy
-
-This is one of the most important product decisions.
-
-### Target Refresh Frequency
-
-For launch sources:
-
-- high-priority Montreal shops: daily
-- Canada-wide secondary shops: daily or every 48 hours
-
-For second-wave sources:
-
-- every 48 to 72 hours
-
-For manual or unstable sources:
-
-- weekly or manual review
-
-### Refresh Workflow
-
-1. discover listing URLs from source collections
-2. fetch listing pages
-3. parse structured fields
-4. compare against prior snapshot
-5. update item status
-6. record changes
-7. flag suspicious parse results for review
-
-### What To Track On Refresh
-
-- new item found
-- price changed
-- listing removed
-- sold-out marker appeared
-- image changed
-- title changed
-
-## Duplicate Handling
-
-Duplicates may happen if:
-
-- the same item appears on a direct site and a marketplace
-- the same shop posts inventory to Facebook Marketplace under a personal or alternate seller account
-- the same pair of chairs appears in multiple versions
-- a shop republishes an item under a new URL
-
-Initial dedupe strategy:
-
-- prefer direct-shop listing over marketplace listing
-- match by title similarity plus image similarity plus dimensions
-- keep duplicates separate internally until confidence is high
-
-User-facing rule:
-
-- if duplicate confidence is low, do not merge automatically in the UI
-
-## Category Strategy
-
-Launch categories:
-
-- sideboards / credenzas
-- dressers / commodes
-- dining tables
-- dining chairs
-- lounge chairs
-- sofas
-- coffee tables
-- desks
-- bookshelves / wall units
-- nightstands
-- beds / bedroom storage
-
-Later:
-
-- lighting
-- rugs
-- decor
-- bar carts
-- mirrors
-
-## Search Strategy
-
-Users should be able to search by:
-
-- title
-- designer
-- maker
-- material
-- category
-- shop
-
-Common high-value keywords:
-
-- teak
-- rosewood
-- walnut
-- Danish
-- Scandinavian
-- Hans Wegner
-- Grete Jalk
-- Kai Kristiansen
-- sideboard
-- credenza
-- wall unit
-
-## Favourite System Plan
-
-### Launch Version
-
-- save listing
-- remove listing
-- view saved listings page
-- save shop
-- store favourites in the browser session without a user account
-
-### Early Upgrade
-
-- tag favourites by room or project
-- archive sold favourites
-
-### Notification Upgrade
-
-- email when favourited listing goes unavailable
-- email when price changes
-- email when saved search gets a new match
-
-## Accounts
-
-At minimum, accounts should support:
-
-- email login
-- saved favourites
-- saved shops
-- saved searches
+- saved search creation from current filters
+- saved search management page
 - alert preferences
+- notification queue
+- email when a saved search gets a new match
+- email when a saved item changes status or appears removed
 
-Current implementation status:
+### Accounts Or Durable Anonymous Identity
 
-- not implemented yet
-- favourites currently use browser-session storage rather than account-backed persistence
-- the current SQLite schema does not include user/account tables
+Browser-session favourites are enough for the MVP, but they are fragile across devices.
 
-Optional later additions:
+Questions to settle:
 
-- project boards
-- design-trade profile
-- private notes on saved items
+- Is a full account system worth it, or should we use signed anonymous tokens first?
+- Should favourites, saved shops, and saved searches share one durable identity model?
+- What personally identifiable data should be avoided until alerts require email?
 
-## Admin / Internal Tools
+Likely work:
 
-Internal tools matter because source quality will vary.
+- durable favourite token or lightweight account model
+- migration path from session favourites
+- saved shops that survive browser session loss
+- optional email capture only when needed for alerts
 
-Must-have admin features:
+### Price And Availability History
 
-- source list and crawl health
-- failed page review
-- listing inspection page
-- duplicate review queue
-- manual override for availability
-- manual override for category
-- manual featured-listing selection
+Questions to settle:
 
-Nice-to-have admin tools:
+- How much historical data should be kept for each listing?
+- Should price history be public, admin-only, or used only for alerts and labels?
+- How should removed/sold listings appear in public views?
 
-- price change report
-- new listings digest
-- source coverage dashboard
+Likely work:
 
-## Editorial / Content Layer
+- record price changes
+- record availability changes
+- show price drop or recently sold signals
+- keep removed listings in internal history
+- add listing timeline data for admin review
 
-The site should not only be a feed.
+### Discovery Improvements
 
-Editorial content can improve SEO, retention, and brand differentiation.
+Questions to settle:
 
-Good content types:
+- Which filters are genuinely useful once inventory grows?
+- Should search be simple text search, SQLite/D1 FTS, or an external search service later?
+- Are designer/maker filters good enough without canonical entities?
 
-- neighbourhood furniture guides
-- designer explainers
-- “what to look for” authenticity guides
-- new arrivals roundups
-- room-type buying guides
+Likely work:
 
-Examples:
+- saved filters
+- better text search
+- designer/maker cleanup
+- richer shop pages
+- collection-style browse pages such as teak storage, lounge chairs, dining sets, lighting
+- compare mode for multiple saved items
 
-- Where to Find Teak Sideboards in Montreal
-- Best Mid-Century Dining Sets This Week
-- How to Tell if a Piece is Real Danish Modern
+### Source Expansion
 
-## SEO / Discovery Plan
+Questions to settle:
 
-Target pages:
+- Add Maison Singulier first, or wait until source parser organization is cleaner?
+- Revisit Green Wall Vintage and Vintage Home Boutique only if scope expands beyond Montreal-local
+  sources?
+- When adding Ottawa, Toronto, Quebec City, or Canada-wide shops, how should card-level location and
+  shipping badges return?
 
-- listings
-- shop pages
-- category pages
-- city-specific browse pages
-- editorial guides
+Likely work:
 
-Likely useful page types:
+- add one carefully chosen second-wave direct source at a time
+- restore location on cards when inventory becomes meaningfully non-Montreal
+- add source-specific notes for shipping and reliability
+- keep source additions conservative and review-friendly
 
-- `/shops/morceau`
-- `/categories/sideboards`
-- `/materials/teak`
-- `/designers/hans-wegner`
-- `/montreal`
+### 0.2.x Success Criteria
 
-Important SEO principles:
+The `0.2.x` line is successful when:
 
-- unique titles and meta descriptions
-- canonical source links where appropriate
-- avoid thin duplicate marketplace-style pages
-- include structured listing details cleanly
+- users have a reason to come back
+- saved searches and/or alerts work without creating trust issues
+- favourites survive more than one browser session if the user chooses
+- price and availability history improve confidence
+- source expansion does not dilute the Montreal-first product feel
 
-## Analytics Plan
+## 0.3.x Development: Authority, Content, And Scale
 
-Track:
+The `0.3.x` line should make the site feel like a durable destination rather than only a catalogue.
+This is where editorial, SEO, normalized entities, broader source strategy, and monetization should
+be considered.
 
-- listing views
-- source click-throughs
-- favourites added
-- saved search creation
-- shop page views
-- category filter usage
-- source-level outbound clicks
+### Editorial And SEO
 
-Questions analytics should answer:
+Questions to settle:
 
-- which shops generate the most user interest
-- which categories are most popular
-- whether users prefer local shops over Canada-wide sources
-- whether favourites convert to outbound clicks
+- Which pages should be programmatic SEO versus hand-written editorial?
+- What content is genuinely useful for Montreal buyers rather than generic MCM filler?
+- Which category/shop/location pages deserve canonical indexable pages?
 
-## Monetization Options
+Likely work:
 
-Do not let monetization complicate launch.
+- editorial guides for Montreal MCM buying
+- category landing pages
+- shop profile improvements
+- indexable designer/material/category pages once data quality supports them
+- structured metadata
+- sitemap and canonical URL policy
 
-Possible later models:
+### Normalized Design Data
 
-- affiliate-like referral arrangements with shops
-- featured shop placements
-- sponsored collections
-- trade membership with alerts and boards
+Questions to settle:
 
-Launch recommendation:
+- When do `designer` and `maker` need to become canonical entities?
+- Should aliases and source evidence be admin-reviewed?
+- Is this necessary for search quality, SEO, alerts, or all three?
 
-- no monetization dependency
-- focus on product quality and inventory freshness first
+Likely work:
 
-## Risks
+- `creators` or `design_entities` model
+- aliases and canonical display names
+- source evidence and confidence
+- admin review for ambiguous designer/maker extraction
+- entity pages only after quality is high enough
 
-### 1. Source Fragility
+### Broader Marketplace Strategy
 
-Small shops may redesign pages or remove listing content.
+Questions to settle:
 
-Mitigation:
+- Should the product stay direct-source-first indefinitely?
+- Would marketplace ingestion create too much noise, staleness, or duplicate handling work?
+- Which sources are worth monitoring manually before automating?
 
-- start with a small source set
-- maintain source-specific notes
-- build internal review workflow
-
-### 2. Inventory Staleness
-
-Users will lose trust fast if sold items stay live.
-
-Mitigation:
-
-- daily refreshes for local priority sources
-- strong freshness labels
-- hide stale items by default
-
-### 3. Mixed Inventory
-
-Some sources mix furniture, decor, and non-core objects.
-
-Mitigation:
-
-- narrow launch taxonomy
-- prefer furniture-only collections first
-
-### 4. Ambiguous Shipping
-
-Many shops use quote-based shipping.
-
-Mitigation:
-
-- represent shipping as a confidence signal, not a promise
-- use labels like `quote required`
-
-### 5. Duplicate Items Across Sources
-
-Mitigation:
-
-- prefer direct source
-- review duplicates conservatively
-
-## Proposed Phases
-
-### Phase 0: Definition
-
-Goal:
-
-- finalize scope and feature priorities
-
-Deliverables:
-
-- research source list
-- product plan
-- feature scope
-- source priority order
-
-### Phase 1: MVP Listings Product
-
-Goal:
-
-- working browseable catalog with direct-shop sources only
-
-Includes:
-
-- source ingestion for priority shops
-- listing cards
-- item pages
-- filters
-- shop pages
-- favourites
-- manual admin review tools
-
-Success criteria:
-
-- daily-refreshed local inventory
-- users can save listings
-- users can click through confidently to seller
-
-Current status:
-
-- substantially implemented
-- should now focus on hardening parser reliability, refresh quality, and availability-state trust
-- should resolve whether launch remains strictly furniture-first or formally includes some lighting / decor
-
-### Phase 2: Retention Features
-
-Goal:
-
-- give users reasons to come back
-
-Includes:
-
-- saved searches
-- alerts
-- price and availability change tracking
-- improved shop profiles
-
-Success criteria:
-
-- repeat visits
-- meaningful favourite usage
-- alert subscriptions
-
-Recommended next build priority:
-
-- this is now the clearest missing layer after Phase 1 hardening
-- saved searches and change tracking should come before a broad source expansion
-
-### Phase 3: Content and Expansion
-
-Goal:
-
-- strengthen discovery and SEO
-
-Includes:
-
-- editorial content
-- second-wave sources
-- compare view
-- curated collections
-
-Recommended interpretation now:
-
-- first complete the missing first-wave direct shops
-- then expand into richer browse pages, editorial pages, and carefully chosen second-wave sources
-
-### Phase 4: Broader Marketplace Strategy
-
-Goal:
-
-- decide whether marketplace overlap is worth ingesting
-
-Includes:
+Likely work:
 
 - explicit Facebook Marketplace recheck for current and candidate sources
-- optional marketplace inclusion
-- duplicate-preference rules
-- direct-vs-marketplace source badges
+- direct-vs-marketplace source badges if marketplace data is added
+- stricter duplicate handling across source types
+- rules for excluding low-quality or irrelevant decor
 
-Recommendation:
+### Trade And Monetization
 
-- only do this after the direct-shop product works well
+Questions to settle:
 
-## Delivery Order Recommendation
+- Is the site primarily a buyer utility, an SEO property, or a trade workflow tool?
+- Would designers value boards, private notes, alerts, or exportable shortlists?
+- Are affiliate links or paid shop placements compatible with trust?
 
-Given the current codebase, the best next order is:
+Likely work:
 
-1. harden the existing parsers and refresh reliability
-2. tighten availability handling and duplicate-review quality
-3. decide whether launch stays furniture-only or accepts some lighting / decor
-4. add Maison Singulier, then revisit Green Wall Vintage and Vintage Home Boutique only if the scope expands beyond Montreal-local sources
-5. implement saved searches
-6. add explicit price and availability change tracking
-7. add alerts and notification preferences
-8. deepen shop, category, material, and designer discovery pages
-9. add editorial content and analytics
-10. expand to Urbano Vintej and Banana Lab
-11. evaluate marketplace ingestion only after the direct-source product is strong
+- trade-oriented saved boards
+- private notes on saved items
+- shareable shortlists
+- analytics for outbound source clicks
+- careful monetization experiments only after the core catalogue is trusted
 
-## Interface Localization Follow-Ups
+### 0.3.x Success Criteria
 
-Completed in the current i18n pass:
+The `0.3.x` line is successful when:
 
-- user-facing prices render from parsed values and active UI language, not source price text
-- known Showroom Montreal price qualifiers render as localized whole-dollar display text
-- quote-required price fallbacks render as localized, lower-prominence text
-- canonical category, material, condition, shipping-note, count, and date display go through helpers
-- filter summary presentation logic lives in the i18n layer instead of the Flask app module
+- the site has credible indexed discovery pages
+- richer content improves buyer confidence rather than distracting from inventory
+- normalized entities improve search and browsing quality
+- any broader source or monetization strategy preserves trust
 
-Completed in the current visual pass:
+## Cross-Cutting Risks
 
-- listing card item names use the default sans-serif font again while the display-font direction is reconsidered
-- listing detail item titles use the default sans-serif font again at a restrained larger scale
-- the `Montreal MCM` wordmark uses the default sans-serif font, bold weight, and a subtle green hue
-- header navigation is placed in the top header row with the wordmark, with the tagline below
+### Source Fragility
 
-Remaining later work:
+Source markup will drift. Keep ingestion conservative, source-specific, and easy to review.
 
-- turn shop `categories_carried` into structured category data and render it with `category_label()`
-- consider a structured dimensions model if dimensions need unit-aware localization or metric/imperial display
-- preserve card-level location support for future Ottawa, Toronto, Quebec City, and other regional shops that ship to Montreal
-- clean legacy Showroom fallback and override URLs so seeded data follows the same source-page URL convention as live parsing
-- split price display into a parsed qualifier object plus formatter if more unusual source price suffixes appear
-- consider returning display objects from helpers for value text and prominence instead of checking fields like `price_value` in templates
+Mitigation:
 
-## MVP Success Definition
+- small source set first
+- parser tests for important sources
+- source-specific notes
+- fallback data only as a bootstrap or failure cushion, not as a substitute for live data
 
-The MVP is successful if:
+### Inventory Staleness
 
-- it aggregates live-looking inventory from priority sources
-- users can quickly browse by category and price
-- users can favourite listings
-- users trust the freshness labels
-- the site feels meaningfully more focused than 1stDibs or Chairish for Montreal-oriented MCM discovery
+The product loses trust quickly if sold or removed items look current.
 
-For the current build, "MVP success" should also mean:
+Mitigation:
 
-- parser failures are understandable and reviewable
-- the active direct-shop sources feel dependable enough to use repeatedly
-- the site is ready for retention features rather than still fighting basic ingestion trust issues
+- daily refresh for launch sources
+- source-level freshness labels
+- conservative deactivation rules
+- clear admin visibility into refresh failures
+
+### Mixed Inventory
+
+Some sources mix furniture, lighting, decor, and current-production pieces.
+
+Mitigation:
+
+- furniture-first public scope
+- explicit source collection choices
+- review categories before broadening scope
+
+### Duplicate Items
+
+The same item can appear under changed source URLs or across marketplaces.
+
+Mitigation:
+
+- stable source keys where possible
+- reconciliation by title, image, price, and description
+- admin duplicate review queue
+- keep provenance visible
+
+### D1 Bridge Performance
+
+The current production bridge preserves the Flask app but adds HTTP calls between the container and
+Worker D1 binding.
+
+Mitigation:
+
+- measure public page timings
+- batch bridge calls where practical
+- cache read-heavy public responses if needed
+- keep the option open to move selected read paths into Worker-native code later
 
 ## Bottom Line
 
-The best version of this product is not a giant marketplace clone.
+For `0.1.x`, make the live Cloudflare MVP boring and dependable.
 
-It is a tight, well-curated Montreal-first discovery layer built on direct-shop inventory, with:
+For `0.2.x`, add retention: saved searches, alerts, durable favourites, history, and careful source
+growth.
 
-- strong listing freshness
-- clean filters
-- useful favourites
-- a small, high-quality source list
-
-The most important operational feature is not visual polish.
-
-It is reliable listing refresh and availability tracking.
+For `0.3.x`, build authority: editorial discovery, normalized entities, broader source strategy, and
+trade workflows only where they reinforce trust.
