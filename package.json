@@ -1,12 +1,17 @@
 {
   "name": "mcm-montreal",
   "private": true,
-  "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
-    "playwright": "^1.59.1"
-  },
   "scripts": {
+    "deploy": "wrangler deploy",
+    "deploy:dry-run": "wrangler deploy --dry-run",
+    "cf:status": "wrangler containers list",
     "lint": "uv run ruff check . && uv run djlint templates --lint && biome check static",
     "format": "uv run ruff format . && uv run djlint templates --reformat && biome check --write static"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.6",
+    "@cloudflare/containers": "^0.3.3",
+    "playwright": "^1.59.1",
+    "wrangler": "^4.87.0"
   }
 }

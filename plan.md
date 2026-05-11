@@ -29,6 +29,97 @@ Already implemented:
 - default sans-serif item titles and current wordmark, with external Google font loading removed for now
 - admin tools for refreshes, failures, overrides, and duplicate review
 
+## Cloudflare-Native Deployment Track
+
+The planned production direction is Cloudflare-native rather than a traditional Flask host.
+
+Deployment state as of 2026-05-10:
+
+- Cloudflare Worker `montreal-mcm` is deployed.
+- Container application `montreal-mcm-mcmcontainer` exists and is active.
+- Live workers.dev URL after account subdomain change:
+  `https://montreal-mcm.dalaque.workers.dev`
+- Old workers.dev URL `https://montreal-mcm.pannes-historiques-dq.workers.dev` no longer resolves.
+- Immediately after the dashboard change, plain HTTP on `montreal-mcm.dalaque.workers.dev`
+  returned 200, while HTTPS was still returning a TLS handshake failure. Expect workers.dev TLS
+  propagation to settle, then recheck HTTPS.
+- Cloudflare accepted custom-domain routes for `montrealmcm.ca` and `www.montrealmcm.ca`.
+- Public DNS still returns NXDOMAIN for `montrealmcm.ca`, so the registrar/registry side has not
+  propagated or the registered domain string needs confirmation.
+- No R2 bucket is configured for this app.
+- `MCM_SECRET_KEY` is set as a Cloudflare Worker secret.
+- D1 database `montreal-mcm` exists with binding `DB` and database id
+  `564167b2-abc1-4a66-8a26-0c95153eb72b`.
+- Local `data/mcm.db` was refreshed and imported into D1 on 2026-05-10.
+- Current D1 core-table counts after import: 6 shops, 850 listings, 116 crawl runs, 17 crawl
+  failures, 25 listing identity reviews.
+- Worker cron trigger is `23 9 * * *`, which is 09:23 UTC daily. In Montreal/Toronto time that is
+  5:23 AM during daylight time and 4:23 AM during standard time.
+- The Flask container now reads and writes through an authenticated Worker D1 bridge in production.
+  D1 is populated and bound; the deployed container uses `D1_BRIDGE_URL` / `D1_BRIDGE_TOKEN` and
+  no longer includes `data/mcm.db` in the image.
+- Legacy local-account favourite tables (`users`, `favourite_listings`, `favourite_shops`) are not
+  part of the production model. D1 migration `0002_drop_legacy_favourites.sql` drops them if present,
+  and the local development database copy has also had those tables removed.
+- The current scheduled refresh path is too long-running to trust as a single request/response cron
+  call: a manual live refresh stayed open for several minutes. Before relying on production cron,
+  split refresh into queue-backed source jobs. The Worker cron should enqueue one job per source,
+  return quickly, and workers/container endpoints should process each source independently while
+  recording progress, failures, and last successful refresh in D1.
+
+Observed current shape:
+
+- The MVP is a Flask/Jinja application with SQLite at `data/mcm.db`.
+- The schema is straightforward SQL and should map well to Cloudflare D1.
+- Server-side templates, sessions, admin routes, and refresh jobs need deliberate porting because
+  Cloudflare Workers are not a drop-in Flask runtime.
+
+Assumption:
+
+- Keep the product behavior close to the current MVP while migrating runtime and persistence.
+- Do not rewrite in TypeScript for deployment.
+- Evaluate two Python-first Cloudflare paths before committing:
+  - Cloudflare Container running the existing Flask app, with D1/R2 for persistence.
+  - Cloudflare Python Worker with D1, if the request/DB adapters stay small.
+- Treat the current Python code as the source implementation, but expect adapters around request
+  handling, D1 access, sessions, static assets, and scheduled refreshes.
+
+Migration checklist:
+
+1. Prototype the lowest-risk Cloudflare Container path by running the existing Flask app image with
+   D1/R2-backed persistence and no local-disk dependency.
+2. In parallel or afterward, prototype a single Python Worker route using `workers-py` / `pywrangler`
+   to measure adapter complexity.
+3. Confirm whether Flask can be adapted acceptably in Python Workers; if not, do not force a route
+   framework migration unless it is clearly less work than the Container path.
+4. Extract the current SQLite schema into versioned D1 migrations.
+5. Create a D1 database and import existing local data from `data/mcm.db`.
+6. Add a D1-backed repository adapter that preserves the existing query/update contract as much as
+   practical, replacing direct `sqlite3.Connection` use in the Worker path. First version uses an
+   authenticated Worker bridge endpoint because D1 is a Worker binding, not a direct container mount.
+7. Port or adapt read-only public routes first: listings, listing detail, shops, shop detail, favourites page shell.
+8. Serve static CSS, JS, and images through Workers static assets or the Flask container, depending
+   on the chosen path.
+9. Replace Flask session favourites with signed cookies or a small D1-backed anonymous favourite token.
+10. Port admin review routes behind Cloudflare Access or another explicit admin gate.
+11. Port source refresh to a Worker `scheduled()` handler, Queue, Workflow, or container-triggered
+    task, splitting long-running ingestion if source
+    fetches exceed normal Worker execution limits.
+12. Keep the Flask app as the local/reference implementation until route parity, data parity, and
+    refresh behavior are verified.
+
+Initial risk areas:
+
+- Flask is WSGI-oriented; Python Workers document a native `fetch` entrypoint and FastAPI/ASGI
+  support, so a thin compatibility adapter may or may not be worth maintaining.
+- D1 is accessed through Workers bindings, not through a local SQLite file, so the existing
+  `sqlite3` repository layer needs an async D1 path or adapter.
+- Source refresh code uses synchronous fetching today; Python Workers require async-compatible HTTP
+  clients such as `httpx`, `aiohttp`, or the Workers `fetch()` API.
+- Containers preserve the existing Flask runtime better, but they have container cold starts, active
+  runtime billing, and ephemeral disk; persistence must stay in D1/R2 rather than local SQLite.
+- Admin writes and refreshes must preserve provenance, overrides, and conservative fallback behavior.
+
 Currently active launch sources in code:
 
 1. Morceau

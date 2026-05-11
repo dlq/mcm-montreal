@@ -4,16 +4,21 @@ import sqlite3
 
 from flask import Flask
 
+from .d1 import D1Connection
 from .sources import SOURCE_DEFINITIONS
 
 
-def get_db(app: Flask) -> sqlite3.Connection:
+def get_db(app: Flask) -> sqlite3.Connection | D1Connection:
+    if app.config.get("D1_BRIDGE_URL"):
+        return D1Connection(app.config["D1_BRIDGE_URL"], app.config["D1_BRIDGE_TOKEN"])
     conn = sqlite3.connect(app.config["DATABASE"])
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def initialize_storage(app: Flask) -> None:
+    if app.config.get("D1_BRIDGE_URL"):
+        return
     with app.app_context():
         db = get_db(app)
         try:

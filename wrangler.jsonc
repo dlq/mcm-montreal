@@ -1,0 +1,54 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "montreal-mcm",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-05-11",
+  "account_id": "69e18e0e0020ea19ff9f8bbfd035c20c",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true
+  },
+  "triggers": {
+    "crons": ["23 9 * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "montreal-mcm",
+      "database_id": "564167b2-abc1-4a66-8a26-0c95153eb72b"
+    }
+  ],
+  "containers": [
+    {
+      "class_name": "McmContainer",
+      "image": "./Dockerfile",
+      "max_instances": 1,
+      "instance_type": "lite"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "MCM_CONTAINER",
+        "class_name": "McmContainer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["McmContainer"]
+    }
+  ],
+  "routes": [
+    {
+      "pattern": "montrealmcm.ca",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.montrealmcm.ca",
+      "custom_domain": true
+    }
+  ]
+}

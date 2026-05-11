@@ -7,6 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "beautifulsoup4==4.13.4",
     "Flask==3.1.0",
+    "gunicorn>=23.0.0",
 ]
 
 [dependency-groups]
@@ -30,3 +31,6 @@ indent = 2
 max_line_length = 100
 extension = "html"
 ignore = "H006,H030,H031,T003"
+
+[tool.setuptools.packages.find]
+include = ["mcm*"]

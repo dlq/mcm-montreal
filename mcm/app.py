@@ -53,7 +53,7 @@ from .repository import (
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "data" / "mcm.db"
+DB_PATH = Path(os.environ.get("MCM_DATABASE", BASE_DIR / "data" / "mcm.db"))
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
@@ -64,12 +64,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     )
     app.config["SECRET_KEY"] = os.environ.get("MCM_SECRET_KEY", f"dev-{secrets.token_hex(16)}")
     app.config["DATABASE"] = str(DB_PATH)
+    app.config["D1_BRIDGE_URL"] = os.environ.get("D1_BRIDGE_URL", "")
+    app.config["D1_BRIDGE_TOKEN"] = os.environ.get("D1_BRIDGE_TOKEN", "")
     if test_config:
         app.config.update(test_config)
     app.jinja_env.globals["freshness_label"] = freshness_label
     app.jinja_env.globals["json_loads"] = json.loads
 
-    Path(app.config["DATABASE"]).parent.mkdir(exist_ok=True)
+    if not app.config.get("D1_BRIDGE_URL"):
+        Path(app.config["DATABASE"]).parent.mkdir(exist_ok=True)
     initialize_storage(app)
 
     @app.before_request
@@ -124,6 +127,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             materials=list_filter_values(g.db, "materials"),
             designers=list_filter_values(g.db, "designer"),
         )
+
+    @app.get("/healthz")
+    def healthz() -> tuple[str, int]:
+        return "ok", 200
+
+    @app.post("/cron/refresh")
+    def cron_refresh() -> Any:
+        if request.headers.get("X-Cloudflare-Scheduled") != "1":
+            abort(404)
+        refresh_all_sources(g.db)
+        return {"status": "ok", "refreshed_at": datetime.now(UTC).isoformat()}
 
     @app.get("/listing/<item_number>")
     def listing_detail(item_number: str) -> Any:
