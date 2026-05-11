@@ -1,6 +1,11 @@
 import { Container } from "@cloudflare/containers";
 
 const CONTAINER_INSTANCE_NAME = "web-d1";
+const DEFAULT_APEX_HOSTNAME = "montrealmcm.ca";
+const DEFAULT_WWW_HOSTNAME = "www.montrealmcm.ca";
+const DEFAULT_D1_BRIDGE_URL = "https://montreal-mcm.dalaque.workers.dev/internal/d1/query";
+const REFRESH_CRON = "23 9 * * *";
+const REFRESH_MONITOR_CRON = "23 11 * * *";
 const SOURCE_SLUGS = ["morceau", "showroom-montreal", "montreal-moderne", "le-centerpiece"];
 
 export class McmContainer extends Container {
@@ -13,7 +18,7 @@ export class McmContainer extends Container {
     this.envVars = {
       APP_HOST: "0.0.0.0",
       APP_PORT: "8080",
-      D1_BRIDGE_URL: "https://montreal-mcm.dalaque.workers.dev/internal/d1/query",
+      D1_BRIDGE_URL: env.D1_BRIDGE_URL || DEFAULT_D1_BRIDGE_URL,
       D1_BRIDGE_TOKEN: env.D1_BRIDGE_TOKEN || "",
       MCM_ADMIN_TOKEN: env.MCM_ADMIN_TOKEN || "",
     };
@@ -36,6 +41,12 @@ export class McmContainer extends Container {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const apexHostname = env.APEX_HOSTNAME || DEFAULT_APEX_HOSTNAME;
+    const wwwHostname = env.WWW_HOSTNAME || DEFAULT_WWW_HOSTNAME;
+    if (url.hostname === wwwHostname) {
+      url.hostname = apexHostname;
+      return Response.redirect(url.toString(), 301);
+    }
     if (url.pathname === "/internal/d1/query") {
       return queryD1(request, env);
     }
@@ -48,7 +59,21 @@ export default {
     return fetchContainer(request, env);
   },
 
-  async scheduled(_controller, env, ctx) {
+  async scheduled(controller, env, ctx) {
+    if (controller.cron === REFRESH_MONITOR_CRON) {
+      ctx.waitUntil(checkRefreshJobs(env));
+      return;
+    }
+    if (controller.cron !== REFRESH_CRON) {
+      console.warn(
+        JSON.stringify({
+          event: "unknown_scheduled_cron",
+          cron: controller.cron,
+        }),
+      );
+      return;
+    }
+
     for (const sourceSlug of SOURCE_SLUGS) {
       ctx.waitUntil(callContainerCron(env, `/cron/refresh/${sourceSlug}`));
     }
@@ -114,6 +139,57 @@ async function callContainerCron(env, path) {
       body: text.slice(0, 500),
     }),
   );
+}
+
+async function checkRefreshJobs(env) {
+  const today = new Date().toISOString().slice(0, 10);
+  const result = await env.DB.prepare(
+    `
+    SELECT source_slug, status, started_at, finished_at, error_message, hidden_count
+    FROM refresh_jobs
+    WHERE started_at >= ?
+    ORDER BY started_at DESC
+    `,
+  )
+    .bind(`${today}T00:00:00`)
+    .all();
+  const latestJobs = new Map();
+  for (const job of result.results || []) {
+    if (!latestJobs.has(job.source_slug)) {
+      latestJobs.set(job.source_slug, job);
+    }
+  }
+
+  const warnings = [];
+  for (const sourceSlug of SOURCE_SLUGS) {
+    const job = latestJobs.get(sourceSlug);
+    if (!job) {
+      warnings.push({ source_slug: sourceSlug, reason: "missing_refresh_job" });
+      continue;
+    }
+    if (job.status !== "success") {
+      warnings.push({
+        source_slug: sourceSlug,
+        reason: "refresh_job_not_success",
+        status: job.status,
+        started_at: job.started_at,
+        finished_at: job.finished_at,
+        error_message: job.error_message,
+      });
+    }
+  }
+
+  const payload = {
+    event: "refresh_job_monitor",
+    checked_at: new Date().toISOString(),
+    refresh_date: today,
+    warnings,
+  };
+  if (warnings.length > 0) {
+    console.warn(JSON.stringify(payload));
+    return;
+  }
+  console.log(JSON.stringify(payload));
 }
 
 async function fetchContainer(request, env) {

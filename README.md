@@ -87,22 +87,15 @@ uv run pre-commit run --all-files
 
 ## Project Shape
 
-Core code is intentionally small and split by responsibility:
+The app is a small Flask codebase with server-rendered Jinja templates, HTMX interactions, Tailwind
+via CDN, and a little native JavaScript. Core Python code lives in `mcm/`, templates live in
+`templates/`, static assets live in `static/`, and deployment-specific Worker code lives in `src/`.
 
-- `mcm/app.py`: Flask app factory, request lifecycle, and route handlers
-- `mcm/db.py`: local SQLite setup and production database connection selection
-- `mcm/d1.py`: small DB-API-style client for the production database bridge
-- `mcm/repository.py`: listing/shop queries, favourites state, admin queries, and filter parsing
-- `mcm/refresh.py`: source refresh orchestration and ingest writes
-- `mcm/i18n.py`: language helpers, localized display formatting, and translation utilities
-- `mcm/locales/`: English and French UI string dictionaries
-- `mcm/sources.py`: source-specific scraping and parsing logic
-- `mcm/seed_data.py`: fallback data used when live source fetches fail
-- `templates/`: Jinja templates
-- `static/`: local JavaScript and CSS
-- `tests/`: fast unittest coverage using temporary SQLite databases
+For more detail, see:
 
-Deployment-specific files live at the repository root and in `src/`, `migrations/`, and `docs/`.
+- [mcm/README.md](mcm/README.md)
+- [templates/README.md](templates/README.md)
+- [docs/operations.md](docs/operations.md)
 
 ## What Is Implemented
 
@@ -167,22 +160,15 @@ npx biome check --write static src
 
 ## Cloudflare Deployment
 
-Production runs the Flask app in a Cloudflare Container. The Worker owns the D1 binding and exposes
-an authenticated internal bridge to the container, so the deployed Flask app reads and writes D1
-instead of local SQLite. The production image intentionally excludes `data/mcm.db`.
+The included deployment setup runs the Flask app in a Cloudflare Container. The Worker owns a D1
+binding and exposes an authenticated internal bridge to the container, so the deployed Flask app
+reads and writes D1 instead of local SQLite. The production image intentionally excludes
+`data/mcm.db`.
 
-See [docs/operations.md](docs/operations.md) for the deploy checklist, health checks, D1 backup
-command, and bad-deploy recovery steps.
-
-Current production resources:
-
-- Worker: `montreal-mcm`
-- Container application: `montreal-mcm-mcmcontainer`
-- D1 database: `montreal-mcm`
-- D1 binding: `DB`
-- workers.dev URL: [https://montreal-mcm.dalaque.workers.dev](https://montreal-mcm.dalaque.workers.dev)
-- Custom domains configured in `wrangler.jsonc`: `montrealmcm.ca`, `www.montrealmcm.ca`
-- Cron: `23 9 * * *`, which is 09:23 UTC daily
+Before deploying your own copy, update `wrangler.jsonc` for your Cloudflare account, Worker name, D1
+database, custom domains, and cron schedule. Also review the deployment defaults at the top of
+`src/worker.js`, especially the default D1 bridge URL and apex/www hostnames. The checked-in values
+are for this project's current production deployment.
 
 Required secrets:
 
@@ -199,7 +185,7 @@ not commit secret values.
 Apply D1 migrations:
 
 ```bash
-npx wrangler d1 migrations apply montreal-mcm --remote
+npx wrangler d1 migrations apply <your-d1-database-name> --remote
 ```
 
 Deploy:
@@ -212,11 +198,12 @@ npm run deploy
 Verify production:
 
 ```bash
-curl -fsS https://montreal-mcm.dalaque.workers.dev/healthz
-curl -fsS -H "Authorization: Bearer $MCM_ADMIN_TOKEN" https://montreal-mcm.dalaque.workers.dev/admin/healthz
-curl -fsS -o /tmp/mcm-home.html https://montreal-mcm.dalaque.workers.dev/
-npx wrangler d1 execute montreal-mcm --remote --command "SELECT COUNT(*) AS listings FROM listings;"
+npm run prod:health
 ```
+
+`npm run prod:health` uses the currently configured production URLs and D1 database name in
+`scripts/check-production.sh`. Override them with `MCM_BASE_URL`, `MCM_APEX_URL`, `MCM_WWW_URL`, and
+`MCM_D1_DATABASE` when checking a different deployment.
 
 Admin routes are open in local development when `MCM_ADMIN_TOKEN` is unset. In production, set
 `MCM_ADMIN_TOKEN` and authenticate with HTTP Basic auth using any username and the token as the
@@ -224,4 +211,5 @@ password, or send `Authorization: Bearer <token>` / `X-MCM-Admin-Token: <token>`
 
 Cloudflare cron triggers one private Worker-to-container refresh request per launch source. Each
 source refresh records `refresh_jobs`, `crawl_runs`, and any `crawl_failures` rows in D1 so the
-admin dashboard can show source-level status.
+admin dashboard can show source-level status. A later monitor cron checks whether each source wrote
+a successful refresh job and logs warnings for missing or non-success jobs.

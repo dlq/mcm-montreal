@@ -24,6 +24,12 @@ Required secrets:
 - `D1_BRIDGE_TOKEN`
 - `MCM_ADMIN_TOKEN`
 
+Optional Worker variables:
+
+- `D1_BRIDGE_URL`: override the default Worker-to-D1 bridge URL injected into the container
+- `APEX_HOSTNAME`: override the apex hostname used for redirects
+- `WWW_HOSTNAME`: override the `www` hostname redirected to the apex hostname
+
 ## Deploy
 
 ```bash
@@ -31,6 +37,18 @@ npm run deploy
 ```
 
 ## Health Checks
+
+Run the production health script:
+
+```bash
+npm run prod:health
+```
+
+If `MCM_ADMIN_TOKEN` is set in the shell, the script also verifies authenticated deep health. Without
+that variable, it still verifies that admin health is not public.
+
+For non-default deployments, override `MCM_BASE_URL`, `MCM_APEX_URL`, `MCM_WWW_URL`, and
+`MCM_D1_DATABASE`.
 
 Process health does not require D1 or admin auth:
 
@@ -50,6 +68,13 @@ Check the public homepage:
 
 ```bash
 curl -fsS -o /tmp/mcm-home.html https://montreal-mcm.dalaque.workers.dev/
+```
+
+The apex custom domain should render the app, and `www` should redirect to the apex domain:
+
+```bash
+curl -I -fsS https://montrealmcm.ca/
+curl -I -fsS https://www.montrealmcm.ca/
 ```
 
 Check D1 directly:
@@ -92,11 +117,29 @@ In production, authenticate with one of:
 - `X-MCM-Admin-Token: <token>`
 - HTTP Basic auth using any username and the token as the password
 
+If a production admin token is generated directly into Cloudflare and is not stored in a password
+manager, rotate it to a new value that the owner controls:
+
+```bash
+openssl rand -hex 32
+npx wrangler secret put MCM_ADMIN_TOKEN
+npm run deploy
+npm run prod:health
+```
+
+Store the generated value outside the repository. Do not commit it to `.env`, docs, shell history,
+or source files.
+
 ## Refresh Behavior
 
-Cloudflare cron triggers one container request per launch source. Each source refresh records a row
-in `refresh_jobs`, plus the existing `crawl_runs` and `crawl_failures` records.
+Cloudflare cron triggers one private Worker-to-container request per launch source. Each source
+refresh records a row in `refresh_jobs`, plus the existing `crawl_runs` and `crawl_failures`
+records.
 
 Conservative source failure behavior is intentional: if a source fetch or parser fails and the shop
 already has records, fallback data is not treated as authoritative and existing listings are not
 deactivated.
+
+A second cron runs two hours after the daily refresh window and logs a `refresh_job_monitor` event.
+It checks D1 for missing or non-success refresh jobs for each active launch source. This is log-only
+monitoring for `0.1.x`; external alerting can be added later if needed.

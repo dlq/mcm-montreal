@@ -5,6 +5,7 @@
     "deploy": "wrangler deploy",
     "deploy:dry-run": "wrangler deploy --dry-run",
     "cf:status": "wrangler containers list",
+    "prod:health": "sh scripts/check-production.sh",
     "d1:backup": "wrangler d1 export montreal-mcm --remote --output=backups/montreal-mcm.sql",
     "lint": "uv run ruff check . && uv run djlint templates --lint && biome check static src",
     "format": "uv run ruff format . && uv run djlint templates --reformat && biome check --write static src"

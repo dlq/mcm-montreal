@@ -2,7 +2,7 @@
 
 Date: 2026-04-26
 Updated: 2026-05-11
-Current release: `0.1.0`
+Current line: `0.1.x`
 
 ## Purpose
 
@@ -30,7 +30,7 @@ inventory without visiting each shop one by one.
 
 ## Current State
 
-Release `0.1.0` is live and includes:
+The live `0.1.x` MVP includes:
 
 - listings feed with filtering and sorting
 - listing detail pages
@@ -42,7 +42,8 @@ Release `0.1.0` is live and includes:
 - admin tools for refreshes, failures, overrides, and duplicate review
 - Cloudflare Worker + Container deployment
 - Cloudflare D1 production database
-- daily Cloudflare cron trigger
+- daily Cloudflare refresh cron and later refresh-monitor cron
+- protected production admin routes
 
 The local development app remains Flask + SQLite at `data/mcm.db`.
 
@@ -58,14 +59,16 @@ data.
 - Container application: `montreal-mcm-mcmcontainer`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
 - Custom domains configured in Wrangler: `montrealmcm.ca`, `www.montrealmcm.ca`
+- `www.montrealmcm.ca` redirects to `montrealmcm.ca` in the Worker.
 - D1 database: `montreal-mcm`
 - D1 binding: `DB`
 - D1 database id: `564167b2-abc1-4a66-8a26-0c95153eb72b`
 - No R2 bucket is configured for this app.
-- Worker secrets required: `MCM_SECRET_KEY`, `D1_BRIDGE_TOKEN`
-- Production admin routes should also have `MCM_ADMIN_TOKEN` set.
-- Cron trigger: `23 9 * * *`, which is 09:23 UTC daily. In Montreal/Toronto time that is 5:23 AM
-  during daylight time and 4:23 AM during standard time.
+- Worker secrets required: `MCM_SECRET_KEY`, `D1_BRIDGE_TOKEN`, `MCM_ADMIN_TOKEN`
+- Refresh cron trigger: `23 9 * * *`, which is 09:23 UTC daily. In Montreal/Toronto time that is
+  5:23 AM during daylight time and 4:23 AM during standard time.
+- Refresh monitor cron trigger: `23 11 * * *`, which is 11:23 UTC daily. In Montreal/Toronto time
+  that is 7:23 AM during daylight time and 6:23 AM during standard time.
 - Local `data/mcm.db` was refreshed and imported into D1 on 2026-05-10.
 - D1 core-table counts after import: 6 shops, 850 listings, 116 crawl runs, 17 crawl failures, 25
   listing identity reviews.
@@ -104,9 +107,9 @@ feature expansion.
 
 ### Deployment And Operations
 
-Questions to settle:
+Questions to monitor:
 
-- Is `montrealmcm.ca` resolving consistently, and should `www` redirect to apex or stay equivalent?
+- Is `montrealmcm.ca` resolving consistently under external monitoring?
 - Is the current Worker-to-container-to-D1 bridge fast enough for public browse traffic?
 - Do we need a cheaper/faster read path for high-traffic pages, such as cached rendered pages or
   batched D1 bridge calls?
@@ -117,14 +120,19 @@ Completed in `0.1.1`:
 - make `/healthz` verify app process health without requiring D1
 - add a separate deeper health endpoint or admin check that verifies D1 connectivity
 - protect admin routes when `MCM_ADMIN_TOKEN` is configured
+- redirect `www.montrealmcm.ca` to `montrealmcm.ca`
 - add a repeatable operations runbook with deploy, health-check, backup, and bad-deploy recovery
   steps
 - add `npm run d1:backup` and ignore local backup exports
+- add `npm run prod:health` for repeatable public health, custom-domain, admin-auth, cron-blocking,
+  D1 count, and refresh-job checks
+- document production admin-token rotation so the owner can store the token outside the repository
+- rotate `MCM_ADMIN_TOKEN` to an owner-stored value and verify authenticated `npm run prod:health`
+- add a second daily cron that logs missing or non-success per-source refresh jobs
 
 Remaining follow-up:
 
-- verify custom-domain DNS and TLS
-- add basic uptime checks or a scheduled health monitor
+- add external uptime checks or alert delivery if log-only monitoring is not enough
 
 ### Refresh Reliability
 
@@ -132,13 +140,12 @@ The current cron triggers one private container refresh request per source. It w
 acceptable for the current launch-source set, but real production timing should decide whether this
 needs Cloudflare Queues or Workflows later.
 
-Questions to settle:
+Current decision:
 
-- Should refresh run as one source per queue message, one source per scheduled request, or a
-  Cloudflare Workflow?
-- How much partial-refresh behavior is acceptable if one source fails?
-- What status should the admin dashboard show while refresh is running?
-- Should refresh failures alert the owner, or is admin-dashboard visibility enough for `0.1.x`?
+- For `0.1.x`, refresh runs as one private scheduled request per active launch source.
+- Partial refresh success is acceptable: one source can fail without blocking the others.
+- D1 `refresh_jobs`, admin source status, and the second monitor cron provide current visibility.
+- Cloudflare Queues are planned for `0.2.x` if source count or refresh duration grows.
 
 Completed in `0.1.1`:
 
@@ -152,18 +159,19 @@ Completed in `0.1.1`:
 
 Remaining follow-up:
 
+- observe the next scheduled production refresh and confirm one `refresh_jobs` row per active source
 - decide whether queue/workflow-backed refreshes are needed after real production timing data exists
-- add owner alerting if admin-dashboard visibility is not enough
+- add owner alerting if admin-dashboard and log visibility are not enough
 
 ### Admin Safety
 
 Admin routes are useful but should not remain casually reachable as production traffic grows.
 
-Questions to settle:
+Current decision:
 
-- Use Cloudflare Access, a simple signed admin token, or another owner-only gate?
-- Which admin routes should be public-impossible versus merely hidden?
-- Should manual overrides require a lightweight audit trail?
+- For `0.1.x`, admin routes use a simple owner-controlled `MCM_ADMIN_TOKEN`.
+- Worker-level public traffic blocks `/cron/*` and `/internal/*`.
+- Cloudflare Access and explicit admin audit tables remain future options if operational risk grows.
 
 Completed in `0.1.1`:
 
