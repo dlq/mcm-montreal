@@ -55,7 +55,8 @@ data.
 
 - GitHub repo: `dlq/mcm-montreal`
 - Release tag `0.1.0`: Cloudflare container deployment baseline
-- Release tag `0.2.0`: Cloudflare Queue-backed refresh baseline
+- Release tag `0.1.2`: Cloudflare Queue-backed refresh baseline with Showroom and Le Centerpiece
+  chunking
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
@@ -65,7 +66,8 @@ data.
 - D1 binding: `DB`
 - D1 database id: `564167b2-abc1-4a66-8a26-0c95153eb72b`
 - No R2 bucket is configured for this app.
-- Worker secrets required: `MCM_SECRET_KEY`, `D1_BRIDGE_TOKEN`, `MCM_ADMIN_TOKEN`
+- Worker secrets required: `MCM_SECRET_KEY`, `D1_BRIDGE_TOKEN`, `MCM_ADMIN_TOKEN`,
+  `MCM_MANUAL_REFRESH_TOKEN`
 - Refresh cron trigger: `23 9 * * *`, which is 09:23 UTC daily. In Montreal/Toronto time that is
   5:23 AM during daylight time and 4:23 AM during standard time.
 - Refresh monitor cron trigger: `23 11 * * *`, which is 11:23 UTC daily. In Montreal/Toronto time
@@ -73,6 +75,7 @@ data.
 - Local `data/mcm.db` was refreshed and imported into D1 on 2026-05-10.
 - D1 core-table counts after import: 6 shops, 850 listings, 116 crawl runs, 17 crawl failures, 25
   listing identity reviews.
+- D1 listing count after the forced Le Centerpiece chunk refresh on 2026-05-12: 1,463 listings.
 - Legacy local-account favourite tables (`users`, `favourite_listings`, `favourite_shops`) are not
   part of the production model. D1 migration `0002_drop_legacy_favourites.sql` drops them if present.
 
@@ -137,20 +140,20 @@ Remaining follow-up:
 
 ### Refresh Reliability
 
-The current cron triggers one private container refresh request per source. It writes to D1 and is
-acceptable for the current launch-source set, but real production timing should decide whether this
-needs Cloudflare Queues or Workflows later.
+The current cron enqueues refresh work through Cloudflare Queues. The queue consumer calls private
+container refresh endpoints and writes to D1 through the Worker bridge. This became necessary
+because Showroom Montreal and Le Centerpiece are too slow for a request-shaped per-source refresh.
 
 Current decision:
 
-- For `0.1.x`, refresh runs as one private scheduled request per active launch source.
+- For `0.1.x`, refresh runs through Cloudflare Queues.
 - Partial refresh success is acceptable: one source can fail without blocking the others.
-- Production refresh source requests run sequentially from the Worker to avoid overloading the
-  single Cloudflare container instance with multiple concurrent long crawls.
-- Manual forced refreshes should call one source at a time because HTTP-triggered `waitUntil()` work
-  is cancelled after a short post-response window.
+- Production refresh messages run sequentially from the Worker queue consumer to avoid overloading
+  the single Cloudflare container instance with multiple concurrent long crawls.
+- Manual forced refreshes enqueue one source or all active sources and return quickly.
 - D1 `refresh_jobs`, admin source status, and the second monitor cron provide current visibility.
-- Cloudflare Queues are planned for `0.2.x` if source count or refresh duration grows.
+- Cloudflare Workflows should be reconsidered only if refresh becomes multi-step orchestration with
+  durable backoff, branching, or richer run history.
 
 Completed in `0.1.1`:
 
@@ -166,25 +169,38 @@ Completed in `0.1.1`:
 - add a lightweight `/readyz` endpoint for Cloudflare container readiness checks separate from deep
   D1 health
 
+Completed in `0.1.2`:
+
+- add a Cloudflare Queue binding and producer in `src/worker.js`
+- add a queue consumer that runs refresh messages with controlled concurrency and retries
+- keep a guarded manual refresh endpoint that enqueues one source or all active launch sources
+- configure single-message queue batches, max concurrency 1, retries, and a dead-letter queue
+- document queue creation, retry, dead-letter, and manual force-refresh behavior in
+  `docs/operations.md`
+- split Showroom Montreal into 12 queue chunks and filter its sold archive rows before ingestion
+- split Le Centerpiece into 7 Shopify collection chunks and skip sold-out products in chunked
+  refreshes
+- keep chunk refreshes non-authoritative for now: chunks upsert current listings but do not
+  deactivate missing inventory until a later source-wide reconciliation exists
+- mark stale `running` refresh jobs from the monitor cron so admin status is not permanently noisy
+
 Remaining follow-up:
 
-- observe the next scheduled production refresh after the Showroom URL fix and confirm one
-  successful `refresh_jobs` row per active source
-- decide whether queue/workflow-backed refreshes are needed after real production timing data exists
+- observe the next scheduled production refresh after queue chunking and confirm successful
+  `refresh_jobs` rows for each active source/chunk
 - add owner alerting if admin-dashboard and log visibility are not enough
+- add monitor cron status checks for suspicious hidden-count spikes
 
-Forced production refresh on 2026-05-12:
+Forced production refresh notes from 2026-05-12:
 
 - Morceau completed through the Worker-to-container-to-D1 path in about 10 seconds: 34 listings, 0
   new, 39 hidden.
 - Montreal Moderne completed through the same path in about 15 seconds: 49 listings, 0 new, 37
   hidden.
-- Showroom no longer hits the old non-ASCII URL failure, but the production request returns HTTP
-  500 after roughly 94 seconds and leaves the `refresh_jobs` row running.
-- Le Centerpiece returns HTTP 500 after roughly 106 seconds and also leaves the `refresh_jobs` row
-  running.
-- HTTP-triggered `waitUntil()` was cancelled after about 30 seconds, so manual all-source refreshes
-  need one-source synchronous calls until queues/workflows exist.
+- Showroom completed as 12 queue chunks after sold-archive filtering: 779 listings found, 504 new,
+  no sold archive rows imported.
+- Le Centerpiece completed as 7 queue chunks after the manual refresh token was rotated: 230 listings
+  found, 18 new, all chunk jobs successful.
 
 ### Admin Safety
 
@@ -286,8 +302,8 @@ alerts, history, richer browsing, and production-grade refresh orchestration sho
 
 ### Queued Refresh And Monitoring
 
-The `0.1.x` per-source cron model proved too request-shaped for Showroom and Le Centerpiece. The
-`0.2.0` implementation should make Cloudflare Queues the normal production refresh path.
+The `0.1.x` per-source cron model proved too request-shaped for Showroom and Le Centerpiece.
+Cloudflare Queues are now the normal production refresh path as of `0.1.2`.
 
 Trigger conditions:
 
@@ -307,7 +323,7 @@ Preferred architecture:
 - a later monitor cron checks D1 a couple of hours after the refresh window for missing, stuck, or
   repeated-failure jobs
 
-Completed in `0.2.0`:
+Completed in `0.1.2`:
 
 - add a Cloudflare Queue binding and producer in `src/worker.js`
 - add a queue consumer that runs one source refresh per message
@@ -316,25 +332,20 @@ Completed in `0.2.0`:
 - document queue creation, retry, dead-letter, and manual force-refresh behavior in
   `docs/operations.md`
 - split Showroom Montreal into 12 queue chunks and filter its sold archive rows before ingestion
-
-In progress after `0.2.0`:
-
-- split Showroom Montreal queued refreshes into staged category chunks
 - add a private Showroom chunk cron route in Flask for queue consumers
 - keep Showroom chunk refreshes non-authoritative for now: chunks upsert current listings but do
   not deactivate missing Showroom inventory until a later source-wide reconciliation exists
-- after production tests on 2026-05-12, Showroom chunks 0-2 completed successfully with the sold
-  archive filter in place
 - Showroom's Wix galleries include large sold archives; skip sold-out gallery items before ingestion
-  and keep chunk expansion tied to production verification
+- deploy stale `running` job marking in the monitor cron so admin status is not noisy
+- deploy Le Centerpiece collection chunks with sold-out Shopify products skipped in chunked refreshes
+- confirm forced production runs for Showroom and Le Centerpiece complete as successful chunk jobs
 
 Remaining follow-up:
 
-- deploy the full 12-chunk Showroom Worker with sold-archive filtering and confirm a forced
-  Showroom run completes without importing sold archive rows
-- deploy stale `running` job marking in the monitor cron so admin status is not noisy
-- deploy Le Centerpiece collection chunks with sold-out Shopify products skipped in chunked refreshes
+- observe the next scheduled daily production refresh after `0.1.2`
 - add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
+- consider a source-wide reconciliation job for chunked sources so missing inventory can be
+  deactivated safely after all chunks succeed
 
 Cloudflare resources created:
 
@@ -343,8 +354,9 @@ Cloudflare resources created:
 
 Decision:
 
-- Cloudflare Queues are the likely first step. Cloudflare Workflows should be reconsidered only if
-  refresh becomes multi-step orchestration with durable backoff, branching, or richer run history.
+- Cloudflare Queues are the current production refresh mechanism. Cloudflare Workflows should be
+  reconsidered only if refresh becomes multi-step orchestration with durable backoff, branching, or
+  richer run history.
 
 ### Saved Searches And Alerts
 
