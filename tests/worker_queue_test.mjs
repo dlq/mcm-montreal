@@ -93,12 +93,12 @@ const worker = await loadWorker();
 
   assert.equal(queue.sentBatches.length, 1);
   const messages = queue.sentBatches[0];
-  assert.equal(messages.length, 15);
+  assert.equal(messages.length, 5);
   assert.deepEqual(
     messages.map((message) => message.body.source_slug),
     [
       "morceau",
-      ...Array.from({ length: 12 }, () => "showroom-montreal"),
+      ...Array.from({ length: 2 }, () => "showroom-montreal"),
       "montreal-moderne",
       "le-centerpiece",
     ],
@@ -107,7 +107,7 @@ const worker = await loadWorker();
     messages
       .filter((message) => message.body.source_slug === "showroom-montreal")
       .map((message) => message.body.chunk_index),
-    Array.from({ length: 12 }, (_value, index) => index),
+    Array.from({ length: 2 }, (_value, index) => index),
   );
   assert(messages.every((message) => message.body.trigger === "scheduled_refresh"));
   assert(messages.every((message) => message.body.message_id));
@@ -126,14 +126,14 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 12);
+  assert.equal(queue.sentBatches[0].length, 2);
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.source_slug),
-    Array.from({ length: 12 }, () => "showroom-montreal"),
+    Array.from({ length: 2 }, () => "showroom-montreal"),
   );
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.chunk_index),
-    Array.from({ length: 12 }, (_value, index) => index),
+    Array.from({ length: 2 }, (_value, index) => index),
   );
   assert.equal(queue.sentBatches[0][0].body.trigger, "manual_refresh_now");
 }
@@ -150,7 +150,7 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 15);
+  assert.equal(queue.sentBatches[0].length, 5);
 }
 
 {
@@ -190,7 +190,7 @@ const worker = await loadWorker();
   const { env } = makeEnv(new Response("upstream failed", { status: 500 }));
   const message = makeMessage({
     source_slug: "showroom-montreal",
-    chunk_index: 3,
+    chunk_index: 1,
     trigger: "test",
     message_id: "message-2",
   });
@@ -205,7 +205,7 @@ const worker = await loadWorker();
   const { env, containerRequests } = makeEnv();
   const message = makeMessage({
     source_slug: "showroom-montreal",
-    chunk_index: 4,
+    chunk_index: 1,
     trigger: "test",
     message_id: "message-3",
   });
@@ -217,7 +217,7 @@ const worker = await loadWorker();
   assert.equal(containerRequests.length, 1);
   assert.equal(
     new URL(containerRequests[0].url).pathname,
-    "/cron/refresh/showroom-montreal/chunk/4",
+    "/cron/refresh/showroom-montreal/chunk/1",
   );
 }
 
@@ -225,7 +225,7 @@ const worker = await loadWorker();
   const { env, containerRequests } = makeEnv();
   const message = makeMessage({
     source_slug: "showroom-montreal",
-    chunk_index: 12,
+    chunk_index: 2,
     trigger: "test",
     message_id: "message-4",
   });

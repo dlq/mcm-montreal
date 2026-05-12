@@ -318,15 +318,18 @@ Completed in `0.2.0`:
 
 In progress after `0.2.0`:
 
-- split Showroom Montreal queued refreshes into one message per configured category URL
+- split Showroom Montreal queued refreshes into staged category chunks
 - add a private Showroom chunk cron route in Flask for queue consumers
 - keep Showroom chunk refreshes non-authoritative for now: chunks upsert current listings but do
   not deactivate missing Showroom inventory until a later source-wide reconciliation exists
+- after a production test on 2026-05-12, limit the Worker to the first two Showroom chunks while
+  investigating why later Wix category pages expose hundreds of gallery items
 
 Remaining follow-up:
 
-- deploy the Showroom chunked Worker and confirm a forced Showroom run completes all 12 queued
-  chunks without leaving stuck `running` rows
+- deploy the staged two-chunk Showroom Worker and confirm a forced Showroom run completes without
+  ballooning the production listing count
+- investigate Showroom's Wix `siteassets` payloads before enabling chunks beyond indexes 0 and 1
 - decide whether Le Centerpiece also needs chunking, staged pagination, or a different parser path
 - add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
 - decide whether stale `running` rows from interrupted jobs should be marked `stale` by the monitor

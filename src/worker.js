@@ -8,7 +8,7 @@ const REFRESH_CRON = "23 9 * * *";
 const REFRESH_MONITOR_CRON = "23 11 * * *";
 const SOURCE_SLUGS = ["morceau", "showroom-montreal", "montreal-moderne", "le-centerpiece"];
 const SHOWROOM_SOURCE_SLUG = "showroom-montreal";
-const SHOWROOM_CHUNK_COUNT = 12;
+const SHOWROOM_CHUNK_COUNT = 2;
 const RETRY_DELAY_SECONDS = 300;
 
 export class McmContainer extends Container {
