@@ -433,6 +433,8 @@ def _extract_showroom_gallery_listings(
         price_match = re.search(r"(\d[\d\s]*(?:[.,]\d{2})?)\s*\$", price_line)
         price_value = _to_float(price_match.group(1)) if price_match else None
         sold_out = "vendu" in normalized_title or "vendu" in _normalize_lookup(description)
+        if sold_out:
+            continue
         designer, maker = _extract_designer_and_maker(title, description)
         listings.append(
             {
@@ -445,7 +447,7 @@ def _extract_showroom_gallery_listings(
                 "currency": "CAD",
                 "primary_image_url": _showroom_media_url(image_uri),
                 "additional_image_urls": [],
-                "availability_status": "sold_out" if sold_out else "available",
+                "availability_status": "available",
                 "shipping_scope": "local_quote",
                 "ships_to_montreal": 1,
                 "shipping_note": source.shipping_summary,

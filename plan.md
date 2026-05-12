@@ -324,11 +324,13 @@ In progress after `0.2.0`:
   not deactivate missing Showroom inventory until a later source-wide reconciliation exists
 - after a production test on 2026-05-12, limit the Worker to the first two Showroom chunks while
   investigating why later Wix category pages expose hundreds of gallery items
+- Showroom's Wix galleries include large sold archives; skip sold-out gallery items before ingestion
+  and test expansion one chunk at a time
 
 Remaining follow-up:
 
-- deploy the staged two-chunk Showroom Worker and confirm a forced Showroom run completes without
-  ballooning the production listing count
+- deploy the staged three-chunk Showroom Worker and confirm a forced Showroom run completes without
+  importing sold archive rows
 - investigate Showroom's Wix `siteassets` payloads before enabling chunks beyond indexes 0 and 1
 - decide whether Le Centerpiece also needs chunking, staged pagination, or a different parser path
 - add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes

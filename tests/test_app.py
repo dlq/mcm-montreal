@@ -1040,6 +1040,36 @@ class AppTests(unittest.TestCase):
         self.assertEqual(len(listings), 1)
         self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-real")
 
+    def test_showroom_gallery_skips_sold_archive_items(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")
+        gallery_items = [
+            {
+                "id": "dataItem-sold",
+                "uri": "fc24cc_sold~mv2.jpg",
+                "description": "Buffet en teck '60s\nVendu",
+            },
+            {
+                "id": "dataItem-real",
+                "uri": "fc24cc_real~mv2.jpg",
+                "description": "Fauteuil en teck '60s\n1850 $",
+            },
+        ]
+        with (
+            patch("mcm.sources._fetch_html", return_value="<html></html>"),
+            patch(
+                "mcm.sources._extract_showroom_siteassets_url",
+                return_value="https://example.com/assets",
+            ),
+            patch("mcm.sources._extract_showroom_gallery_items", return_value=gallery_items),
+        ):
+            listings = _extract_showroom_gallery_listings(
+                source,
+                "https://www.showroommtl.com/nouveaute",
+            )
+
+        self.assertEqual(len(listings), 1)
+        self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-real")
+
     def test_fetch_html_percent_encodes_non_ascii_url_parts(self) -> None:
         class FakeResponse:
             def __enter__(self):
