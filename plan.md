@@ -144,6 +144,10 @@ Current decision:
 
 - For `0.1.x`, refresh runs as one private scheduled request per active launch source.
 - Partial refresh success is acceptable: one source can fail without blocking the others.
+- Production refresh source requests run sequentially from the Worker to avoid overloading the
+  single Cloudflare container instance with multiple concurrent long crawls.
+- Manual forced refreshes should call one source at a time because HTTP-triggered `waitUntil()` work
+  is cancelled after a short post-response window.
 - D1 `refresh_jobs`, admin source status, and the second monitor cron provide current visibility.
 - Cloudflare Queues are planned for `0.2.x` if source count or refresh duration grows.
 
@@ -156,12 +160,30 @@ Completed in `0.1.1`:
 - expose last refresh job status per source in admin
 - preserve existing conservative behavior: source failures should not deactivate existing inventory
   when a shop already has records
+- fix Showroom's Wix `siteassets` URL decoding so BeautifulSoup's `&reg` entity handling does not
+  corrupt `&registryLibrariesTopology` and trigger a non-ASCII URL failure in the container
+- add a lightweight `/readyz` endpoint for Cloudflare container readiness checks separate from deep
+  D1 health
 
 Remaining follow-up:
 
-- observe the next scheduled production refresh and confirm one `refresh_jobs` row per active source
+- observe the next scheduled production refresh after the Showroom URL fix and confirm one
+  successful `refresh_jobs` row per active source
 - decide whether queue/workflow-backed refreshes are needed after real production timing data exists
 - add owner alerting if admin-dashboard and log visibility are not enough
+
+Forced production refresh on 2026-05-12:
+
+- Morceau completed through the Worker-to-container-to-D1 path in about 10 seconds: 34 listings, 0
+  new, 39 hidden.
+- Montreal Moderne completed through the same path in about 15 seconds: 49 listings, 0 new, 37
+  hidden.
+- Showroom no longer hits the old non-ASCII URL failure, but the production request returns HTTP
+  500 after roughly 94 seconds and leaves the `refresh_jobs` row running.
+- Le Centerpiece returns HTTP 500 after roughly 106 seconds and also leaves the `refresh_jobs` row
+  running.
+- HTTP-triggered `waitUntil()` was cancelled after about 30 seconds, so manual all-source refreshes
+  need one-source synchronous calls until queues/workflows exist.
 
 ### Admin Safety
 
@@ -263,9 +285,8 @@ alerts, history, richer browsing, and production-grade refresh orchestration sho
 
 ### Queued Refresh And Monitoring
 
-The `0.1.x` per-source cron model is adequate for the current four launch sources. It should become
-a queued model before the source list grows enough that refresh duration, retries, or partial
-failures become operationally noisy.
+The `0.1.x` per-source cron model proved too request-shaped for Showroom and Le Centerpiece. The
+`0.2.0` implementation should make Cloudflare Queues the normal production refresh path.
 
 Trigger conditions:
 
@@ -285,13 +306,26 @@ Preferred architecture:
 - a later monitor cron checks D1 a couple of hours after the refresh window for missing, stuck, or
   repeated-failure jobs
 
-Likely work:
+Completed in `0.2.0`:
 
 - add a Cloudflare Queue binding and producer in `src/worker.js`
 - add a queue consumer that runs one source refresh per message
-- keep direct per-source admin refresh available for manual operations
+- keep a guarded manual refresh endpoint that enqueues one source or all active launch sources
+- configure single-message queue batches, max concurrency 1, retries, and a dead-letter queue
+- document queue creation, retry, dead-letter, and manual force-refresh behavior in
+  `docs/operations.md`
+
+Remaining follow-up:
+
+- deploy the queued Worker and confirm the next forced run produces successful D1 `refresh_jobs`
+  rows for long sources
 - add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
-- document queue retry, dead-letter, and alerting behavior in `docs/operations.md`
+- decide whether stale `running` rows from interrupted jobs should be marked `stale` by the monitor
+
+Cloudflare resources created:
+
+- `montreal-mcm-refresh`
+- `montreal-mcm-refresh-dlq`
 
 Decision:
 

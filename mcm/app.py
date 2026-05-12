@@ -139,6 +139,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def healthz() -> tuple[str, int]:
         return "ok", 200
 
+    @app.get("/readyz")
+    def readyz() -> tuple[str, int]:
+        return "ok", 200
+
     @app.get("/admin/healthz")
     @admin_required(app)
     def admin_healthz() -> tuple[dict[str, Any], int]:

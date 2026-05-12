@@ -5,8 +5,12 @@
     "deploy": "wrangler deploy",
     "deploy:dry-run": "wrangler deploy --dry-run",
     "cf:status": "wrangler containers list",
+    "cf:queue:create:refresh": "wrangler queues create montreal-mcm-refresh",
+    "cf:queue:create:refresh-dlq": "wrangler queues create montreal-mcm-refresh-dlq",
+    "cf:queues:list": "wrangler queues list",
     "prod:health": "sh scripts/check-production.sh",
     "d1:backup": "wrangler d1 export montreal-mcm --remote --output=backups/montreal-mcm.sql",
+    "test:worker": "node --experimental-vm-modules tests/worker_queue_test.mjs",
     "lint": "uv run ruff check . && uv run djlint templates --lint && biome check static src",
     "format": "uv run ruff format . && uv run djlint templates --reformat && biome check --write static src"
   },

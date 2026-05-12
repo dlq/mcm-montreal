@@ -176,16 +176,25 @@ Required secrets:
 npx wrangler secret put MCM_SECRET_KEY
 npx wrangler secret put D1_BRIDGE_TOKEN
 npx wrangler secret put MCM_ADMIN_TOKEN
+npx wrangler secret put MCM_MANUAL_REFRESH_TOKEN
 ```
 
 Use long random values for `D1_BRIDGE_TOKEN` and `MCM_ADMIN_TOKEN`. `D1_BRIDGE_TOKEN` protects the
 Worker-to-D1 bridge, and `MCM_ADMIN_TOKEN` protects admin and deep-health routes in production. Do
-not commit secret values.
+not commit secret values. `MCM_MANUAL_REFRESH_TOKEN` protects the operations-only Worker endpoint
+that forces the same per-source refresh path used by cron.
 
 Apply D1 migrations:
 
 ```bash
 npx wrangler d1 migrations apply <your-d1-database-name> --remote
+```
+
+Create the refresh queues once per Cloudflare account:
+
+```bash
+npm run cf:queue:create:refresh
+npm run cf:queue:create:refresh-dlq
 ```
 
 Deploy:
@@ -209,7 +218,20 @@ Admin routes are open in local development when `MCM_ADMIN_TOKEN` is unset. In p
 `MCM_ADMIN_TOKEN` and authenticate with HTTP Basic auth using any username and the token as the
 password, or send `Authorization: Bearer <token>` / `X-MCM-Admin-Token: <token>`.
 
-Cloudflare cron triggers one private Worker-to-container refresh request per launch source. Each
-source refresh records `refresh_jobs`, `crawl_runs`, and any `crawl_failures` rows in D1 so the
-admin dashboard can show source-level status. A later monitor cron checks whether each source wrote
-a successful refresh job and logs warnings for missing or non-success jobs.
+Cloudflare cron enqueues one refresh message per launch source. A Queue consumer processes one
+message at a time, calls the private Worker-to-container refresh endpoint, and retries failures
+before sending exhausted messages to the dead-letter queue. Each source refresh records
+`refresh_jobs`, `crawl_runs`, and any `crawl_failures` rows in D1 so the admin dashboard can show
+source-level status. A later monitor cron checks whether each source wrote a successful refresh job
+and logs warnings for missing or non-success jobs.
+
+To force the same queued path manually, call the guarded endpoint for one source:
+
+```bash
+curl -fsS \
+  -X POST \
+  -H "Authorization: Bearer $MCM_MANUAL_REFRESH_TOKEN" \
+  "https://montreal-mcm.dalaque.workers.dev/internal/refresh-now?source=morceau"
+```
+
+Omit `source` to enqueue all active launch sources.

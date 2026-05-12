@@ -22,6 +22,8 @@ from mcm.sources import (
     _extract_era,
     _extract_materials,
     _extract_showroom_gallery_listings,
+    _extract_showroom_siteassets_url,
+    _fetch_html,
     _fetch_shopify_collection_products,
     _parse_shopify_collection_product,
 )
@@ -921,6 +923,43 @@ class AppTests(unittest.TestCase):
 
         self.assertEqual(len(listings), 1)
         self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-real")
+
+    def test_fetch_html_percent_encodes_non_ascii_url_parts(self) -> None:
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args) -> None:
+                return None
+
+            def read(self) -> bytes:
+                return b"ok"
+
+        captured_url = ""
+
+        def fake_urlopen(request, timeout):  # noqa: ANN001, ARG001
+            nonlocal captured_url
+            captured_url = request.full_url
+            captured_url.encode("ascii")
+            return FakeResponse()
+
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            self.assertEqual(_fetch_html("https://example.com/assets?title=Knoll®"), "ok")
+
+        self.assertEqual(captured_url, "https://example.com/assets?title=Knoll%C2%AE")
+
+    def test_showroom_siteassets_url_preserves_registry_query_parameter(self) -> None:
+        html = """
+        <html>
+          <script>window.firstPageId = 'abc';</script>
+          <link id="features_abc" href="https://siteassets.parastorage.com/pages/pages/thunderbolt?x=1&registryLibrariesTopology=%5B%5D">
+        </html>
+        """
+
+        self.assertEqual(
+            _extract_showroom_siteassets_url(html),
+            "https://siteassets.parastorage.com/pages/pages/thunderbolt?x=1&registryLibrariesTopology=%5B%5D",
+        )
 
 
 if __name__ == "__main__":

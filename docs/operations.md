@@ -1,6 +1,6 @@
 # Operations Runbook
 
-This runbook covers the `0.1.x` production baseline for Montreal MCM.
+This runbook covers the production baseline for Montreal MCM.
 
 ## Before Deploy
 
@@ -23,6 +23,20 @@ Required secrets:
 - `MCM_SECRET_KEY`
 - `D1_BRIDGE_TOKEN`
 - `MCM_ADMIN_TOKEN`
+- `MCM_MANUAL_REFRESH_TOKEN` for the guarded Worker refresh-now endpoint
+
+Confirm required Cloudflare queues exist:
+
+```bash
+npm run cf:queues:list
+```
+
+Create them once if they are missing:
+
+```bash
+npm run cf:queue:create:refresh
+npm run cf:queue:create:refresh-dlq
+```
 
 Optional Worker variables:
 
@@ -69,6 +83,17 @@ Check the public homepage:
 ```bash
 curl -fsS -o /tmp/mcm-home.html https://montreal-mcm.dalaque.workers.dev/
 ```
+
+Force one source through the same queue-backed refresh path used by the morning cron:
+
+```bash
+curl -fsS \
+  -X POST \
+  -H "Authorization: Bearer $MCM_MANUAL_REFRESH_TOKEN" \
+  "https://montreal-mcm.dalaque.workers.dev/internal/refresh-now?source=morceau"
+```
+
+Omit `source` to enqueue all active launch sources.
 
 The apex custom domain should render the app, and `www` should redirect to the apex domain:
 
@@ -132,9 +157,12 @@ or source files.
 
 ## Refresh Behavior
 
-Cloudflare cron triggers one private Worker-to-container request per launch source. Each source
-refresh records a row in `refresh_jobs`, plus the existing `crawl_runs` and `crawl_failures`
-records.
+Cloudflare cron enqueues one refresh message per launch source. A Queue consumer processes one
+message at a time, calls the private Worker-to-container refresh endpoint, and retries failures
+before sending exhausted messages to `montreal-mcm-refresh-dlq`.
+
+Each completed source refresh records a row in `refresh_jobs`, plus the existing `crawl_runs` and
+`crawl_failures` records.
 
 Conservative source failure behavior is intentional: if a source fetch or parser fails and the shop
 already has records, fallback data is not treated as authoritative and existing listings are not
@@ -142,4 +170,4 @@ deactivated.
 
 A second cron runs two hours after the daily refresh window and logs a `refresh_job_monitor` event.
 It checks D1 for missing or non-success refresh jobs for each active launch source. This is log-only
-monitoring for `0.1.x`; external alerting can be added later if needed.
+monitoring; external alerting can be added later if needed.

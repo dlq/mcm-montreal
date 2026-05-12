@@ -7,11 +7,12 @@ const DEFAULT_D1_BRIDGE_URL = "https://montreal-mcm.dalaque.workers.dev/internal
 const REFRESH_CRON = "23 9 * * *";
 const REFRESH_MONITOR_CRON = "23 11 * * *";
 const SOURCE_SLUGS = ["morceau", "showroom-montreal", "montreal-moderne", "le-centerpiece"];
+const RETRY_DELAY_SECONDS = 300;
 
 export class McmContainer extends Container {
   defaultPort = 8080;
   sleepAfter = "30m";
-  pingEndpoint = "/healthz";
+  pingEndpoint = "/readyz";
 
   constructor(ctx, env) {
     super(ctx, env);
@@ -50,6 +51,9 @@ export default {
     if (url.pathname === "/internal/d1/query") {
       return queryD1(request, env);
     }
+    if (url.pathname === "/internal/refresh-now") {
+      return refreshNow(request, env, url);
+    }
     if (url.pathname.startsWith("/internal/")) {
       return new Response("Not found", { status: 404 });
     }
@@ -74,8 +78,12 @@ export default {
       return;
     }
 
-    for (const sourceSlug of SOURCE_SLUGS) {
-      ctx.waitUntil(callContainerCron(env, `/cron/refresh/${sourceSlug}`));
+    ctx.waitUntil(enqueueRefreshSources(env, SOURCE_SLUGS, "scheduled_refresh"));
+  },
+
+  async queue(batch, env) {
+    for (const message of batch.messages) {
+      await consumeRefreshMessage(message, env);
     }
   },
 };
@@ -117,6 +125,97 @@ async function queryD1(request, env) {
   }
 }
 
+async function refreshNow(request, env, url) {
+  const token = env.MCM_MANUAL_REFRESH_TOKEN || env.MCM_ADMIN_TOKEN || "";
+  const authorization = request.headers.get("authorization") || "";
+  const headerToken = request.headers.get("x-mcm-admin-token") || "";
+  if (!token || (authorization !== `Bearer ${token}` && headerToken !== token)) {
+    return new Response("Not found", { status: 404 });
+  }
+  if (request.method !== "POST") {
+    return new Response("Method not allowed", { status: 405 });
+  }
+
+  const sourceSlug = url.searchParams.get("source") || "";
+  if (sourceSlug) {
+    if (!SOURCE_SLUGS.includes(sourceSlug)) {
+      return Response.json({ status: "error", error: "Unknown source" }, { status: 404 });
+    }
+    const result = await enqueueRefreshSources(env, [sourceSlug], "manual_refresh_now");
+    return Response.json({ status: "accepted", ...result }, { status: 202 });
+  }
+
+  const result = await enqueueRefreshSources(env, SOURCE_SLUGS, "manual_refresh_now");
+  return Response.json({ status: "accepted", ...result }, { status: 202 });
+}
+
+async function enqueueRefreshSources(env, sourceSlugs, trigger) {
+  if (!env.REFRESH_QUEUE) {
+    throw new Error("REFRESH_QUEUE binding is not configured");
+  }
+  const messages = sourceSlugs.map((sourceSlug) => ({
+    body: {
+      source_slug: sourceSlug,
+      trigger,
+      enqueued_at: new Date().toISOString(),
+      message_id: crypto.randomUUID(),
+    },
+  }));
+  await env.REFRESH_QUEUE.sendBatch(messages);
+  console.log(
+    JSON.stringify({
+      event: "refresh_sources_enqueued",
+      trigger,
+      sources: sourceSlugs,
+      count: sourceSlugs.length,
+    }),
+  );
+  return { trigger, sources: sourceSlugs, count: sourceSlugs.length };
+}
+
+async function consumeRefreshMessage(message, env) {
+  const body = message.body || {};
+  const sourceSlug = typeof body.source_slug === "string" ? body.source_slug : "";
+  if (!SOURCE_SLUGS.includes(sourceSlug)) {
+    console.error(
+      JSON.stringify({
+        event: "refresh_queue_invalid_message",
+        body,
+      }),
+    );
+    message.ack();
+    return;
+  }
+
+  try {
+    const result = await callContainerCron(env, `/cron/refresh/${sourceSlug}`);
+    console.log(
+      JSON.stringify({
+        event: "refresh_queue_completed",
+        source_slug: sourceSlug,
+        trigger: body.trigger || "unknown",
+        message_id: body.message_id || "",
+        attempts: message.attempts,
+        ...result,
+      }),
+    );
+    message.ack();
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(
+      JSON.stringify({
+        event: "refresh_queue_failed",
+        source_slug: sourceSlug,
+        trigger: body.trigger || "unknown",
+        message_id: body.message_id || "",
+        attempts: message.attempts,
+        error: errorMessage,
+      }),
+    );
+    message.retry({ delaySeconds: RETRY_DELAY_SECONDS });
+  }
+}
+
 async function callContainerCron(env, path) {
   const container = env.MCM_CONTAINER.getByName(CONTAINER_INSTANCE_NAME);
   const response = await container.fetch(
@@ -139,6 +238,7 @@ async function callContainerCron(env, path) {
       body: text.slice(0, 500),
     }),
   );
+  return { status: response.status, body: text.slice(0, 500) };
 }
 
 async function checkRefreshJobs(env) {

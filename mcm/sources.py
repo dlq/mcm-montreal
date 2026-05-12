@@ -444,15 +444,19 @@ def _extract_showroom_siteassets_url(html: str) -> str:
     if page_id:
         page_link = soup.find("link", id=f"features_{page_id}", href=True)
         if page_link:
-            return page_link.get("href", "").replace("\\/", "/")
+            return _clean_showroom_siteassets_url(page_link.get("href", ""))
     for link in soup.find_all("link", href=True):
         href = link.get("href", "")
         if "siteassets.parastorage.com/pages/pages/thunderbolt" not in href:
             continue
         if "module=thunderbolt-features" not in href:
             continue
-        return href.replace("\\/", "/")
+        return _clean_showroom_siteassets_url(href)
     return ""
+
+
+def _clean_showroom_siteassets_url(href: str) -> str:
+    return href.replace("\\/", "/").replace("®istryLibrariesTopology", "&registryLibrariesTopology")
 
 
 def _extract_showroom_gallery_items(siteassets_url: str) -> list[dict[str, Any]]:
@@ -722,9 +726,18 @@ def _extract_wix_products_json(html: str) -> list[dict[str, Any]]:
 
 
 def _fetch_html(url: str) -> str:
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    request = urllib.request.Request(_ascii_safe_url(url), headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=18) as response:
         return response.read().decode("utf-8", errors="replace")
+
+
+def _ascii_safe_url(url: str) -> str:
+    parts = urllib.parse.urlsplit(url)
+    netloc = parts.netloc.encode("idna").decode("ascii")
+    path = urllib.parse.quote(parts.path, safe="/%:@")
+    query = urllib.parse.quote(parts.query, safe="/%:@?&=+$,;")
+    fragment = urllib.parse.quote(parts.fragment, safe="/%:@?&=+$,;")
+    return urllib.parse.urlunsplit((parts.scheme, netloc, path, query, fragment))
 
 
 def _extract_product_json_ld(soup: BeautifulSoup) -> dict[str, Any]:
