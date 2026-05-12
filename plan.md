@@ -322,16 +322,16 @@ In progress after `0.2.0`:
 - add a private Showroom chunk cron route in Flask for queue consumers
 - keep Showroom chunk refreshes non-authoritative for now: chunks upsert current listings but do
   not deactivate missing Showroom inventory until a later source-wide reconciliation exists
-- after a production test on 2026-05-12, limit the Worker to the first two Showroom chunks while
-  investigating why later Wix category pages expose hundreds of gallery items
+- after production tests on 2026-05-12, Showroom chunks 0-2 completed successfully with the sold
+  archive filter in place
 - Showroom's Wix galleries include large sold archives; skip sold-out gallery items before ingestion
-  and test expansion one chunk at a time
+  and keep chunk expansion tied to production verification
 
 Remaining follow-up:
 
-- deploy the staged three-chunk Showroom Worker and confirm a forced Showroom run completes without
-  importing sold archive rows
-- investigate Showroom's Wix `siteassets` payloads before enabling chunks beyond indexes 0 and 1
+- deploy the full 12-chunk Showroom Worker with sold-archive filtering and confirm a forced
+  Showroom run completes without importing sold archive rows
+- mark stale `running` rows from older interrupted refresh attempts so admin status is not noisy
 - decide whether Le Centerpiece also needs chunking, staged pagination, or a different parser path
 - add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
 - decide whether stale `running` rows from interrupted jobs should be marked `stale` by the monitor
