@@ -7,6 +7,8 @@ const DEFAULT_D1_BRIDGE_URL = "https://montreal-mcm.dalaque.workers.dev/internal
 const REFRESH_CRON = "23 9 * * *";
 const REFRESH_MONITOR_CRON = "23 11 * * *";
 const SOURCE_SLUGS = ["morceau", "showroom-montreal", "montreal-moderne", "le-centerpiece"];
+const SHOWROOM_SOURCE_SLUG = "showroom-montreal";
+const SHOWROOM_CHUNK_COUNT = 12;
 const RETRY_DELAY_SECONDS = 300;
 
 export class McmContainer extends Container {
@@ -153,24 +155,41 @@ async function enqueueRefreshSources(env, sourceSlugs, trigger) {
   if (!env.REFRESH_QUEUE) {
     throw new Error("REFRESH_QUEUE binding is not configured");
   }
-  const messages = sourceSlugs.map((sourceSlug) => ({
-    body: {
-      source_slug: sourceSlug,
-      trigger,
-      enqueued_at: new Date().toISOString(),
-      message_id: crypto.randomUUID(),
-    },
-  }));
+  const messages = sourceSlugs.flatMap((sourceSlug) =>
+    refreshMessagesForSource(sourceSlug, trigger),
+  );
   await env.REFRESH_QUEUE.sendBatch(messages);
   console.log(
     JSON.stringify({
       event: "refresh_sources_enqueued",
       trigger,
       sources: sourceSlugs,
-      count: sourceSlugs.length,
+      count: messages.length,
     }),
   );
-  return { trigger, sources: sourceSlugs, count: sourceSlugs.length };
+  return { trigger, sources: sourceSlugs, count: messages.length };
+}
+
+function refreshMessagesForSource(sourceSlug, trigger) {
+  if (sourceSlug === SHOWROOM_SOURCE_SLUG) {
+    return Array.from({ length: SHOWROOM_CHUNK_COUNT }, (_value, chunkIndex) =>
+      refreshMessageBody(sourceSlug, trigger, chunkIndex),
+    );
+  }
+  return [refreshMessageBody(sourceSlug, trigger)];
+}
+
+function refreshMessageBody(sourceSlug, trigger, chunkIndex = null) {
+  const body = {
+    source_slug: sourceSlug,
+    trigger,
+    enqueued_at: new Date().toISOString(),
+    message_id: crypto.randomUUID(),
+  };
+  if (chunkIndex !== null) {
+    body.chunk_index = chunkIndex;
+  }
+  return { body };
 }
 
 async function consumeRefreshMessage(message, env) {
@@ -188,11 +207,13 @@ async function consumeRefreshMessage(message, env) {
   }
 
   try {
-    const result = await callContainerCron(env, `/cron/refresh/${sourceSlug}`);
+    const cronPath = refreshCronPath(sourceSlug, body.chunk_index);
+    const result = await callContainerCron(env, cronPath);
     console.log(
       JSON.stringify({
         event: "refresh_queue_completed",
         source_slug: sourceSlug,
+        chunk_index: body.chunk_index ?? null,
         trigger: body.trigger || "unknown",
         message_id: body.message_id || "",
         attempts: message.attempts,
@@ -206,6 +227,7 @@ async function consumeRefreshMessage(message, env) {
       JSON.stringify({
         event: "refresh_queue_failed",
         source_slug: sourceSlug,
+        chunk_index: body.chunk_index ?? null,
         trigger: body.trigger || "unknown",
         message_id: body.message_id || "",
         attempts: message.attempts,
@@ -214,6 +236,16 @@ async function consumeRefreshMessage(message, env) {
     );
     message.retry({ delaySeconds: RETRY_DELAY_SECONDS });
   }
+}
+
+function refreshCronPath(sourceSlug, chunkIndex) {
+  if (sourceSlug === SHOWROOM_SOURCE_SLUG) {
+    if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= SHOWROOM_CHUNK_COUNT) {
+      throw new Error(`Invalid Showroom chunk index: ${chunkIndex}`);
+    }
+    return `/cron/refresh/showroom-montreal/chunk/${chunkIndex}`;
+  }
+  return `/cron/refresh/${sourceSlug}`;
 }
 
 async function callContainerCron(env, path) {

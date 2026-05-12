@@ -164,6 +164,20 @@ def fetch_source_listings(source: SourceDefinition) -> tuple[list[dict[str, Any]
         return _seed_fallback(source), str(exc)
 
 
+def fetch_showroom_entry_listings(
+    source: SourceDefinition,
+    entry_url: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    try:
+        if source.parser != "showroom":
+            raise ValueError(f"Source does not use the Showroom parser: {source.slug}")
+        if entry_url not in source.listing_urls:
+            raise ValueError(f"Unknown Showroom listing URL: {entry_url}")
+        return _fetch_showroom_entry(source, entry_url), None
+    except Exception as exc:  # noqa: BLE001
+        return [], str(exc)
+
+
 def _seed_fallback(source: SourceDefinition) -> list[dict[str, Any]]:
     seeded = []
     for item in SEED_LISTINGS.get(source.slug, []):
@@ -358,12 +372,7 @@ def _parse_shopify_product(source: SourceDefinition, url: str) -> dict[str, Any]
 def _fetch_showroom(source: SourceDefinition) -> list[dict[str, Any]]:
     listings_by_key: dict[str, dict[str, Any]] = {}
     for entry_url in source.listing_urls:
-        for listing in _extract_showroom_gallery_listings(source, entry_url):
-            normalized_text = _normalize_lookup(listing["title"])
-            for lookup, override in SHOWROOM_OVERRIDES.items():
-                if lookup in normalized_text:
-                    listing.update(override)
-                    break
+        for listing in _fetch_showroom_entry(source, entry_url):
             existing = listings_by_key.get(listing["source_listing_key"])
             if existing is None or (
                 listing["primary_image_url"] and not existing.get("primary_image_url")
@@ -373,6 +382,25 @@ def _fetch_showroom(source: SourceDefinition) -> list[dict[str, Any]]:
     if not listings:
         raise ValueError("No Showroom Montreal gallery items parsed")
     return listings[:240]
+
+
+def _fetch_showroom_entry(source: SourceDefinition, entry_url: str) -> list[dict[str, Any]]:
+    listings_by_key: dict[str, dict[str, Any]] = {}
+    for listing in _extract_showroom_gallery_listings(source, entry_url):
+        normalized_text = _normalize_lookup(listing["title"])
+        for lookup, override in SHOWROOM_OVERRIDES.items():
+            if lookup in normalized_text:
+                listing.update(override)
+                break
+        existing = listings_by_key.get(listing["source_listing_key"])
+        if existing is None or (
+            listing["primary_image_url"] and not existing.get("primary_image_url")
+        ):
+            listings_by_key[listing["source_listing_key"]] = listing
+    listings = list(listings_by_key.values())
+    if not listings:
+        raise ValueError(f"No Showroom Montreal gallery items parsed from {entry_url}")
+    return listings
 
 
 def _extract_showroom_gallery_listings(

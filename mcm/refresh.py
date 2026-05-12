@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from .repository import get_shop_by_slug
-from .sources import SOURCE_DEFINITIONS, SourceDefinition, fetch_source_listings
+from .sources import (
+    SOURCE_DEFINITIONS,
+    SourceDefinition,
+    fetch_showroom_entry_listings,
+    fetch_source_listings,
+)
 
 
 @dataclass(frozen=True)
@@ -27,6 +32,13 @@ class RefreshJobRef:
     shop_id: int
     source_slug: str
     started_at: str
+
+
+@dataclass(frozen=True)
+class ShowroomChunkResult:
+    result: RefreshResult
+    chunk_index: int
+    entry_url: str
 
 
 def refresh_all_sources(
@@ -62,19 +74,56 @@ def refresh_source_by_slug(db: sqlite3.Connection, source_slug: str) -> RefreshR
     return result
 
 
+def refresh_showroom_chunk(db: sqlite3.Connection, chunk_index: int) -> ShowroomChunkResult:
+    source = next(
+        (source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal"), None
+    )
+    if source is None:
+        raise ValueError("Unknown source slug: showroom-montreal")
+    if chunk_index < 0 or chunk_index >= len(source.listing_urls):
+        raise ValueError(f"Unknown Showroom chunk index: {chunk_index}")
+    entry_url = source.listing_urls[chunk_index]
+    listings, error = fetch_showroom_entry_listings(source, entry_url)
+    result = _refresh_source_listings(
+        db,
+        source,
+        listings,
+        error,
+        crawl_is_authoritative=False,
+    )
+    db.commit()
+    return ShowroomChunkResult(result=result, chunk_index=chunk_index, entry_url=entry_url)
+
+
 def refresh_source(db: sqlite3.Connection, source: SourceDefinition) -> RefreshResult:
+    listings, error = fetch_source_listings(source)
+    return _refresh_source_listings(
+        db,
+        source,
+        listings,
+        error,
+        crawl_is_authoritative=error is None,
+    )
+
+
+def _refresh_source_listings(
+    db: sqlite3.Connection,
+    source: SourceDefinition,
+    listings: list[dict[str, object]],
+    error: str | None,
+    *,
+    crawl_is_authoritative: bool,
+) -> RefreshResult:
     started_at = datetime.now(UTC).isoformat()
     timestamp = started_at
     shop = get_shop_by_slug(db, source.slug)
     if not shop:
         raise RuntimeError(f"Missing shop record for source slug: {source.slug}")
     job = start_refresh_job(db, int(shop["id"]), source.slug, started_at)
-    listings, error = fetch_source_listings(source)
     existing_listing_count = db.execute(
         "SELECT COUNT(*) AS count FROM listings WHERE source_shop_id = ?",
         (shop["id"],),
     ).fetchone()["count"]
-    crawl_is_authoritative = error is None
     kept_existing = bool(error and existing_listing_count)
     listings_to_process = [] if kept_existing else listings
     seen_keys: set[str] = set()

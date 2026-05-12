@@ -284,6 +284,122 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.json["source"], "morceau")
         self.assertEqual(response.json["listings"], 0)
 
+    def test_cron_can_refresh_one_showroom_chunk_without_deactivating_missing_items(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                shop = db.execute(
+                    "SELECT id FROM shops WHERE slug = 'showroom-montreal'"
+                ).fetchone()
+                db.execute(
+                    """
+                    INSERT INTO listings (
+                        source_shop_id, source_listing_url, source_listing_key, title, normalized_title,
+                        price_raw, price_value, currency, primary_image_url, additional_image_urls,
+                        availability_status, shipping_scope, ships_to_montreal, shipping_note,
+                        last_seen_at, last_checked_at, first_seen_at, category, subcategory, designer,
+                        maker, era, materials, dimensions_text, condition_text, location_text,
+                        source_description, ingest_source_type, parse_confidence, dedupe_group_id,
+                        is_active, is_featured, manual_notes, availability_override, category_override
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        shop["id"],
+                        "https://www.showroommtl.com/nouveaute",
+                        "showroom:existing",
+                        "Existing Showroom Chair",
+                        "existing showroom chair",
+                        "$250",
+                        250,
+                        "CAD",
+                        "",
+                        "[]",
+                        "available",
+                        "local_quote",
+                        1,
+                        "Local quote",
+                        "2026-05-06T00:00:00+00:00",
+                        "2026-05-06T00:00:00+00:00",
+                        "2026-05-06T00:00:00+00:00",
+                        "lounge chairs",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "Montreal, QC",
+                        "Existing data",
+                        "test",
+                        1.0,
+                        "",
+                        1,
+                        0,
+                        "",
+                        "",
+                        "",
+                    ),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        chunk_item = {
+            "source_listing_url": "https://www.showroommtl.com/nouveaute",
+            "source_listing_key": "showroom:new",
+            "title": "New Showroom Chair",
+            "price_raw": "$350",
+            "price_value": 350,
+            "currency": "CAD",
+            "primary_image_url": "",
+            "additional_image_urls": [],
+            "availability_status": "available",
+            "shipping_scope": "local_quote",
+            "ships_to_montreal": 1,
+            "shipping_note": "Local quote",
+            "category": "lounge chairs",
+            "designer": "",
+            "maker": "",
+            "era": "",
+            "materials": "",
+            "dimensions_text": "",
+            "condition_text": "",
+            "location_text": "Montreal, QC",
+            "source_description": "Chunk data",
+            "ingest_source_type": "live_fetch",
+            "parse_confidence": 0.9,
+        }
+        with patch("mcm.refresh.fetch_showroom_entry_listings", return_value=([chunk_item], None)):
+            response = self.client.post(
+                "/cron/refresh/showroom-montreal/chunk/0",
+                headers={"X-Cloudflare-Scheduled": "1"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["source"], "showroom-montreal")
+        self.assertEqual(response.json["chunk"], 0)
+        self.assertEqual(response.json["hidden"], 0)
+
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                existing = db.execute(
+                    """
+                    SELECT is_active, availability_status
+                    FROM listings
+                    WHERE source_listing_key = 'showroom:existing'
+                    """
+                ).fetchone()
+                created = db.execute(
+                    "SELECT id FROM listings WHERE source_listing_key = 'showroom:new'"
+                ).fetchone()
+                self.assertEqual(existing["is_active"], 1)
+                self.assertEqual(existing["availability_status"], "available")
+                self.assertIsNotNone(created)
+            finally:
+                db.close()
+
     def test_refresh_error_does_not_deactivate_existing_inventory(self) -> None:
         fallback_item = {
             "source_listing_url": "https://example.com/fallback",

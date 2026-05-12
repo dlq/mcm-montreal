@@ -1,8 +1,8 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-05-11
-Current line: `0.1.x`
+Updated: 2026-05-12
+Current line: `0.2.x`
 
 ## Purpose
 
@@ -55,6 +55,7 @@ data.
 
 - GitHub repo: `dlq/mcm-montreal`
 - Release tag `0.1.0`: Cloudflare container deployment baseline
+- Release tag `0.2.0`: Cloudflare Queue-backed refresh baseline
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
@@ -315,10 +316,18 @@ Completed in `0.2.0`:
 - document queue creation, retry, dead-letter, and manual force-refresh behavior in
   `docs/operations.md`
 
+In progress after `0.2.0`:
+
+- split Showroom Montreal queued refreshes into one message per configured category URL
+- add a private Showroom chunk cron route in Flask for queue consumers
+- keep Showroom chunk refreshes non-authoritative for now: chunks upsert current listings but do
+  not deactivate missing Showroom inventory until a later source-wide reconciliation exists
+
 Remaining follow-up:
 
-- deploy the queued Worker and confirm the next forced run produces successful D1 `refresh_jobs`
-  rows for long sources
+- deploy the Showroom chunked Worker and confirm a forced Showroom run completes all 12 queued
+  chunks without leaving stuck `running` rows
+- decide whether Le Centerpiece also needs chunking, staged pagination, or a different parser path
 - add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
 - decide whether stale `running` rows from interrupted jobs should be marked `stale` by the monitor
 
