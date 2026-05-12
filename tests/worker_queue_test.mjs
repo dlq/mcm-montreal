@@ -66,6 +66,31 @@ function makeCtx() {
   };
 }
 
+function makeDb(results = []) {
+  const calls = [];
+  return {
+    calls,
+    prepare(sql) {
+      const call = { sql, params: [], method: "" };
+      calls.push(call);
+      return {
+        bind(...params) {
+          call.params = params;
+          return this;
+        },
+        async all() {
+          call.method = "all";
+          return { results };
+        },
+        async run() {
+          call.method = "run";
+          return { meta: { changes: 2 } };
+        },
+      };
+    },
+  };
+}
+
 function makeMessage(body, attempts = 1) {
   return {
     body,
@@ -82,6 +107,57 @@ function makeMessage(body, attempts = 1) {
 }
 
 const worker = await loadWorker();
+
+{
+  const db = makeDb([
+    {
+      source_slug: "morceau",
+      status: "success",
+      started_at: "2026-05-12T09:24:00+00:00",
+      finished_at: "2026-05-12T09:25:00+00:00",
+      error_message: "",
+      hidden_count: 0,
+    },
+    {
+      source_slug: "showroom-montreal",
+      status: "success",
+      started_at: "2026-05-12T09:26:00+00:00",
+      finished_at: "2026-05-12T09:30:00+00:00",
+      error_message: "",
+      hidden_count: 0,
+    },
+    {
+      source_slug: "montreal-moderne",
+      status: "success",
+      started_at: "2026-05-12T09:31:00+00:00",
+      finished_at: "2026-05-12T09:34:00+00:00",
+      error_message: "",
+      hidden_count: 0,
+    },
+    {
+      source_slug: "le-centerpiece",
+      status: "stale",
+      started_at: "2026-05-12T09:35:00+00:00",
+      finished_at: "2026-05-12T11:23:00+00:00",
+      error_message: "Marked stale",
+      hidden_count: 0,
+    },
+  ]);
+  const ctx = makeCtx();
+
+  await worker.scheduled({ cron: "23 11 * * *" }, { DB: db }, ctx);
+  assert.equal(ctx.promises.length, 1);
+  await Promise.all(ctx.promises);
+
+  assert.equal(db.calls.length, 2);
+  assert.match(db.calls[0].sql, /UPDATE refresh_jobs/);
+  assert.match(db.calls[0].sql, /status = 'stale'/);
+  assert.equal(db.calls[0].method, "run");
+  assert.equal(db.calls[0].params.length, 3);
+  assert.match(db.calls[0].params[1], /Marked stale by refresh monitor/);
+  assert.equal(db.calls[1].method, "all");
+  assert.match(db.calls[1].sql, /SELECT source_slug/);
+}
 
 {
   const { env, queue } = makeEnv();

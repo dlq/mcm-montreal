@@ -315,6 +315,7 @@ Completed in `0.2.0`:
 - configure single-message queue batches, max concurrency 1, retries, and a dead-letter queue
 - document queue creation, retry, dead-letter, and manual force-refresh behavior in
   `docs/operations.md`
+- split Showroom Montreal into 12 queue chunks and filter its sold archive rows before ingestion
 
 In progress after `0.2.0`:
 
@@ -331,10 +332,9 @@ Remaining follow-up:
 
 - deploy the full 12-chunk Showroom Worker with sold-archive filtering and confirm a forced
   Showroom run completes without importing sold archive rows
-- mark stale `running` rows from older interrupted refresh attempts so admin status is not noisy
+- deploy stale `running` job marking in the monitor cron so admin status is not noisy
 - decide whether Le Centerpiece also needs chunking, staged pagination, or a different parser path
 - add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
-- decide whether stale `running` rows from interrupted jobs should be marked `stale` by the monitor
 
 Cloudflare resources created:
 

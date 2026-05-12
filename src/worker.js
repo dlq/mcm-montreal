@@ -10,6 +10,7 @@ const SOURCE_SLUGS = ["morceau", "showroom-montreal", "montreal-moderne", "le-ce
 const SHOWROOM_SOURCE_SLUG = "showroom-montreal";
 const SHOWROOM_CHUNK_COUNT = 12;
 const RETRY_DELAY_SECONDS = 300;
+const STALE_REFRESH_JOB_AGE_MS = 90 * 60 * 1000;
 
 export class McmContainer extends Container {
   defaultPort = 8080;
@@ -274,7 +275,10 @@ async function callContainerCron(env, path) {
 }
 
 async function checkRefreshJobs(env) {
-  const today = new Date().toISOString().slice(0, 10);
+  const checkedAt = new Date();
+  const today = checkedAt.toISOString().slice(0, 10);
+  const staleCutoff = new Date(checkedAt.getTime() - STALE_REFRESH_JOB_AGE_MS).toISOString();
+  await markStaleRefreshJobs(env, checkedAt.toISOString(), staleCutoff);
   const result = await env.DB.prepare(
     `
     SELECT source_slug, status, started_at, finished_at, error_message, hidden_count
@@ -313,7 +317,7 @@ async function checkRefreshJobs(env) {
 
   const payload = {
     event: "refresh_job_monitor",
-    checked_at: new Date().toISOString(),
+    checked_at: checkedAt.toISOString(),
     refresh_date: today,
     warnings,
   };
@@ -322,6 +326,36 @@ async function checkRefreshJobs(env) {
     return;
   }
   console.log(JSON.stringify(payload));
+}
+
+async function markStaleRefreshJobs(env, checkedAt, staleCutoff) {
+  const staleMessage = `Marked stale by refresh monitor at ${checkedAt}`;
+  const result = await env.DB.prepare(
+    `
+    UPDATE refresh_jobs
+    SET status = 'stale',
+        finished_at = ?,
+        error_message = CASE
+          WHEN error_message = '' THEN ?
+          ELSE error_message
+        END
+    WHERE status = 'running'
+      AND started_at < ?
+    `,
+  )
+    .bind(checkedAt, staleMessage, staleCutoff)
+    .run();
+  const changes = result.meta?.changes || 0;
+  if (changes > 0) {
+    console.warn(
+      JSON.stringify({
+        event: "refresh_jobs_marked_stale",
+        checked_at: checkedAt,
+        stale_cutoff: staleCutoff,
+        count: changes,
+      }),
+    );
+  }
 }
 
 async function fetchContainer(request, env) {
