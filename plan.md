@@ -333,7 +333,7 @@ Remaining follow-up:
 - deploy the full 12-chunk Showroom Worker with sold-archive filtering and confirm a forced
   Showroom run completes without importing sold archive rows
 - deploy stale `running` job marking in the monitor cron so admin status is not noisy
-- decide whether Le Centerpiece also needs chunking, staged pagination, or a different parser path
+- deploy Le Centerpiece collection chunks with sold-out Shopify products skipped in chunked refreshes
 - add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
 
 Cloudflare resources created:

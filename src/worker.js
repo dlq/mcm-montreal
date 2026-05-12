@@ -9,6 +9,8 @@ const REFRESH_MONITOR_CRON = "23 11 * * *";
 const SOURCE_SLUGS = ["morceau", "showroom-montreal", "montreal-moderne", "le-centerpiece"];
 const SHOWROOM_SOURCE_SLUG = "showroom-montreal";
 const SHOWROOM_CHUNK_COUNT = 12;
+const LE_CENTERPIECE_SOURCE_SLUG = "le-centerpiece";
+const LE_CENTERPIECE_CHUNK_COUNT = 7;
 const RETRY_DELAY_SECONDS = 300;
 const STALE_REFRESH_JOB_AGE_MS = 90 * 60 * 1000;
 
@@ -177,6 +179,11 @@ function refreshMessagesForSource(sourceSlug, trigger) {
       refreshMessageBody(sourceSlug, trigger, chunkIndex),
     );
   }
+  if (sourceSlug === LE_CENTERPIECE_SOURCE_SLUG) {
+    return Array.from({ length: LE_CENTERPIECE_CHUNK_COUNT }, (_value, chunkIndex) =>
+      refreshMessageBody(sourceSlug, trigger, chunkIndex),
+    );
+  }
   return [refreshMessageBody(sourceSlug, trigger)];
 }
 
@@ -245,6 +252,16 @@ function refreshCronPath(sourceSlug, chunkIndex) {
       throw new Error(`Invalid Showroom chunk index: ${chunkIndex}`);
     }
     return `/cron/refresh/showroom-montreal/chunk/${chunkIndex}`;
+  }
+  if (sourceSlug === LE_CENTERPIECE_SOURCE_SLUG) {
+    if (
+      !Number.isInteger(chunkIndex) ||
+      chunkIndex < 0 ||
+      chunkIndex >= LE_CENTERPIECE_CHUNK_COUNT
+    ) {
+      throw new Error(`Invalid Le Centerpiece chunk index: ${chunkIndex}`);
+    }
+    return `/cron/refresh/le-centerpiece/chunk/${chunkIndex}`;
   }
   return `/cron/refresh/${sourceSlug}`;
 }

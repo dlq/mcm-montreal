@@ -169,14 +169,14 @@ const worker = await loadWorker();
 
   assert.equal(queue.sentBatches.length, 1);
   const messages = queue.sentBatches[0];
-  assert.equal(messages.length, 15);
+  assert.equal(messages.length, 21);
   assert.deepEqual(
     messages.map((message) => message.body.source_slug),
     [
       "morceau",
       ...Array.from({ length: 12 }, () => "showroom-montreal"),
       "montreal-moderne",
-      "le-centerpiece",
+      ...Array.from({ length: 7 }, () => "le-centerpiece"),
     ],
   );
   assert.deepEqual(
@@ -185,9 +185,39 @@ const worker = await loadWorker();
       .map((message) => message.body.chunk_index),
     Array.from({ length: 12 }, (_value, index) => index),
   );
+  assert.deepEqual(
+    messages
+      .filter((message) => message.body.source_slug === "le-centerpiece")
+      .map((message) => message.body.chunk_index),
+    Array.from({ length: 7 }, (_value, index) => index),
+  );
   assert(messages.every((message) => message.body.trigger === "scheduled_refresh"));
   assert(messages.every((message) => message.body.message_id));
   assert(messages.every((message) => message.body.enqueued_at));
+}
+
+{
+  const { env, queue } = makeEnv();
+  const response = await worker.fetch(
+    new Request("https://montreal-mcm.test/internal/refresh-now?source=le-centerpiece", {
+      method: "POST",
+      headers: { Authorization: "Bearer refresh-token" },
+    }),
+    env,
+  );
+
+  assert.equal(response.status, 202);
+  assert.equal(queue.sentBatches.length, 1);
+  assert.equal(queue.sentBatches[0].length, 7);
+  assert.deepEqual(
+    queue.sentBatches[0].map((message) => message.body.source_slug),
+    Array.from({ length: 7 }, () => "le-centerpiece"),
+  );
+  assert.deepEqual(
+    queue.sentBatches[0].map((message) => message.body.chunk_index),
+    Array.from({ length: 7 }, (_value, index) => index),
+  );
+  assert.equal(queue.sentBatches[0][0].body.trigger, "manual_refresh_now");
 }
 
 {
@@ -226,7 +256,7 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 15);
+  assert.equal(queue.sentBatches[0].length, 21);
 }
 
 {
@@ -304,6 +334,42 @@ const worker = await loadWorker();
     chunk_index: 12,
     trigger: "test",
     message_id: "message-4",
+  });
+
+  await worker.queue({ messages: [message] }, env);
+
+  assert.equal(message.acked, false);
+  assert.deepEqual(message.retried, { delaySeconds: 300 });
+  assert.equal(containerRequests.length, 0);
+}
+
+{
+  const { env, containerRequests } = makeEnv();
+  const message = makeMessage({
+    source_slug: "le-centerpiece",
+    chunk_index: 6,
+    trigger: "test",
+    message_id: "message-5",
+  });
+
+  await worker.queue({ messages: [message] }, env);
+
+  assert.equal(message.acked, true);
+  assert.equal(message.retried, null);
+  assert.equal(containerRequests.length, 1);
+  assert.equal(
+    new URL(containerRequests[0].url).pathname,
+    "/cron/refresh/le-centerpiece/chunk/6",
+  );
+}
+
+{
+  const { env, containerRequests } = makeEnv();
+  const message = makeMessage({
+    source_slug: "le-centerpiece",
+    chunk_index: 7,
+    trigger: "test",
+    message_id: "message-6",
   });
 
   await worker.queue({ messages: [message] }, env);

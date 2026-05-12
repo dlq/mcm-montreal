@@ -24,6 +24,7 @@ from mcm.sources import (
     _extract_showroom_gallery_listings,
     _extract_showroom_siteassets_url,
     _fetch_html,
+    _fetch_shopify_collection_entry,
     _fetch_shopify_collection_products,
     _parse_shopify_collection_product,
 )
@@ -399,6 +400,46 @@ class AppTests(unittest.TestCase):
                 self.assertIsNotNone(created)
             finally:
                 db.close()
+
+    def test_cron_can_refresh_one_le_centerpiece_chunk(self) -> None:
+        chunk_item = {
+            "source_listing_url": "https://lecenterpiece.com/products/test-chair",
+            "source_listing_key": "https://lecenterpiece.com/products/test-chair",
+            "title": "Test Chair",
+            "price_raw": "$350.00 CAD",
+            "price_value": 350,
+            "currency": "CAD",
+            "primary_image_url": "",
+            "additional_image_urls": [],
+            "availability_status": "available",
+            "shipping_scope": "international",
+            "ships_to_montreal": 1,
+            "shipping_note": "Local quote",
+            "category": "lounge chairs",
+            "designer": "",
+            "maker": "",
+            "era": "",
+            "materials": "",
+            "dimensions_text": "",
+            "condition_text": "",
+            "location_text": "Montreal, QC",
+            "source_description": "Chunk data",
+            "ingest_source_type": "live_fetch",
+            "parse_confidence": 0.9,
+        }
+        with patch(
+            "mcm.refresh.fetch_le_centerpiece_entry_listings",
+            return_value=([chunk_item], None),
+        ):
+            response = self.client.post(
+                "/cron/refresh/le-centerpiece/chunk/0",
+                headers={"X-Cloudflare-Scheduled": "1"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["source"], "le-centerpiece")
+        self.assertEqual(response.json["chunk"], 0)
+        self.assertEqual(response.json["hidden"], 0)
 
     def test_refresh_error_does_not_deactivate_existing_inventory(self) -> None:
         fallback_item = {
@@ -921,6 +962,33 @@ class AppTests(unittest.TestCase):
         self.assertEqual(listing["price_value"], 500)
         self.assertEqual(listing["materials"], "Teak and mirror")
         self.assertEqual(listing["dimensions_text"], '31"W x 42"H')
+
+    def test_shopify_collection_entry_can_skip_sold_out_products(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "le-centerpiece")
+        products = [
+            {
+                "title": "Available Chair",
+                "handle": "available-chair",
+                "body_html": "<p>Vintage chair.</p>",
+                "variants": [{"available": True, "price": "500.00"}],
+            },
+            {
+                "title": "Sold Chair",
+                "handle": "sold-chair",
+                "body_html": "<p>Vintage chair.</p>",
+                "variants": [{"available": False, "price": "400.00"}],
+            },
+        ]
+        with patch("mcm.sources._fetch_shopify_collection_products", return_value=products):
+            listings = _fetch_shopify_collection_entry(
+                source,
+                "https://lecenterpiece.com/collections/chairs",
+                include_sold_out=False,
+            )
+
+        self.assertEqual(len(listings), 1)
+        self.assertEqual(listings[0]["title"], "Available Chair")
+        self.assertEqual(listings[0]["availability_status"], "available")
 
     def test_shopify_collection_product_skips_gift_cards(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "morceau")

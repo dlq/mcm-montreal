@@ -178,6 +178,20 @@ def fetch_showroom_entry_listings(
         return [], str(exc)
 
 
+def fetch_le_centerpiece_entry_listings(
+    source: SourceDefinition,
+    entry_url: str,
+) -> tuple[list[dict[str, Any]], str | None]:
+    try:
+        if source.slug != "le-centerpiece" or source.parser != "shopify_collection":
+            raise ValueError(f"Source does not use the Le Centerpiece parser: {source.slug}")
+        if entry_url not in source.listing_urls:
+            raise ValueError(f"Unknown Le Centerpiece listing URL: {entry_url}")
+        return _fetch_shopify_collection_entry(source, entry_url, include_sold_out=False), None
+    except Exception as exc:  # noqa: BLE001
+        return [], str(exc)
+
+
 def _seed_fallback(source: SourceDefinition) -> list[dict[str, Any]]:
     seeded = []
     for item in SEED_LISTINGS.get(source.slug, []):
@@ -191,11 +205,7 @@ def _seed_fallback(source: SourceDefinition) -> list[dict[str, Any]]:
 def _fetch_shopify_collection(source: SourceDefinition) -> list[dict[str, Any]]:
     listings_by_url: dict[str, dict[str, Any]] = {}
     for entry_url in source.listing_urls:
-        for product in _fetch_shopify_collection_products(entry_url):
-            try:
-                listing = _parse_shopify_collection_product(source, product)
-            except ValueError:
-                continue
+        for listing in _fetch_shopify_collection_entry(source, entry_url):
             listings_by_url[listing["source_listing_url"]] = listing
 
     if listings_by_url:
@@ -223,6 +233,24 @@ def _fetch_shopify_collection(source: SourceDefinition) -> list[dict[str, Any]]:
             continue
     if not listings:
         raise ValueError(f"No listings parsed from {source.listing_urls[0]}")
+    return listings
+
+
+def _fetch_shopify_collection_entry(
+    source: SourceDefinition,
+    entry_url: str,
+    *,
+    include_sold_out: bool = True,
+) -> list[dict[str, Any]]:
+    listings: list[dict[str, Any]] = []
+    for product in _fetch_shopify_collection_products(entry_url):
+        try:
+            listing = _parse_shopify_collection_product(source, product)
+        except ValueError:
+            continue
+        if not include_sold_out and listing["availability_status"] == "sold_out":
+            continue
+        listings.append(listing)
     return listings
 
 

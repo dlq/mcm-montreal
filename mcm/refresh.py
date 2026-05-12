@@ -10,6 +10,7 @@ from .repository import get_shop_by_slug
 from .sources import (
     SOURCE_DEFINITIONS,
     SourceDefinition,
+    fetch_le_centerpiece_entry_listings,
     fetch_showroom_entry_listings,
     fetch_source_listings,
 )
@@ -36,6 +37,13 @@ class RefreshJobRef:
 
 @dataclass(frozen=True)
 class ShowroomChunkResult:
+    result: RefreshResult
+    chunk_index: int
+    entry_url: str
+
+
+@dataclass(frozen=True)
+class SourceChunkResult:
     result: RefreshResult
     chunk_index: int
     entry_url: str
@@ -93,6 +101,27 @@ def refresh_showroom_chunk(db: sqlite3.Connection, chunk_index: int) -> Showroom
     )
     db.commit()
     return ShowroomChunkResult(result=result, chunk_index=chunk_index, entry_url=entry_url)
+
+
+def refresh_le_centerpiece_chunk(db: sqlite3.Connection, chunk_index: int) -> SourceChunkResult:
+    source = next(
+        (source for source in SOURCE_DEFINITIONS if source.slug == "le-centerpiece"), None
+    )
+    if source is None:
+        raise ValueError("Unknown source slug: le-centerpiece")
+    if chunk_index < 0 or chunk_index >= len(source.listing_urls):
+        raise ValueError(f"Unknown Le Centerpiece chunk index: {chunk_index}")
+    entry_url = source.listing_urls[chunk_index]
+    listings, error = fetch_le_centerpiece_entry_listings(source, entry_url)
+    result = _refresh_source_listings(
+        db,
+        source,
+        listings,
+        error,
+        crawl_is_authoritative=False,
+    )
+    db.commit()
+    return SourceChunkResult(result=result, chunk_index=chunk_index, entry_url=entry_url)
 
 
 def refresh_source(db: sqlite3.Connection, source: SourceDefinition) -> RefreshResult:
