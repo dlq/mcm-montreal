@@ -741,3 +741,5 @@ Checked on: 2026-05-14
 - Showroom full refresh must not be capped at 240 items. On 2026-05-14, the uncapped live parse returned 4,029 unique Wix gallery items: 236 available and 3,793 sold out.
 - Production default listing count after the authoritative Showroom refresh was 381 available listings across active shops, but importing the sold archive as active public records produced an implausible sold-out catalogue.
 - Refresh policy should skip newly discovered records that are already `sold_out`; existing listings that were previously tracked should still update to `sold_out` when they sell.
+- Public sold-out listings now require status history evidence of an `available` to `sold_out` transition, unless an explicit manual override marks the row sold out.
+- This means a shop with a large sold archive, such as Showroom Montreal, will show zero public sold-out items until a listing Montreal MCM previously tracked as available later appears as sold.

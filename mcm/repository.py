@@ -11,6 +11,19 @@ from flask import has_request_context, session
 ALLOWED_FILTER_FIELDS = {"category", "materials", "designer"}
 ALLOWED_AVAILABILITY = {"available", "sold_out", "all"}
 ALLOWED_SORT = {"newest", "recent_check", "price_low", "price_high", "recent_source"}
+EFFECTIVE_AVAILABILITY_SQL = "COALESCE(NULLIF(l.availability_override, ''), l.availability_status)"
+PROVEN_SOLD_OUT_SQL = """
+(
+    NULLIF(l.availability_override, '') = 'sold_out'
+    OR EXISTS (
+        SELECT 1
+        FROM listing_availability_events lae
+        WHERE lae.listing_id = l.id
+          AND lae.from_status = 'available'
+          AND lae.to_status = 'sold_out'
+    )
+)
+"""
 
 
 def build_listing_filters(args: Any) -> dict[str, str]:
@@ -38,9 +51,8 @@ def query_listings(
     params: list[Any] = []
     if not include_inactive:
         clauses.append("l.is_active = 1")
-        clauses.append(
-            "COALESCE(NULLIF(l.availability_override, ''), l.availability_status) != 'removed'"
-        )
+        clauses.append(f"{EFFECTIVE_AVAILABILITY_SQL} != 'removed'")
+        clauses.append(f"({EFFECTIVE_AVAILABILITY_SQL} != 'sold_out' OR {PROVEN_SOLD_OUT_SQL})")
     if filters.get("q"):
         clauses.append(
             "(l.title LIKE ? OR l.designer LIKE ? OR l.maker LIKE ? OR l.materials LIKE ?)"
@@ -66,7 +78,7 @@ def query_listings(
         clauses.append("l.ships_to_montreal = 1")
     availability = filters.get("availability")
     if availability and availability != "all":
-        clauses.append("COALESCE(NULLIF(l.availability_override, ''), l.availability_status) = ?")
+        clauses.append(f"{EFFECTIVE_AVAILABILITY_SQL} = ?")
         params.append(availability)
 
     price_min = safe_float(filters.get("price_min", ""))

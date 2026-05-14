@@ -196,6 +196,8 @@ def _refresh_source_listings(
 
         first_seen = existing["first_seen_at"] if existing else timestamp
         if existing:
+            old_status = str(existing["availability_status"] or "")
+            new_status = str(item.get("availability_status", "unknown"))
             db.execute(
                 """
                 UPDATE listings
@@ -258,6 +260,17 @@ def _refresh_source_listings(
                     existing["id"],
                 ),
             )
+            if old_status != new_status:
+                record_availability_event(
+                    db,
+                    int(existing["id"]),
+                    int(shop["id"]),
+                    str(key),
+                    old_status,
+                    new_status,
+                    timestamp,
+                    "source_refresh",
+                )
             continue
 
         new_count += 1
@@ -338,8 +351,45 @@ def _refresh_source_listings(
                 "",
             ),
         )
+        created = db.execute(
+            """
+            SELECT id
+            FROM listings
+            WHERE source_shop_id = ? AND source_listing_key = ?
+            """,
+            (shop["id"], key),
+        ).fetchone()
+        if created:
+            record_availability_event(
+                db,
+                int(created["id"]),
+                int(shop["id"]),
+                str(key),
+                "",
+                str(item.get("availability_status", "unknown")),
+                timestamp,
+                "discovered",
+            )
     deactivated = 0
     if crawl_is_authoritative:
+        rows_to_deactivate = db.execute(
+            "SELECT id, source_listing_key, availability_status FROM listings WHERE source_shop_id = ? AND source_listing_key NOT IN ({}) AND is_active = 1".format(
+                ",".join("?" for _ in seen_keys) if seen_keys else "''"
+            ),
+            [shop["id"], *seen_keys],
+        ).fetchall()
+        for row in rows_to_deactivate:
+            if row["availability_status"] != "removed":
+                record_availability_event(
+                    db,
+                    int(row["id"]),
+                    int(shop["id"]),
+                    str(row["source_listing_key"]),
+                    str(row["availability_status"] or ""),
+                    "removed",
+                    timestamp,
+                    "source_refresh",
+                )
         deactivated = db.execute(
             "UPDATE listings SET is_active = 0, availability_status = 'removed', last_checked_at = ? WHERE source_shop_id = ? AND source_listing_key NOT IN ({})".format(
                 ",".join("?" for _ in seen_keys) if seen_keys else "''"
@@ -373,6 +423,35 @@ def _refresh_source_listings(
     )
     finish_refresh_job(db, job, datetime.now(UTC).isoformat(), result)
     return result
+
+
+def record_availability_event(
+    db: sqlite3.Connection,
+    listing_id: int,
+    shop_id: int,
+    source_listing_key: str,
+    from_status: str,
+    to_status: str,
+    observed_at: str,
+    event_type: str,
+) -> None:
+    db.execute(
+        """
+        INSERT INTO listing_availability_events (
+            listing_id, shop_id, source_listing_key, observed_at,
+            from_status, to_status, event_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            listing_id,
+            shop_id,
+            source_listing_key,
+            observed_at,
+            from_status,
+            to_status,
+            event_type,
+        ),
+    )
 
 
 def start_refresh_job(
@@ -454,7 +533,9 @@ def find_reconciliation_candidate(
     normalized_title = normalize_text(str(item["title"]))
     rows = db.execute(
         """
-        SELECT id, source_listing_key, first_seen_at, price_value, primary_image_url, source_description
+        SELECT
+            id, source_listing_key, first_seen_at, availability_status, is_active,
+            price_value, primary_image_url, source_description
         FROM listings
         WHERE source_shop_id = ?
           AND normalized_title = ?

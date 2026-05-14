@@ -172,7 +172,7 @@ class AppTests(unittest.TestCase):
         response = self.client.get("/?price_min=abc")
         self.assertEqual(response.status_code, 200)
 
-    def test_sold_out_filter_can_show_active_sold_listings(self) -> None:
+    def test_sold_out_filter_requires_available_to_sold_history(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)
             try:
@@ -193,6 +193,28 @@ class AppTests(unittest.TestCase):
         all_response = self.client.get("/?availability=all")
 
         self.assertNotIn("Sample Chair", default_response.text)
+        self.assertNotIn("Sample Chair", sold_response.text)
+        self.assertNotIn("Sample Chair", all_response.text)
+
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    INSERT INTO listing_availability_events (
+                        listing_id, shop_id, source_listing_key, observed_at,
+                        from_status, to_status, event_type
+                    ) VALUES (?, (SELECT id FROM shops WHERE slug = 'morceau'), 'sample-key',
+                        '2026-05-07T00:00:00+00:00', 'available', 'sold_out', 'test')
+                    """,
+                    (self.listing_id,),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        sold_response = self.client.get("/?availability=sold_out")
+        all_response = self.client.get("/?availability=all")
         self.assertIn("Sample Chair", sold_response.text)
         self.assertIn("Sample Chair", all_response.text)
 
@@ -303,6 +325,13 @@ class AppTests(unittest.TestCase):
                 listing = db.execute(
                     "SELECT id FROM listings WHERE source_listing_key = 'archive-sold-key'"
                 ).fetchone()
+                event = db.execute(
+                    """
+                    SELECT id
+                    FROM listing_availability_events
+                    WHERE source_listing_key = 'archive-sold-key'
+                    """
+                ).fetchone()
                 job = db.execute(
                     """
                     SELECT listings_found, new_count
@@ -313,6 +342,7 @@ class AppTests(unittest.TestCase):
                     """
                 ).fetchone()
                 self.assertIsNone(listing)
+                self.assertIsNone(event)
                 self.assertEqual(job["listings_found"], 1)
                 self.assertEqual(job["new_count"], 0)
             finally:
@@ -359,9 +389,22 @@ class AppTests(unittest.TestCase):
                     WHERE source_listing_key = 'sample-key'
                     """
                 ).fetchone()
+                event = db.execute(
+                    """
+                    SELECT from_status, to_status, event_type
+                    FROM listing_availability_events
+                    WHERE listing_id = ?
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (self.listing_id,),
+                ).fetchone()
                 self.assertEqual(listing["is_active"], 1)
                 self.assertEqual(listing["availability_status"], "sold_out")
                 self.assertEqual(listing["first_seen_at"], "2026-05-06T00:00:00+00:00")
+                self.assertEqual(event["from_status"], "available")
+                self.assertEqual(event["to_status"], "sold_out")
+                self.assertEqual(event["event_type"], "source_refresh")
             finally:
                 db.close()
 
@@ -414,8 +457,17 @@ class AppTests(unittest.TestCase):
                     WHERE source_listing_key = 'sample-key'
                     """
                 ).fetchone()
+                event = db.execute(
+                    """
+                    SELECT id
+                    FROM listing_availability_events
+                    WHERE listing_id = ? AND to_status = 'sold_out'
+                    """,
+                    (self.listing_id,),
+                ).fetchone()
                 self.assertEqual(listing["is_active"], 0)
                 self.assertEqual(listing["availability_status"], "removed")
+                self.assertIsNone(event)
             finally:
                 db.close()
 
