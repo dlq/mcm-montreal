@@ -179,6 +179,9 @@ def _refresh_source_listings(
             if existing:
                 reconciled_count += 1
 
+        if not existing and item.get("availability_status") == "sold_out":
+            continue
+
         first_seen = existing["first_seen_at"] if existing else timestamp
         if existing:
             db.execute(

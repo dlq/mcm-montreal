@@ -739,4 +739,5 @@ Checked on: 2026-05-14
 - The live parser now treats any normalized `vendu` marker in the Wix item title, parsed title, or description as `availability_status = sold_out`.
 - Example: local listing `MCM-006538` has source key `showroom:dataItem-j1sgitoe2`. The live source shows `VENDU SOLD`; the parser now returns title `TINGSTROMS, série Casino SWEDEN`, source URL `https://www.showroommtl.com/tables-dappoints?lightbox=dataItem-j1sgitoe2`, and `availability_status = sold_out`.
 - Showroom full refresh must not be capped at 240 items. On 2026-05-14, the uncapped live parse returned 4,029 unique Wix gallery items: 236 available and 3,793 sold out.
-- Production default listing count after the authoritative Showroom refresh was 381 available listings across active shops.
+- Production default listing count after the authoritative Showroom refresh was 381 available listings across active shops, but importing the sold archive as active public records produced an implausible sold-out catalogue.
+- Refresh policy should skip newly discovered records that are already `sold_out`; existing listings that were previously tracked should still update to `sold_out` when they sell.
