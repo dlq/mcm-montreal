@@ -736,6 +736,11 @@ class AppTests(unittest.TestCase):
         self.assertIn("lounge chairs", response.text)
         self.assertNotIn("Montreal, QC · lounge chairs", response.text)
 
+    def test_listing_card_images_are_lazy_loaded(self) -> None:
+        response = self.client.get("/")
+        self.assertIn('loading="lazy"', response.text)
+        self.assertIn('decoding="async"', response.text)
+
     def test_detail_page_localizes_canonical_ingest_values(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)
@@ -1111,7 +1116,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(len(listings), 1)
         self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-real")
 
-    def test_showroom_gallery_skips_sold_archive_items(self) -> None:
+    def test_showroom_gallery_marks_sold_items(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")
         gallery_items = [
             {
@@ -1138,8 +1143,38 @@ class AppTests(unittest.TestCase):
                 "https://www.showroommtl.com/nouveaute",
             )
 
+        self.assertEqual(len(listings), 2)
+        self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-sold")
+        self.assertEqual(listings[0]["availability_status"], "sold_out")
+        self.assertEqual(listings[1]["source_listing_key"], "showroom:dataItem-real")
+        self.assertEqual(listings[1]["availability_status"], "available")
+
+    def test_showroom_gallery_marks_title_overlay_sold_items(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")
+        gallery_items = [
+            {
+                "id": "dataItem-sold",
+                "uri": "fc24cc_sold~mv2.jpg",
+                "title": "VENDU SOLD",
+                "description": "TINGSTROMS, série Casino\nSWEDEN",
+            },
+        ]
+        with (
+            patch("mcm.sources._fetch_html", return_value="<html></html>"),
+            patch(
+                "mcm.sources._extract_showroom_siteassets_url",
+                return_value="https://example.com/assets",
+            ),
+            patch("mcm.sources._extract_showroom_gallery_items", return_value=gallery_items),
+        ):
+            listings = _extract_showroom_gallery_listings(
+                source,
+                "https://www.showroommtl.com/tables-dappoints",
+            )
+
         self.assertEqual(len(listings), 1)
-        self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-real")
+        self.assertEqual(listings[0]["title"], "TINGSTROMS, série Casino SWEDEN")
+        self.assertEqual(listings[0]["availability_status"], "sold_out")
 
     def test_fetch_html_percent_encodes_non_ascii_url_parts(self) -> None:
         class FakeResponse:

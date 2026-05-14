@@ -460,9 +460,7 @@ def _extract_showroom_gallery_listings(
         price_line = _showroom_price_line(raw_description)
         price_match = re.search(r"(\d[\d\s]*(?:[.,]\d{2})?)\s*\$", price_line)
         price_value = _to_float(price_match.group(1)) if price_match else None
-        sold_out = "vendu" in normalized_title or "vendu" in _normalize_lookup(description)
-        if sold_out:
-            continue
+        sold_out = _showroom_item_is_sold_out(item, title, description)
         designer, maker = _extract_designer_and_maker(title, description)
         listings.append(
             {
@@ -475,7 +473,7 @@ def _extract_showroom_gallery_listings(
                 "currency": "CAD",
                 "primary_image_url": _showroom_media_url(image_uri),
                 "additional_image_urls": [],
-                "availability_status": "available",
+                "availability_status": "sold_out" if sold_out else "available",
                 "shipping_scope": "local_quote",
                 "ships_to_montreal": 1,
                 "shipping_note": source.shipping_summary,
@@ -501,6 +499,11 @@ def _showroom_lightbox_url(entry_url: str, item_id: str) -> str:
     query = [(key, value) for key, value in query if key != "lightbox"]
     query.append(("lightbox", item_id))
     return urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query, doseq=True)))
+
+
+def _showroom_item_is_sold_out(item: dict[str, Any], title: str, description: str) -> bool:
+    item_title = _clean_text(str(item.get("title", "")))
+    return "vendu" in _normalize_lookup(f"{item_title} {title} {description}")
 
 
 def _extract_showroom_siteassets_url(html: str) -> str:
