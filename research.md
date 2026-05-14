@@ -730,3 +730,13 @@ Checked on: 2026-05-08
 - Listing card item names, detail page item titles, and the `Montreal MCM` wordmark currently use the default sans-serif stack while the display-font direction is reconsidered.
 - The header navigation is intended to align in the top header row with the wordmark, with the tagline below it.
 - Raw source fields remain important for research and admin review: titles, source notes, unusual price text, dimensions, designer/maker text, and parser evidence should not be overwritten by display localization.
+
+## Showroom Montreal Sold Archive Behavior
+
+Checked on: 2026-05-14
+
+- Showroom Montreal catalogue pages include many historical sold items. Their Wix gallery item title or description may contain `VENDU SOLD`, `vendu`, `vendue`, or `vendues`.
+- The live parser now treats any normalized `vendu` marker in the Wix item title, parsed title, or description as `availability_status = sold_out`.
+- Example: local listing `MCM-006538` has source key `showroom:dataItem-j1sgitoe2`. The live source shows `VENDU SOLD`; the parser now returns title `TINGSTROMS, série Casino SWEDEN`, source URL `https://www.showroommtl.com/tables-dappoints?lightbox=dataItem-j1sgitoe2`, and `availability_status = sold_out`.
+- Showroom full refresh must not be capped at 240 items. On 2026-05-14, the uncapped live parse returned 4,029 unique Wix gallery items: 236 available and 3,793 sold out.
+- Production default listing count after the authoritative Showroom refresh was 381 available listings across active shops.
