@@ -1,7 +1,7 @@
 # Montreal MCM Resale Research
 
 Date: 2026-04-26
-Updated: 2026-05-08
+Updated: 2026-05-14
 
 ## Goal
 
@@ -85,49 +85,81 @@ Reason: the first group appears to expose item pages and prices clearly, while t
 
 ## Recommended Next Source Order From Here
 
-Given the current implementation, the research-backed next source order should be:
+As of 2026-05-14, the next expansion should stay local-first. For Montreal and agglomeration-area
+shops, local pickup or local delivery is enough; Canada-wide shipping is not required.
 
-### Near-Term Additions
+If the product later expands beyond the Montreal agglomeration, or if traffic materially shifts
+toward users outside Montreal, shipping requirements should be revisited before adding more
+non-local sources.
 
-1. Green Wall Vintage
-2. Vintage Home Boutique
-3. Maison Singulier
+### Selected Local Expansion Set
 
-Reason:
-
-- they fit the Montreal / Canada-friendly thesis
-- they are the clearest gap between the original research and the current live source set
-- they add meaningful inventory without forcing a marketplace-style expansion
-
-### Next Expansion After That
-
-1. Urbano Vintej
-2. Banana Lab
+1. Maison Singulier
+2. Yardsale Vintage
+3. BOND Vintage
+4. Chez Lamothe
 
 Reason:
 
-- both remain promising direct-source additions
-- both appear worth doing after the first missing launch sources are live
+- they preserve the Montreal-first thesis better than jumping to Ottawa, Toronto, or broader
+  Canada-friendly shops
+- they are closer in caliber and curation to the current four active sources
+- they should add local discovery value without turning the product into a broad resale marketplace
 
-### Still Defer For Later
+### Implementation Readiness
 
-1. 1stDibs
-2. Chairish
-3. Pamono
+Likely crawl candidates:
+
+1. Maison Singulier
+2. BOND Vintage
+
+Likely manual/profile-first candidates:
+
+1. Yardsale Vintage
+2. Chez Lamothe
 
 Reason:
 
-- higher duplication risk
-- higher crawl complexity
-- better evaluated only after direct-shop ingestion, change tracking, and duplicate handling are stronger
+- Maison Singulier has public collection/product pages, but needs clean live-vs-archive filtering.
+- BOND Vintage appears to have Shopify collection/product pages with prices and sold states, but its
+  active inventory may be sparse or mostly sold out.
+- Yardsale Vintage has strong brand/source fit, but purchase appears contact-based and the catalog
+  is not yet proven as a clean automated feed.
+- Chez Lamothe is highly aligned locally, but current evidence still points more to social/manual
+  sourcing than a stable public item feed.
+
+### Explicitly Deferred
+
+1. EcoDepot Montreal
+2. Trianon Boutique
+3. Green Wall Vintage
+4. Vintage Home Boutique
+5. Banana Lab
+6. 1stDibs
+7. Chairish
+8. Pamono
+
+Reason:
+
+- EcoDepot is relevant locally, but inventory is broad and thrift-like enough that it could weaken
+  focus unless added with careful category filtering.
+- Trianon is high caliber, but the emphasis is French antiques / 18th-century decorative arts rather
+  than the core MCM furniture product.
+- Green Wall Vintage and Vintage Home Boutique remain useful Canada-friendly candidates, but they
+  are not local enough for the next expansion step.
+- Banana Lab should not be treated as Montreal-local based on the latest review.
+- Large marketplaces remain a later strategy because they introduce duplication, crawl complexity,
+  and weaker direct-source differentiation.
 
 ## Research Questions That Still Matter
 
 The build has answered the "is this product worth prototyping?" question. The main research questions still worth validating are now:
 
 1. Which active source parsers are stable enough to rely on without frequent seed fallback?
-2. Which missing direct-shop sources can be added with the least parser complexity?
-3. How often do target sources expose sold, removed, or ambiguous inventory states?
+2. Can Maison Singulier and BOND Vintage be crawled cleanly without importing archive-only or sold
+   inventory?
+3. Can Yardsale Vintage and Chez Lamothe expose enough public listing data to graduate from
+   manual/profile-first sources to automated sources?
 4. Which sources mix in too much lighting or decor for a furniture-first launch?
 5. Which sources are most likely to create duplicate inventory if marketplace expansion happens later?
 
@@ -249,7 +281,56 @@ Nice-to-have fields:
   - collection page exists: https://maisonsingulier.com/collections
   - seating collection shows live prices on some items: https://maisonsingulier.com/collections/seating
   - large-item product pages explicitly instruct buyers to request a shipping quote, which is fine for the project if quote-based Montreal shipping is allowed
-  - this should be added to the research set, but I would still start after the simpler first-wave sources because inventory appears mixed between available, archive, and non-furniture items
+  - this should be the first expansion source after the current four active shops
+  - implementation must avoid importing archive-only inventory as available inventory
+
+### Yardsale Vintage
+
+- URL: https://yardsale-vintage.com/
+- Why it matters: Montreal studio focused on restored, one-of-a-kind vintage furniture with a strong
+  fit for the curated local thesis.
+- Local signal:
+  - about page says the studio operates in Montreal
+  - pieces can be viewed in person by appointment
+- Delivery signal:
+  - FAQ/about pages say shipping is available across Canada and the United States by quote
+  - for this project, local appointment/pickup or local delivery would be enough even without
+    Canada-wide shipping
+- Crawlability: medium to low until verified. Public site exists, but purchase appears
+  contact-based and the item catalog is not yet proven as a clean feed.
+- Notes:
+  - good candidate for shop profile and manual-source support first
+  - only promote to automated ingestion if current inventory pages expose title, image, price or
+    quote status, and availability reliably
+
+### BOND Vintage
+
+- URL: https://bondvintage.com/
+- Why it matters: Montreal shop selling vintage modern furniture and home accessories from multiple
+  periods and countries.
+- Local signal:
+  - about page lists the shop on boulevard Saint-Laurent in Montreal
+- Crawlability: medium to strong technically because it appears Shopify-based.
+- Notes:
+  - collection page shows product cards, prices, and sold-out states
+  - concern: current visible inventory may be mostly sold out, so usefulness depends on active stock
+    volume
+  - good parser spike candidate after Maison Singulier
+
+### Chez Lamothe
+
+- URL: https://www.chezlamothe.com/
+- Why it matters: local Montreal source for restored Mid-Century furniture, especially teak,
+  Scandinavian, Danish, and Canadian pieces.
+- Local signal:
+  - third-party listings and writeups place it in Montreal and describe it as a restored MCM
+    furniture shop
+- Crawlability: low based on current evidence. The domain exists, but no stable public item feed has
+  been verified.
+- Notes:
+  - high-caliber local source and should be part of the product
+  - start as a shop profile / manual-source candidate
+  - only add automated crawling if the site or another first-party channel exposes stable listings
 
 ### 5. Urbano Vintej
 
@@ -267,6 +348,9 @@ Nice-to-have fields:
 - Why it matters: direct vintage / consignment / MCM-adjacent catalog.
 - Shipping signal: shipping page says they offer local pickup, local delivery, and shipping to Canada and other countries: https://www.bananalab.ca/shipping
 - Crawlability: medium. Shipping evidence is strong; item-page consistency should be checked during implementation.
+- Current status:
+  - defer for now
+  - latest review suggests it should not be treated as Montreal-local for the next expansion batch
 
 ## Good Secondary Marketplaces
 
@@ -331,11 +415,18 @@ These are important as part of the landscape, but I would not start here unless 
 
 - Montreal antique and MCM mix.
 - Strong store presence, but less evidence of a clean resale item feed suitable for launch.
+- Current decision:
+  - defer
+  - the emphasis appears too weighted toward French antiques / 18th-century decorative arts for the
+    current MCM-first product
 
 ### Eco-Depot Montreal
 
 - Strong local relevance.
 - Better as a local shopping guide or manual source unless they expose consistent online inventory pages.
+- Current decision:
+  - defer for now despite local relevance
+  - inventory is broad enough that adding it too early could weaken the focused curated feel
 
 ### Antiquites Van Horne
 
@@ -358,14 +449,12 @@ These are important as part of the landscape, but I would not start here unless 
 
 ### Phase 1: Direct-Shop Inventory Only
 
-Start with:
+Already active:
 
 1. Morceau
 2. Showroom Montreal
 3. Montreal Moderne
-4. Green Wall Vintage
-5. Vintage Home Boutique
-6. Le Centerpiece
+4. Le Centerpiece
 
 Why:
 
@@ -374,26 +463,33 @@ Why:
 - they clearly align with MCM / vintage furniture
 - they have strong Canadian or Montreal shipping signals
 
-### Phase 2: Broader Canadian Direct Shops
+### Phase 2: Local-First Expansion
 
 Add:
 
-1. Urbano Vintej
-2. Banana Lab
-3. Maison Singulier
+1. Maison Singulier
+2. BOND Vintage
+3. Yardsale Vintage
+4. Chez Lamothe
 
 Why:
 
-- useful incremental inventory
-- slightly more validation needed on page consistency
+- strongest fit with the Montreal-first thesis
+- similar local curation caliber to the current four active sources
+- local pickup or local delivery is enough for these Montreal/agglomeration shops
+- Maison Singulier and BOND Vintage look most likely to support automated crawling
+- Yardsale Vintage and Chez Lamothe may need manual/profile-first support
 
-### Phase 3: Marketplaces
+### Phase 3: Broader Canadian Direct Shops Or Marketplaces
 
-Add:
+Consider later:
 
-1. 1stDibs
-2. Chairish
-3. Pamono
+1. Green Wall Vintage
+2. Vintage Home Boutique
+3. Urbano Vintej
+4. 1stDibs
+5. Chairish
+6. Pamono
 
 Why:
 
@@ -435,8 +531,13 @@ An item should only appear on the site if:
 
 For shipping, use this rule:
 
-- include if the shop is in Montreal, ships across Canada, ships to Canada, or offers worldwide shipping
+- include if the shop is in Montreal or the Montreal agglomeration and offers local pickup or local
+  delivery
+- include non-local shops only if they ship across Canada, ship to Canada, or offer worldwide
+  shipping
 - exclude if the source appears pickup-only outside Montreal and does not mention delivery or shipping
+- revisit these rules if the product expands beyond the Montreal agglomeration or sees meaningful
+  demand from users outside Montreal
 
 ## Likely Data Quality Problems
 
@@ -589,9 +690,10 @@ If I were choosing the exact first four sources, I would start with:
 
 Very close next additions:
 
-1. Green Wall Vintage
-2. Vintage Home Boutique
-3. Maison Singulier
+1. Maison Singulier
+2. BOND Vintage
+3. Yardsale Vintage
+4. Chez Lamothe
 
 ## Showroom Montreal French Parser Evidence
 

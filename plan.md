@@ -1,7 +1,7 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-05-12
+Updated: 2026-05-14
 Current line: `0.2.x`
 
 ## Purpose
@@ -91,14 +91,32 @@ Current active launch sources in code:
 Morceau should be treated as Vintage-collection-only ingestion. Its broader furniture and
 new-arrivals collections include current-production design inventory outside the app scope.
 
-Deferred from the originally recommended first-wave source set:
+Next local-first source expansion set:
 
-1. Green Wall Vintage
-2. Vintage Home Boutique
-3. Maison Singulier
+1. Maison Singulier
+2. Yardsale Vintage
+3. BOND Vintage
+4. Chez Lamothe
 
-Green Wall Vintage and Vintage Home Boutique are not Montreal-local enough for the current early
-build. Maison Singulier remains a later candidate.
+Implementation stance:
+
+- Maison Singulier is the first source to add.
+- BOND Vintage is the next parser spike if active inventory volume is enough.
+- Yardsale Vintage and Chez Lamothe should start as profile/manual-source candidates unless clean
+  item feeds are verified.
+- Local pickup or local delivery is enough for Montreal and agglomeration-area shops right now;
+  Canada-wide shipping is not required for local sources.
+- If the product expands beyond the Montreal agglomeration, or traffic materially shifts toward
+  users outside Montreal, revisit shipping requirements before adding more non-local sources.
+
+Deferred from the next local expansion:
+
+1. EcoDepot Montreal, because the inventory is broad and may weaken focus unless carefully filtered.
+2. Trianon Boutique, because it appears too weighted toward French antiques / 18th-century
+   decorative arts for the current MCM-first product.
+3. Green Wall Vintage and Vintage Home Boutique, because they remain useful Canada-friendly
+   expansion candidates but are not local enough for this step.
+4. Banana Lab, because the latest review suggests it should not be treated as Montreal-local.
 
 Current source inventory may include some relevant lighting and decor from direct-shop pages. The
 product scope should remain furniture-first until there is a deliberate decision to include selected
@@ -439,19 +457,23 @@ Likely work:
 
 ### Source Expansion
 
-Questions to settle:
+Current decision:
 
-- Add Maison Singulier first, or wait until source parser organization is cleaner?
-- Revisit Green Wall Vintage and Vintage Home Boutique only if scope expands beyond Montreal-local
-  sources?
-- When adding Ottawa, Toronto, Quebec City, or Canada-wide shops, how should card-level location and
-  shipping badges return?
+- Add Maison Singulier first.
+- Then spike BOND Vintage if active inventory is enough to justify the source.
+- Treat Yardsale Vintage and Chez Lamothe as profile/manual-source candidates until clean public
+  item feeds are verified.
+- Revisit Green Wall Vintage and Vintage Home Boutique only when the product is ready to expand
+  beyond Montreal-local sources.
 
 Likely work:
 
 - add one carefully chosen second-wave direct source at a time
+- add profile/manual-source handling for high-quality local shops without clean catalogs
 - restore location on cards when inventory becomes meaningfully non-Montreal
-- add source-specific notes for shipping and reliability
+- add source-specific notes for shipping and reliability; treat local delivery as enough inside the
+  Montreal agglomeration, and revisit stronger shipping requirements when expansion or traffic moves
+  beyond Montreal
 - keep source additions conservative and review-friendly
 
 ### 0.2.x Success Criteria
