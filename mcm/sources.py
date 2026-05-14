@@ -409,7 +409,7 @@ def _fetch_showroom(source: SourceDefinition) -> list[dict[str, Any]]:
     listings = list(listings_by_key.values())
     if not listings:
         raise ValueError("No Showroom Montreal gallery items parsed")
-    return listings[:240]
+    return listings
 
 
 def _fetch_showroom_entry(source: SourceDefinition, entry_url: str) -> list[dict[str, Any]]:

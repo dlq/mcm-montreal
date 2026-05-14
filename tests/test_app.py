@@ -26,6 +26,7 @@ from mcm.sources import (
     _fetch_html,
     _fetch_shopify_collection_entry,
     _fetch_shopify_collection_products,
+    _fetch_showroom,
     _parse_shopify_collection_product,
 )
 
@@ -1175,6 +1176,21 @@ class AppTests(unittest.TestCase):
         self.assertEqual(len(listings), 1)
         self.assertEqual(listings[0]["title"], "TINGSTROMS, série Casino SWEDEN")
         self.assertEqual(listings[0]["availability_status"], "sold_out")
+
+    def test_showroom_full_refresh_keeps_all_unique_gallery_items(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")
+        showroom_listings = [
+            {
+                "source_listing_key": f"showroom:dataItem-{index}",
+                "primary_image_url": f"https://static.wixstatic.com/media/item-{index}.jpg",
+            }
+            for index in range(241)
+        ]
+
+        with patch("mcm.sources._fetch_showroom_entry", return_value=showroom_listings):
+            listings = _fetch_showroom(source)
+
+        self.assertEqual(len(listings), 241)
 
     def test_fetch_html_percent_encodes_non_ascii_url_parts(self) -> None:
         class FakeResponse:
