@@ -169,12 +169,12 @@ const worker = await loadWorker();
 
   assert.equal(queue.sentBatches.length, 1);
   const messages = queue.sentBatches[0];
-  assert.equal(messages.length, 21);
+  assert.equal(messages.length, 10);
   assert.deepEqual(
     messages.map((message) => message.body.source_slug),
     [
       "morceau",
-      ...Array.from({ length: 12 }, () => "showroom-montreal"),
+      "showroom-montreal",
       "montreal-moderne",
       ...Array.from({ length: 7 }, () => "le-centerpiece"),
     ],
@@ -183,7 +183,7 @@ const worker = await loadWorker();
     messages
       .filter((message) => message.body.source_slug === "showroom-montreal")
       .map((message) => message.body.chunk_index),
-    Array.from({ length: 12 }, (_value, index) => index),
+    [undefined],
   );
   assert.deepEqual(
     messages
@@ -232,14 +232,14 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 12);
+  assert.equal(queue.sentBatches[0].length, 1);
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.source_slug),
-    Array.from({ length: 12 }, () => "showroom-montreal"),
+    ["showroom-montreal"],
   );
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.chunk_index),
-    Array.from({ length: 12 }, (_value, index) => index),
+    [undefined],
   );
   assert.equal(queue.sentBatches[0][0].body.trigger, "manual_refresh_now");
 }
@@ -256,7 +256,7 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 21);
+  assert.equal(queue.sentBatches[0].length, 10);
 }
 
 {
@@ -311,7 +311,6 @@ const worker = await loadWorker();
   const { env, containerRequests } = makeEnv();
   const message = makeMessage({
     source_slug: "showroom-montreal",
-    chunk_index: 1,
     trigger: "test",
     message_id: "message-3",
   });
@@ -323,7 +322,7 @@ const worker = await loadWorker();
   assert.equal(containerRequests.length, 1);
   assert.equal(
     new URL(containerRequests[0].url).pathname,
-    "/cron/refresh/showroom-montreal/chunk/1",
+    "/cron/refresh/showroom-montreal",
   );
 }
 

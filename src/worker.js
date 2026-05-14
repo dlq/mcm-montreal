@@ -174,11 +174,6 @@ async function enqueueRefreshSources(env, sourceSlugs, trigger) {
 }
 
 function refreshMessagesForSource(sourceSlug, trigger) {
-  if (sourceSlug === SHOWROOM_SOURCE_SLUG) {
-    return Array.from({ length: SHOWROOM_CHUNK_COUNT }, (_value, chunkIndex) =>
-      refreshMessageBody(sourceSlug, trigger, chunkIndex),
-    );
-  }
   if (sourceSlug === LE_CENTERPIECE_SOURCE_SLUG) {
     return Array.from({ length: LE_CENTERPIECE_CHUNK_COUNT }, (_value, chunkIndex) =>
       refreshMessageBody(sourceSlug, trigger, chunkIndex),
@@ -248,6 +243,9 @@ async function consumeRefreshMessage(message, env) {
 
 function refreshCronPath(sourceSlug, chunkIndex) {
   if (sourceSlug === SHOWROOM_SOURCE_SLUG) {
+    if (chunkIndex == null) {
+      return `/cron/refresh/${sourceSlug}`;
+    }
     if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= SHOWROOM_CHUNK_COUNT) {
       throw new Error(`Invalid Showroom chunk index: ${chunkIndex}`);
     }
