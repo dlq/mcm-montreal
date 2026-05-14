@@ -365,6 +365,60 @@ class AppTests(unittest.TestCase):
             finally:
                 db.close()
 
+    def test_refresh_does_not_resurrect_removed_sold_archive_items(self) -> None:
+        sold_item = {
+            "source_listing_url": "https://example.com/listing",
+            "source_listing_key": "sample-key",
+            "title": "Sample Chair",
+            "price_raw": "Sold",
+            "price_value": None,
+            "currency": "CAD",
+            "primary_image_url": "",
+            "additional_image_urls": [],
+            "availability_status": "sold_out",
+            "shipping_scope": "canada",
+            "ships_to_montreal": 1,
+            "shipping_note": "Ships to Montreal",
+            "category": "lounge chairs",
+            "designer": "Test Designer",
+            "maker": "",
+            "era": "1960s",
+            "materials": "teak",
+            "dimensions_text": "20 x 20 x 30",
+            "condition_text": "Good",
+            "location_text": "Montreal, QC",
+            "source_description": "Sample description",
+            "ingest_source_type": "live_fetch",
+            "parse_confidence": 1.0,
+        }
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET is_active = 0, availability_status = 'removed'
+                    WHERE source_listing_key = 'sample-key'
+                    """
+                )
+                db.commit()
+                with patch(
+                    "mcm.refresh.fetch_source_listings",
+                    return_value=([sold_item], None),
+                ):
+                    refresh_all_sources(db, progress=lambda _message: None)
+                listing = db.execute(
+                    """
+                    SELECT is_active, availability_status
+                    FROM listings
+                    WHERE source_listing_key = 'sample-key'
+                    """
+                ).fetchone()
+                self.assertEqual(listing["is_active"], 0)
+                self.assertEqual(listing["availability_status"], "removed")
+            finally:
+                db.close()
+
     def test_cron_can_refresh_one_source(self) -> None:
         response = self.client.post("/cron/refresh/morceau")
         self.assertEqual(response.status_code, 404)

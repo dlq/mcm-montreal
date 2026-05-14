@@ -163,7 +163,11 @@ def _refresh_source_listings(
         key = item.get("source_listing_key") or source_url.rstrip("/").lower()
         seen_keys.add(key)
         existing = db.execute(
-            "SELECT id, first_seen_at FROM listings WHERE source_shop_id = ? AND source_listing_key = ?",
+            """
+            SELECT id, first_seen_at, availability_status, is_active
+            FROM listings
+            WHERE source_shop_id = ? AND source_listing_key = ?
+            """,
             (shop["id"], key),
         ).fetchone()
 
@@ -178,6 +182,14 @@ def _refresh_source_listings(
             )
             if existing:
                 reconciled_count += 1
+
+        if (
+            existing
+            and item.get("availability_status") == "sold_out"
+            and existing["availability_status"] == "removed"
+            and not existing["is_active"]
+        ):
+            continue
 
         if not existing and item.get("availability_status") == "sold_out":
             continue
