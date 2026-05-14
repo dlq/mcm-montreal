@@ -106,8 +106,8 @@ lighting and decor as first-class categories.
 
 ## 0.1.x Development: Stabilize The Live MVP
 
-The `0.1.x` line should make the live product dependable. Prefer small, concrete fixes over broad
-feature expansion.
+The `0.1.x` line made the live product dependable. It is closed at release `0.1.2`; remaining
+reliability improvements now belong to `0.2.x` unless they are urgent production incidents.
 
 ### Deployment And Operations
 
@@ -134,7 +134,7 @@ Completed in `0.1.1`:
 - rotate `MCM_ADMIN_TOKEN` to an owner-stored value and verify authenticated `npm run prod:health`
 - add a second daily cron that logs missing or non-success per-source refresh jobs
 
-Remaining follow-up:
+Moved to `0.2.x`:
 
 - add external uptime checks or alert delivery if log-only monitoring is not enough
 
@@ -184,10 +184,13 @@ Completed in `0.1.2`:
   deactivate missing inventory until a later source-wide reconciliation exists
 - mark stale `running` refresh jobs from the monitor cron so admin status is not permanently noisy
 
-Remaining follow-up:
+Closure check:
 
 - observe the next scheduled production refresh after queue chunking and confirm successful
   `refresh_jobs` rows for each active source/chunk
+
+Moved to `0.2.x`:
+
 - add owner alerting if admin-dashboard and log visibility are not enough
 - add monitor cron status checks for suspicious hidden-count spikes
 
@@ -287,7 +290,7 @@ Decision after `0.1.1` review:
 
 ### 0.1.x Success Criteria
 
-The `0.1.x` line is successful when:
+The `0.1.x` line is successful as of `0.1.2`:
 
 - local development, deploy dry-run, Cloudflare deploy, and live health checks are routine
 - the production app clearly reads/writes D1, not container disk
@@ -340,10 +343,19 @@ Completed in `0.1.2`:
 - deploy Le Centerpiece collection chunks with sold-out Shopify products skipped in chunked refreshes
 - confirm forced production runs for Showroom and Le Centerpiece complete as successful chunk jobs
 
-Remaining follow-up:
+Completed on 2026-05-14:
 
-- observe the next scheduled daily production refresh after `0.1.2`
+- forced the production queue-backed refresh path and observed all active source/chunk jobs complete
+  successfully: Morceau 1/1, Montreal Moderne 1/1, Showroom Montreal 12/12, Le Centerpiece 7/7
+- production health passed after the refresh, and D1 contained 1,464 listings
+
+Likely `0.2.x` reliability work:
+
+- add external uptime checks or alert delivery if log-only/admin-dashboard monitoring is not enough
 - add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
+- review production secrets handling: confirm owner storage and rotation for `D1_BRIDGE_TOKEN`,
+  decide whether `MCM_ADMIN_TOKEN` and `MCM_MANUAL_REFRESH_TOKEN` should remain shared or be split,
+  and document the owner/rotation process
 - consider a source-wide reconciliation job for chunked sources so missing inventory can be
   deactivated safely after all chunks succeed
 
