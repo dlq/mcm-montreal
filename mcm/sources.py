@@ -466,7 +466,7 @@ def _extract_showroom_gallery_listings(
         designer, maker = _extract_designer_and_maker(title, description)
         listings.append(
             {
-                "source_listing_url": entry_url,
+                "source_listing_url": _showroom_lightbox_url(entry_url, item_id),
                 "source_listing_key": f"showroom:{item_id}",
                 "title": title,
                 "price_raw": price_line
@@ -493,6 +493,14 @@ def _extract_showroom_gallery_listings(
             }
         )
     return listings
+
+
+def _showroom_lightbox_url(entry_url: str, item_id: str) -> str:
+    parsed = urllib.parse.urlsplit(entry_url)
+    query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+    query = [(key, value) for key, value in query if key != "lightbox"]
+    query.append(("lightbox", item_id))
+    return urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query, doseq=True)))
 
 
 def _extract_showroom_siteassets_url(html: str) -> str:

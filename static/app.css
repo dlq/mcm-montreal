@@ -129,6 +129,11 @@ textarea:focus {
   background: transparent;
 }
 
+.listing-card-body {
+  background: #fff;
+  padding: 1rem;
+}
+
 .listing-results-toolbar {
   background: #f7f6f2;
   margin-left: -0.25rem;

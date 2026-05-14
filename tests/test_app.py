@@ -915,7 +915,7 @@ class AppTests(unittest.TestCase):
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "morceau")
         self.assertEqual(source.listing_urls, ("https://www.morceau.ca/collections/vintage",))
 
-    def test_showroom_gallery_items_use_source_page_url(self) -> None:
+    def test_showroom_gallery_items_use_lightbox_url(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")
         gallery_item = {
             "id": "dataItem-test",
@@ -935,7 +935,10 @@ class AppTests(unittest.TestCase):
                 "https://www.showroommtl.com/nouveaute",
             )
 
-        self.assertEqual(listings[0]["source_listing_url"], "https://www.showroommtl.com/nouveaute")
+        self.assertEqual(
+            listings[0]["source_listing_url"],
+            "https://www.showroommtl.com/nouveaute?lightbox=dataItem-test",
+        )
 
     def test_shopify_collection_product_uses_variant_availability(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "morceau")
