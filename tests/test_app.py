@@ -12,7 +12,12 @@ from mcm.app import create_app
 from mcm.db import get_db
 from mcm.i18n import MATERIAL_LABELS
 from mcm.locales import TRANSLATIONS_EN, TRANSLATIONS_FR
-from mcm.refresh import listing_id_from_item_number, public_item_number, refresh_all_sources
+from mcm.refresh import (
+    listing_id_from_item_number,
+    public_item_number,
+    refresh_all_sources,
+    refresh_source_by_slug,
+)
 from mcm.repository import sanitize_availability
 from mcm.seed_data import SEED_LISTINGS
 from mcm.sources import (
@@ -290,6 +295,33 @@ class AppTests(unittest.TestCase):
                 self.assertEqual(job["listings_found"], 0)
                 self.assertGreaterEqual(job["hidden_count"], 1)
                 self.assertTrue(job["finished_at"])
+            finally:
+                db.close()
+
+    def test_refresh_seeds_missing_source_shop(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute("DELETE FROM shops WHERE slug = 'chez-lamothe'")
+                db.commit()
+                with patch("mcm.refresh.fetch_source_listings", return_value=([], None)):
+                    refresh_source_by_slug(db, "chez-lamothe")
+                shop = db.execute(
+                    "SELECT active, name FROM shops WHERE slug = 'chez-lamothe'"
+                ).fetchone()
+                job = db.execute(
+                    """
+                    SELECT status
+                    FROM refresh_jobs
+                    WHERE source_slug = 'chez-lamothe'
+                    ORDER BY started_at DESC
+                    LIMIT 1
+                    """
+                ).fetchone()
+                self.assertIsNotNone(shop)
+                self.assertEqual(shop["active"], 1)
+                self.assertEqual(shop["name"], "Chez Lamothe")
+                self.assertEqual(job["status"], "success")
             finally:
                 db.close()
 

@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from .db import ensure_source_shop_seeded
 from .repository import get_shop_by_slug
 from .sources import (
     SOURCE_DEFINITIONS,
@@ -145,6 +146,7 @@ def _refresh_source_listings(
 ) -> RefreshResult:
     started_at = datetime.now(UTC).isoformat()
     timestamp = started_at
+    ensure_source_shop_seeded(db, source)
     shop = get_shop_by_slug(db, source.slug)
     if not shop:
         raise RuntimeError(f"Missing shop record for source slug: {source.slug}")

@@ -5,7 +5,7 @@ import sqlite3
 from flask import Flask
 
 from .d1 import D1Connection
-from .sources import SOURCE_DEFINITIONS
+from .sources import SOURCE_DEFINITIONS, SourceDefinition
 
 
 def get_db(app: Flask) -> sqlite3.Connection | D1Connection:
@@ -150,46 +150,7 @@ def ensure_schema(db: sqlite3.Connection) -> None:
 def ensure_shops_seeded(db: sqlite3.Connection) -> None:
     db.execute("UPDATE shops SET active = 0")
     for source in SOURCE_DEFINITIONS:
-        db.execute(
-            """
-            INSERT INTO shops (
-                slug, name, website, city, province, country, is_montreal_local,
-                shipping_summary, source_type, crawl_priority, notes, description,
-                style_focus, listing_url, active
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-            ON CONFLICT(slug) DO UPDATE SET
-                name = excluded.name,
-                website = excluded.website,
-                city = excluded.city,
-                province = excluded.province,
-                country = excluded.country,
-                is_montreal_local = excluded.is_montreal_local,
-                shipping_summary = excluded.shipping_summary,
-                source_type = excluded.source_type,
-                crawl_priority = excluded.crawl_priority,
-                notes = excluded.notes,
-                description = excluded.description,
-                style_focus = excluded.style_focus,
-                listing_url = excluded.listing_url,
-                active = 1
-            """,
-            (
-                source.slug,
-                source.name,
-                source.website,
-                source.city,
-                source.province,
-                source.country,
-                1 if source.is_montreal_local else 0,
-                source.shipping_summary,
-                source.source_type,
-                source.crawl_priority,
-                source.notes,
-                source.description,
-                source.style_focus,
-                source.listing_urls[0],
-            ),
-        )
+        ensure_source_shop_seeded(db, source)
     db.execute(
         """
         UPDATE listings
@@ -198,3 +159,46 @@ def ensure_shops_seeded(db: sqlite3.Connection) -> None:
         """
     )
     db.commit()
+
+
+def ensure_source_shop_seeded(db: sqlite3.Connection, source: SourceDefinition) -> None:
+    db.execute(
+        """
+        INSERT INTO shops (
+            slug, name, website, city, province, country, is_montreal_local,
+            shipping_summary, source_type, crawl_priority, notes, description,
+            style_focus, listing_url, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        ON CONFLICT(slug) DO UPDATE SET
+            name = excluded.name,
+            website = excluded.website,
+            city = excluded.city,
+            province = excluded.province,
+            country = excluded.country,
+            is_montreal_local = excluded.is_montreal_local,
+            shipping_summary = excluded.shipping_summary,
+            source_type = excluded.source_type,
+            crawl_priority = excluded.crawl_priority,
+            notes = excluded.notes,
+            description = excluded.description,
+            style_focus = excluded.style_focus,
+            listing_url = excluded.listing_url,
+            active = 1
+        """,
+        (
+            source.slug,
+            source.name,
+            source.website,
+            source.city,
+            source.province,
+            source.country,
+            1 if source.is_montreal_local else 0,
+            source.shipping_summary,
+            source.source_type,
+            source.crawl_priority,
+            source.notes,
+            source.description,
+            source.style_focus,
+            source.listing_urls[0],
+        ),
+    )
