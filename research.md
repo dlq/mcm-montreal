@@ -145,16 +145,15 @@ Findings:
   the storefront API is a better ingestion path and avoids contact-for-details pricing when a price
   is shown online.
 
-### Explicitly Deferred
+### Explicitly Deferred From The Montreal/Agglomeration Expansion
 
 1. EcoDepot Montreal
 2. Trianon Boutique
-3. Green Wall Vintage
-4. Vintage Home Boutique
-5. Banana Lab
-6. 1stDibs
-7. Chairish
-8. Pamono
+3. Vintage Home Boutique
+4. Banana Lab
+5. 1stDibs
+6. Chairish
+7. Pamono
 
 Reason:
 
@@ -162,11 +161,105 @@ Reason:
   focus unless added with careful category filtering.
 - Trianon is high caliber, but the emphasis is French antiques / 18th-century decorative arts rather
   than the core MCM furniture product.
-- Green Wall Vintage and Vintage Home Boutique remain useful Canada-friendly candidates, but they
-  are not local enough for the next expansion step.
+- Vintage Home Boutique remains a useful Canada-friendly candidate, but it is not local enough for
+  the next regional expansion step.
 - Banana Lab should not be treated as Montreal-local based on the latest review.
 - Large marketplaces remain a later strategy because they introduce duplication, crawl complexity,
   and weaker direct-source differentiation.
+
+## Regional Source Expansion Research
+
+Checked on 2026-05-15. The next expansion beyond Montreal should still feel road-trip local:
+Ottawa, Quebec City, Sherbrooke, the Eastern Townships, Lanaudiere, Laurentides, Outaouais, and
+shops on the routes to those places. For this stage, a source can qualify if it either ships to
+Montreal or is an easy 2-3 hour pickup from Montreal.
+
+### Selected Next Regional Expansion Set
+
+1. Habitat Mobilier, West Brome / Eastern Townships
+2. Green Wall Vintage, Ottawa
+3. Mostly Danish, Ingleside / Ottawa corridor
+
+Reason:
+
+- Habitat Mobilier is the cleanest Eastern Townships fit. It focuses on restored Scandinavian and
+  Mid-Century furniture, with teak, walnut, and rosewood inventory; the shop page exposes item
+  names and sold markers; the tourism listing says shipping is available for most of Quebec; the
+  contact page says West Brome is about one hour from Montreal.
+- Green Wall Vintage remains a strong crawl candidate now that the scope can extend past the
+  Montreal agglomeration. It has visible Shopify inventory, prices, MCM categories, an Ottawa-area
+  location, and delivery across Canada and the United States.
+- Mostly Danish is high-caliber and regional enough for pickup because the site now lists Ingleside,
+  Ontario, which sits on the Montreal-Ottawa corridor. The site exposes product pages, designers,
+  prices, sold states, and categories, but the inventory mixes vintage Scandinavian/MCM, outdoor
+  teak, Oriental antiques, and services, so category filtering matters.
+
+### Good-Fit Regional Leads Without Enough Item Data
+
+1. Deja Vu Meubles, Quebec City
+2. Cornwall's Little Market, Cornwall / Montreal-Ottawa corridor
+3. A Fine Thing, Ottawa
+4. Urban Artifacts, Ottawa
+5. General Chicken Antiques, Ottawa
+6. ReFind Originals, Ottawa
+7. Yardley's Antiques, Ottawa
+8. The Modern Shop, Ottawa
+9. Turquoise's Treasures, likely Montreal-area
+
+Reason:
+
+- Deja Vu Meubles is the best Quebec City lead found so far. Current evidence describes a St-Roch
+  shop with vintage furniture/decor from roughly the 1930s-1980s, local delivery, and online/social
+  shopping, but crawlability still needs verification because the primary public site was not
+  accessible in this pass.
+- Cornwall's Little Market is a very strong taste fit on the Montreal-Ottawa road: reporting
+  describes MCM furniture/accessories from the 1930s-1980s, including Scandinavian, American, and
+  Canadian designers, and notes customers drive from Montreal and Ottawa. It appears likely
+  Facebook-first, so it is probably profile/manual-first unless a stable catalog is found.
+- A Fine Thing in Ottawa explicitly mentions Danish teak furniture, a Mid-Century section, and
+  delivery to Montreal, Quebec City, Toronto, and southern Ontario. The site has many pictures but
+  does not appear to expose enough item-level detail, prices, and descriptions for source ingestion
+  on par with the current active shops.
+- Urban Artifacts has a Shopify site and says it carries Mid-Century ceramic, glass, furniture, and
+  art, but it may skew toward smaller objects, uses USD pricing, and says website items are not
+  available in the physical store.
+- General Chicken Antiques and ReFind Originals have strong Ottawa furniture-store mentions in local
+  guides, but a stable first-party item feed was not verified in this pass.
+- Yardley's has a broad classic lighting/furniture/antiques site with categories, but the visible
+  positioning is broader antiques rather than focused MCM.
+- The Modern Shop is design-relevant and buys vintage MCM/Scandinavian pieces, but it appears
+  primarily new/authentic modern retail rather than resale inventory.
+- Turquoise's Treasures mentions vintage, MCM, retro, and furniture, but the fit looks broader and
+  more mixed than the strongest candidates.
+
+### Regions With Weak Evidence So Far
+
+Lanaudiere and Laurentides did not produce a same-caliber MCM direct-shop candidate in this pass.
+The strongest search results were broad antiques, auctions, Kijiji-style sellers, or thrift/circular
+economy sources:
+
+- Antiquite S.G. in Terrebonne appears focused on Quebec/Canadian antiques, pine, folk art, and
+  vintage objects rather than MCM furniture.
+- Encans des Laurentides is an auction source for vintage/antiques/collectibles, but not a focused
+  direct furniture shop and not a clean MCM catalog.
+- Eastern Townships tourism lists several good vintage/antique stops, but most beyond Habitat skew
+  country, Victorian, pre-1900, circular economy, or broad thrift.
+
+### Recommended Regional Implementation Order
+
+1. Habitat Mobilier
+2. Green Wall Vintage
+3. Mostly Danish
+
+Implementation stance:
+
+- Start with Habitat because it is the closest conceptual fit and has a public shop page with
+  current and sold inventory visible.
+- Then add Green Wall Vintage because the Shopify structure should be close to existing collection
+  parsers and shipping to Montreal is clear.
+- Then spike Mostly Danish with strict category filtering and sold/outdoor/new-vs-vintage checks.
+- Do not add Deja Vu Meubles, Cornwall's Little Market, or A Fine Thing in this implementation
+  batch unless a stable item feed with prices, item details, and item URLs is found.
 
 ## Research Questions That Still Matter
 
@@ -491,23 +584,39 @@ Why:
   ingestion paths
 - Chez Lamothe should be monitored for Square frontend API path/cache-version changes
 
-### Phase 3: Broader Canadian Direct Shops Or Marketplaces
+### Phase 3: Regional Road-Trip Direct Shops
 
-Consider later:
+Add or spike next:
 
-1. Green Wall Vintage
-2. Vintage Home Boutique
-3. Urbano Vintej
-4. 1stDibs
-5. Chairish
-6. Pamono
+1. Habitat Mobilier
+2. Green Wall Vintage
+3. Mostly Danish
 
 Why:
 
-- large inventory upside
+- expands beyond the Montreal agglomeration without becoming a generic Canadian marketplace
+- keeps sources within shipping range or an easy 2-3 hour pickup from Montreal
+- Habitat, Green Wall Vintage, and Mostly Danish look most likely to have automated item ingestion
+- Deja Vu Meubles, Cornwall's Little Market, and A Fine Thing look source-relevant but should wait
+  because they do not currently expose enough reliable item-level details, prices, and descriptions
+  for ingestion on par with the existing shops
+
+### Phase 4: Broader Canadian Direct Shops Or Marketplaces
+
+Consider later:
+
+1. Vintage Home Boutique
+2. Urbano Vintej
+3. 1stDibs
+4. Chairish
+5. Pamono
+
+Why:
+
+- larger inventory upside
 - likely more duplication
 - likely more crawl complexity
-- probably better once the core data model is stable
+- probably better once the regional direct-shop model is stable
 
 ## Where The Data Likely Lives
 

@@ -111,14 +111,17 @@ Implementation stance:
   Canada-wide shipping is not required for local sources.
 - If the product expands beyond the Montreal agglomeration, or traffic materially shifts toward
   users outside Montreal, revisit shipping requirements before adding more non-local sources.
+- The next expansion direction should be regional road-trip sources: shops in Ottawa, Quebec City,
+  Sherbrooke, the Eastern Townships, Lanaudiere, Laurentides, Outaouais, and route towns that either
+  ship to Montreal or are practical 2-3 hour pickups from Montreal.
 
-Deferred from the next local expansion:
+Deferred from the Montreal/agglomeration expansion:
 
 1. EcoDepot Montreal, because the inventory is broad and may weaken focus unless carefully filtered.
 2. Trianon Boutique, because it appears too weighted toward French antiques / 18th-century
    decorative arts for the current MCM-first product.
-3. Green Wall Vintage and Vintage Home Boutique, because they remain useful Canada-friendly
-   expansion candidates but are not local enough for this step.
+3. Vintage Home Boutique, because it remains useful Canada-friendly but is not on the immediate
+   Ottawa / Quebec City / Townships regional pickup corridors.
 4. Banana Lab, because the latest review suggests it should not be treated as Montreal-local.
 
 Current source inventory may include some relevant lighting and decor from direct-shop pages. The
@@ -398,7 +401,7 @@ Decision:
 
 Questions to settle:
 
-- Are anonymous saved searches enough, or do alerts force accounts/email identity?
+- Are anonymous saved searches enough, or do alerts require optional email capture?
 - Should alerts be email-only, RSS-like feeds, or browser/session notifications first?
 - What matching rules are useful without becoming noisy?
 
@@ -411,19 +414,26 @@ Likely work:
 - email when a saved search gets a new match
 - email when a saved item changes status or appears removed
 
-### Accounts Or Durable Anonymous Identity
+### Durable Anonymous Identity
 
 Browser-session favourites are enough for the MVP, but they are fragile across devices.
 
+Current decision:
+
+- Avoid real user accounts for `0.2.x`.
+- Prefer signed anonymous tokens for durable favourites, saved shops, and saved searches.
+- Add optional email capture only if alerts need it; email should not imply a full account system.
+- Revisit real accounts only if abuse prevention, cross-device sync, or alert preferences become
+  unmanageable with anonymous tokens plus optional email.
+
 Questions to settle:
 
-- Is a full account system worth it, or should we use signed anonymous tokens first?
 - Should favourites, saved shops, and saved searches share one durable identity model?
 - What personally identifiable data should be avoided until alerts require email?
 
 Likely work:
 
-- durable favourite token or lightweight account model
+- durable signed anonymous token model
 - migration path from session favourites
 - saved shops that survive browser session loss
 - optional email capture only when needed for alerts
@@ -471,11 +481,23 @@ Current decision:
   inventory remains sold out.
 - Treat Chez Lamothe as useful but slightly more coupled to Square Online internals than the
   Shopify/Cargo sources because it follows the public storefront API path observed in the browser.
-- Revisit Green Wall Vintage and Vintage Home Boutique only when the product is ready to expand
-  beyond Montreal-local sources.
+- Revisit Green Wall Vintage now that regional road-trip sources are in scope; keep Vintage Home
+  Boutique later because it is outside the Ottawa/Quebec City/Townships pickup corridors.
+- Regional research on 2026-05-15 identified the next expansion set as Habitat Mobilier, Green Wall
+  Vintage, and Mostly Danish.
+- Deja Vu Meubles, Cornwall's Little Market, and A Fine Thing fit the regional taste/location
+  criteria, but should wait because their public websites do not currently expose enough reliable
+  item-level prices, details, and descriptions for ingestion on par with the existing shops.
 
 Likely work:
 
+- add Habitat Mobilier first if its public shop page can be parsed cleanly while excluding sold
+  items from brand-new public ingestion
+- add Green Wall Vintage next if its Shopify structure matches existing collection parsers
+- spike Mostly Danish with strict category filtering because the site mixes vintage Scandinavian/MCM,
+  outdoor teak, Oriental antiques, and services
+- leave Deja Vu Meubles, Cornwall's Little Market, and A Fine Thing out of the next automated batch
+  unless stable item feeds are verified
 - monitor Chez Lamothe's Square storefront API path/cache version and add a fallback if it changes
 - add profile/manual-source handling for high-quality local shops that still lack clean catalogs
 - restore location on cards when inventory becomes meaningfully non-Montreal
