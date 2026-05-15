@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from mcm.app import create_app
@@ -27,7 +28,11 @@ from mcm.sources import (
     _fetch_shopify_collection_entry,
     _fetch_shopify_collection_products,
     _fetch_showroom,
+    _parse_cargo_page,
     _parse_shopify_collection_product,
+    _parse_square_product_page,
+    _parse_square_storefront_product,
+    _square_product_is_sold_out,
 )
 
 
@@ -1204,6 +1209,126 @@ class AppTests(unittest.TestCase):
         self.assertEqual(listings[0]["title"], "Available Chair")
         self.assertEqual(listings[0]["availability_status"], "available")
 
+    def test_bond_vintage_skips_non_furniture_shopify_products(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "bond-vintage")
+        with self.assertRaises(ValueError):
+            _parse_shopify_collection_product(
+                source,
+                {
+                    "title": 'Affiche "Chrome & Red" encadrée',
+                    "handle": "chrome-red-poster",
+                    "body_html": "<p>Framed poster.</p>",
+                    "variants": [{"available": False, "price": "395.00"}],
+                    "images": [{"src": "https://cdn.shopify.com/poster.jpg"}],
+                },
+            )
+
+    def test_cargo_gallery_page_parses_yardsale_listing(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "yardsale-vintage")
+        listing = _parse_cargo_page(
+            source,
+            {
+                "id": "T1320580650",
+                "title": "Jean Gillon Copa Sofa in Jacaranda Rosewood - 3800$",
+                "purl": "jean-gillon-copa-sofa-3800",
+                "content": (
+                    "<p>Jean Gillon two seater sofa in Jacaranda Rosewood.</p>"
+                    "<p>Dimensions: 58”W x 34”D x 32”H</p>"
+                ),
+                "thumbnail": {
+                    "hash": "H2812705775408123180166743959247",
+                    "name": "sofa.jpeg",
+                },
+            },
+        )
+
+        self.assertEqual(listing["source_listing_key"], "yardsale-vintage:T1320580650")
+        self.assertEqual(listing["price_value"], 3800)
+        self.assertEqual(listing["category"], "sofas")
+        self.assertTrue(listing["primary_image_url"].startswith("https://freight.cargo.site/"))
+
+    def test_square_product_page_parses_chez_lamothe_metadata(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "chez-lamothe")
+        listing = _parse_square_product_page(
+            source,
+            "https://www.chezlamothe.com/product/buffet-en-teck/2950",
+            """
+            <html>
+              <head>
+                <meta property="og:title"
+                      content="Buffet en teck par Johannes Andersen | Chez Lamothe">
+                <meta property="og:description"
+                      content="Buffet en teck, Danemark circa 60. 72&#34;W x 18&#34;D x 31&#34;H. Livraison possible à Montréal.">
+                <meta property="og:image"
+                      content="https://131647755.cdn6.editmysite.com/uploads/buffet.jpeg">
+              </head>
+            </html>
+            """,
+        )
+
+        self.assertEqual(listing["title"], "Buffet en teck par Johannes Andersen")
+        self.assertEqual(listing["price_value"], None)
+        self.assertEqual(listing["availability_status"], "available")
+        self.assertEqual(listing["category"], "sideboards / credenzas")
+        self.assertEqual(listing["materials"], "teak")
+
+    def test_square_product_page_marks_chez_lamothe_sold_out_markers(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "chez-lamothe")
+        listing = _parse_square_product_page(
+            source,
+            "https://www.chezlamothe.com/product/meuble-audio/123",
+            """
+            <html>
+              <head>
+                <meta property="og:title" content="Meuble audio extensible en teck">
+                <meta property="og:description" content="Rupture de stock">
+                <meta property="og:image"
+                      content="https://131647755.cdn6.editmysite.com/uploads/meuble.jpeg">
+              </head>
+              <body>Article non disponible</body>
+            </html>
+            """,
+        )
+
+        self.assertEqual(listing["availability_status"], "sold_out")
+        self.assertTrue(_square_product_is_sold_out("En rupture de stock", ""))
+
+    def test_square_storefront_product_parses_chez_lamothe_price_and_stock(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "chez-lamothe")
+        listing = _parse_square_storefront_product(
+            source,
+            {
+                "id": "QAGXILITRN353YX2KW4PAOLS",
+                "site_product_id": "QAGXILITRN353YX2KW4PAOLS",
+                "name": "Système stéréo Clairtone en bois de rose modèle Project G2 T10",
+                "short_description": "<p>Console en bois de rose. 78.5&quot;L x 14.75&quot;P x 27&quot;H</p>",
+                "absolute_site_link": (
+                    "https://www.chezlamothe.com/product/systeme-stereo/QAGXILITRN353YX2KW4PAOLS"
+                ),
+                "badges": {"out_of_stock": False},
+                "inventory": {"all_variations_sold_out": False},
+                "price": {"low": 18995, "low_subunits": 1899500},
+                "images": {
+                    "data": [
+                        {
+                            "absolute_urls": {
+                                "1280": (
+                                    "https://131647755.cdn6.editmysite.com/uploads/"
+                                    "QAGXILITRN353YX2KW4PAOLS.jpeg?width=1280"
+                                )
+                            }
+                        }
+                    ]
+                },
+            },
+        )
+
+        self.assertEqual(listing["source_listing_key"], "chez-lamothe:QAGXILITRN353YX2KW4PAOLS")
+        self.assertEqual(listing["price_value"], 18995)
+        self.assertEqual(listing["price_raw"], "$18,995.00 CAD")
+        self.assertEqual(listing["availability_status"], "available")
+        self.assertIn("wood", listing["materials"])
+
     def test_shopify_collection_product_skips_gift_cards(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "morceau")
         with self.assertRaises(ValueError):
@@ -1396,6 +1521,35 @@ class AppTests(unittest.TestCase):
             listings = _fetch_showroom(source)
 
         self.assertEqual(len(listings), 241)
+
+    def test_showroom_full_refresh_merges_same_item_from_nouveaute_and_category(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")
+        duplicate_from_nouveaute = {
+            "source_listing_url": "https://www.showroommtl.com/nouveaute?lightbox=dataItem-new",
+            "source_listing_key": "showroom:dataItem-new",
+            "title": "Commode en teck '60s REFF, Canada",
+            "primary_image_url": "https://static.wixstatic.com/media/fc24cc_duplicate.jpg",
+            "source_description": "Commode en teck '60s REFF, Canada restaurée 72'' L x 18.75'' P x 27'' H 1350 $",
+        }
+        duplicate_from_category = {
+            **duplicate_from_nouveaute,
+            "source_listing_url": "https://www.showroommtl.com/lits-commodes?lightbox=dataItem-category",
+            "source_listing_key": "showroom:dataItem-category",
+        }
+
+        def fake_fetch_entry(_source: object, entry_url: str) -> list[dict[str, Any]]:
+            if entry_url.endswith("/nouveaute"):
+                return [duplicate_from_nouveaute]
+            if entry_url.endswith("/lits-commodes"):
+                return [duplicate_from_category]
+            return []
+
+        with patch("mcm.sources._fetch_showroom_entry", side_effect=fake_fetch_entry):
+            listings = _fetch_showroom(source)
+
+        self.assertEqual(len(listings), 1)
+        self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-category")
+        self.assertIn("/lits-commodes?", listings[0]["source_listing_url"])
 
     def test_fetch_html_percent_encodes_non_ascii_url_parts(self) -> None:
         class FakeResponse:

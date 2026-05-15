@@ -169,7 +169,7 @@ const worker = await loadWorker();
 
   assert.equal(queue.sentBatches.length, 1);
   const messages = queue.sentBatches[0];
-  assert.equal(messages.length, 10);
+  assert.equal(messages.length, 14);
   assert.deepEqual(
     messages.map((message) => message.body.source_slug),
     [
@@ -177,6 +177,10 @@ const worker = await loadWorker();
       "showroom-montreal",
       "montreal-moderne",
       ...Array.from({ length: 7 }, () => "le-centerpiece"),
+      "maison-singulier",
+      "yardsale-vintage",
+      "bond-vintage",
+      "chez-lamothe",
     ],
   );
   assert.deepEqual(
@@ -256,7 +260,7 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 10);
+  assert.equal(queue.sentBatches[0].length, 14);
 }
 
 {

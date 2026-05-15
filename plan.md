@@ -81,29 +81,32 @@ data.
 
 ## Active Source Scope
 
-Current active launch sources in code:
+Current active sources in code:
 
 1. Morceau
 2. Showroom Montreal
 3. Montreal Moderne
 4. Le Centerpiece
+5. Maison Singulier
+6. Yardsale Vintage
+7. BOND Vintage
+8. Chez Lamothe
 
 Morceau should be treated as Vintage-collection-only ingestion. Its broader furniture and
 new-arrivals collections include current-production design inventory outside the app scope.
 
-Next local-first source expansion set:
-
-1. Maison Singulier
-2. Yardsale Vintage
-3. BOND Vintage
-4. Chez Lamothe
-
 Implementation stance:
 
-- Maison Singulier is the first source to add.
-- BOND Vintage is the next parser spike if active inventory volume is enough.
-- Yardsale Vintage and Chez Lamothe should start as profile/manual-source candidates unless clean
-  item feeds are verified.
+- Maison Singulier uses Shopify live furniture collections and excludes archive collections.
+- Yardsale Vintage uses Cargo's current Shop gallery and excludes the Archive gallery.
+- BOND Vintage uses Shopify collection data, but the visible furniture inventory is currently sold
+  out, so brand-new sold-out records are skipped by existing refresh semantics.
+- Chez Lamothe uses the same Square Online storefront API as the public shop grid. This exposes
+  prices, images, descriptions, detail URLs, and out-of-stock badges, so listings should not fall
+  back to contact-for-details pricing unless the API omits a price.
+- Chez Lamothe local refresh should stay materially faster than the earlier sitemap/product-page
+  approach, but the hardcoded Square API path/cache version should be revisited if Square changes
+  its published frontend API.
 - Local pickup or local delivery is enough for Montreal and agglomeration-area shops right now;
   Canada-wide shipping is not required for local sources.
 - If the product expands beyond the Montreal agglomeration, or traffic materially shifts toward
@@ -459,17 +462,19 @@ Likely work:
 
 Current decision:
 
-- Add Maison Singulier first.
-- Then spike BOND Vintage if active inventory is enough to justify the source.
-- Treat Yardsale Vintage and Chez Lamothe as profile/manual-source candidates until clean public
-  item feeds are verified.
+- Maison Singulier, Yardsale Vintage, BOND Vintage, and Chez Lamothe have source definitions and
+  local ingestion paths.
+- Keep BOND Vintage active as a source, but expect zero public listings while its visible furniture
+  inventory remains sold out.
+- Treat Chez Lamothe as useful but slightly more coupled to Square Online internals than the
+  Shopify/Cargo sources because it follows the public storefront API path observed in the browser.
 - Revisit Green Wall Vintage and Vintage Home Boutique only when the product is ready to expand
   beyond Montreal-local sources.
 
 Likely work:
 
-- add one carefully chosen second-wave direct source at a time
-- add profile/manual-source handling for high-quality local shops without clean catalogs
+- monitor Chez Lamothe's Square storefront API path/cache version and add a fallback if it changes
+- add profile/manual-source handling for high-quality local shops that still lack clean catalogs
 - restore location on cards when inventory becomes meaningfully non-Montreal
 - add source-specific notes for shipping and reliability; treat local delivery as enough inside the
   Montreal agglomeration, and revisit stronger shipping requirements when expansion or traffic moves

@@ -42,8 +42,13 @@ What is currently live in the source layer:
 2. Showroom Montreal
 3. Montreal Moderne
 4. Le Centerpiece
+5. Maison Singulier
+6. Yardsale Vintage
+7. BOND Vintage
+8. Chez Lamothe
 
-This means the research priority is no longer just "what should we build first." It is now also "which researched sources should be added next, and in what order, after the existing MVP is stabilized."
+This means the research priority is no longer just "what should we build first." It is now also
+"which sources are stable enough to keep refreshing, and what caveats should the parsers carry?"
 
 ## Recommendation
 
@@ -108,25 +113,28 @@ Reason:
 
 ### Implementation Readiness
 
-Likely crawl candidates:
+Verified local ingestion on 2026-05-14:
 
 1. Maison Singulier
-2. BOND Vintage
+2. Yardsale Vintage
+3. BOND Vintage
+4. Chez Lamothe
 
-Likely manual/profile-first candidates:
+Findings:
 
-1. Yardsale Vintage
-2. Chez Lamothe
-
-Reason:
-
-- Maison Singulier has public collection/product pages, but needs clean live-vs-archive filtering.
-- BOND Vintage appears to have Shopify collection/product pages with prices and sold states, but its
-  active inventory may be sparse or mostly sold out.
-- Yardsale Vintage has strong brand/source fit, but purchase appears contact-based and the catalog
-  is not yet proven as a clean automated feed.
-- Chez Lamothe is highly aligned locally, but current evidence still points more to social/manual
-  sourcing than a stable public item feed.
+- Maison Singulier has clean Shopify collection JSON for current furniture-like collections. Archive
+  collections are present on the site and should remain excluded.
+- Yardsale Vintage can be crawled through Cargo's public page/filter API. The current Shop gallery
+  exposes title, price, image, description, and detail URLs; the Archive gallery is separate and
+  should remain excluded.
+- BOND Vintage has Shopify collection data, but the visible furniture-like inventory is currently
+  sold out. The source parser works, but existing refresh semantics skip brand-new sold-out items,
+  so it may contribute zero public listings until inventory returns.
+- Chez Lamothe exposes a Square Online storefront products API used by the public shop grid. The
+  captured endpoint includes prices, images, descriptions, detail URLs, and out-of-stock badges.
+- Chez Lamothe originally looked slower and less complete through sitemap/product-page metadata, but
+  the storefront API is a better ingestion path and avoids contact-for-details pricing when a price
+  is shown online.
 
 ### Explicitly Deferred
 
@@ -281,8 +289,8 @@ Nice-to-have fields:
   - collection page exists: https://maisonsingulier.com/collections
   - seating collection shows live prices on some items: https://maisonsingulier.com/collections/seating
   - large-item product pages explicitly instruct buyers to request a shipping quote, which is fine for the project if quote-based Montreal shipping is allowed
-  - this should be the first expansion source after the current four active shops
-  - implementation must avoid importing archive-only inventory as available inventory
+  - local ingestion verified 21 live listings with images and prices on 2026-05-14
+  - implementation avoids archive collections
 
 ### Yardsale Vintage
 
@@ -296,12 +304,11 @@ Nice-to-have fields:
   - FAQ/about pages say shipping is available across Canada and the United States by quote
   - for this project, local appointment/pickup or local delivery would be enough even without
     Canada-wide shipping
-- Crawlability: medium to low until verified. Public site exists, but purchase appears
-  contact-based and the item catalog is not yet proven as a clean feed.
+- Crawlability: medium. The site is Cargo-based and the current Shop gallery can be fetched through
+  Cargo's public page/filter API.
 - Notes:
-  - good candidate for shop profile and manual-source support first
-  - only promote to automated ingestion if current inventory pages expose title, image, price or
-    quote status, and availability reliably
+  - local ingestion verified 11 current Shop-gallery listings with images and prices on 2026-05-14
+  - Archive gallery should remain excluded
 
 ### BOND Vintage
 
@@ -313,9 +320,11 @@ Nice-to-have fields:
 - Crawlability: medium to strong technically because it appears Shopify-based.
 - Notes:
   - collection page shows product cards, prices, and sold-out states
-  - concern: current visible inventory may be mostly sold out, so usefulness depends on active stock
-    volume
-  - good parser spike candidate after Maison Singulier
+  - local parser verified 9 visible collection cards on 2026-05-14
+  - all visible items were marked sold out / `Épuisé`
+  - two visible cards were poster/art items and should be skipped for furniture-first ingestion
+  - existing refresh behavior skips brand-new sold-out records, so BOND may have an active shop row
+    with zero public listings until active inventory returns
 
 ### Chez Lamothe
 
@@ -325,12 +334,16 @@ Nice-to-have fields:
 - Local signal:
   - third-party listings and writeups place it in Montreal and describe it as a restored MCM
     furniture shop
-- Crawlability: low based on current evidence. The domain exists, but no stable public item feed has
-  been verified.
+- Crawlability: medium to strong. The public shop grid uses a Square Online storefront API that
+  exposes product data, prices, images, and out-of-stock badges.
 - Notes:
   - high-caliber local source and should be part of the product
-  - start as a shop profile / manual-source candidate
-  - only add automated crawling if the site or another first-party channel exposes stable listings
+  - local ingestion initially verified sitemap/product-page metadata on 2026-05-14, but that path
+    omitted prices
+  - browser network inspection on 2026-05-14 confirmed the price-bearing storefront endpoint:
+    `https://cdn5.editmysite.com/app/store/api/v28/editor/users/131647755/sites/345976907244501379/products`
+  - storefront API responses include `price.low`, `images.data`, `absolute_site_link`, and
+    `badges.out_of_stock`
 
 ### 5. Urbano Vintej
 
@@ -465,11 +478,11 @@ Why:
 
 ### Phase 2: Local-First Expansion
 
-Add:
+Added:
 
 1. Maison Singulier
-2. BOND Vintage
-3. Yardsale Vintage
+2. Yardsale Vintage
+3. BOND Vintage
 4. Chez Lamothe
 
 Why:
@@ -477,8 +490,9 @@ Why:
 - strongest fit with the Montreal-first thesis
 - similar local curation caliber to the current four active sources
 - local pickup or local delivery is enough for these Montreal/agglomeration shops
-- Maison Singulier and BOND Vintage look most likely to support automated crawling
-- Yardsale Vintage and Chez Lamothe may need manual/profile-first support
+- Maison Singulier, Yardsale Vintage, BOND Vintage, and Chez Lamothe now have local automated
+  ingestion paths
+- Chez Lamothe should be monitored for Square frontend API path/cache-version changes
 
 ### Phase 3: Broader Canadian Direct Shops Or Marketplaces
 
@@ -660,7 +674,7 @@ Interpretation:
 | Morceau | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | Direct site still appears primary |
 | Showroom Montreal | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | Good sign for direct-source differentiation |
 | Montreal Moderne | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | Good sign for direct-source differentiation |
-| Chez Lamothe | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | Lower-confidence shop overall because site inventory is harder to verify |
+| Chez Lamothe | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | Direct site inventory is crawlable through the Square storefront API, including prices and out-of-stock badges |
 | Maison Singulier | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | Appears to rely on own site |
 | Le Centerpiece | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | Appears to rely on own site |
 | Trianon Boutique | Confirmed | No clear evidence found | No clear evidence found | No clear evidence found | No clear evidence found | Site itself links to 1stDibs |
@@ -688,11 +702,11 @@ If I were choosing the exact first four sources, I would start with:
 3. Montreal Moderne
 4. Le Centerpiece
 
-Very close next additions:
+Recently added local-first sources:
 
 1. Maison Singulier
-2. BOND Vintage
-3. Yardsale Vintage
+2. Yardsale Vintage
+3. BOND Vintage
 4. Chez Lamothe
 
 ## Showroom Montreal French Parser Evidence
@@ -719,6 +733,13 @@ Checked on: 2026-05-07
 - App-facing item numbers are deterministic from the preserved listing row id, e.g. listing `1912` renders as `MCM-001912`.
 - Source-key drift reconciliation now checks same-shop exact normalized title first, then requires a high-confidence same image or same source description match before updating the existing row with the new source key.
 - Ambiguous high-confidence matches are not merged; they are recorded in internal SQLite table `listing_identity_reviews` for later inspection outside the user-facing UI.
+- Showroom can publish the same object on `nouveaute` and on category pages with different Wix
+  `dataItem-*` lightbox ids.
+- Confirmed duplicate examples in production on 2026-05-14: `MCM-006827` / `MCM-000955` and
+  `MCM-007330` / `MCM-006849`.
+- The parser now merges Showroom rows with the same normalized title, primary image, and source
+  description before database upsert, preferring category-page source URLs over `nouveaute` URLs.
+- Live parser check after the merge returned zero duplicate Showroom identity groups.
 
 ## Current UI And Localization Notes
 

@@ -6,7 +6,16 @@ const DEFAULT_WWW_HOSTNAME = "www.montrealmcm.ca";
 const DEFAULT_D1_BRIDGE_URL = "https://montreal-mcm.dalaque.workers.dev/internal/d1/query";
 const REFRESH_CRON = "23 9 * * *";
 const REFRESH_MONITOR_CRON = "23 11 * * *";
-const SOURCE_SLUGS = ["morceau", "showroom-montreal", "montreal-moderne", "le-centerpiece"];
+const SOURCE_SLUGS = [
+  "morceau",
+  "showroom-montreal",
+  "montreal-moderne",
+  "le-centerpiece",
+  "maison-singulier",
+  "yardsale-vintage",
+  "bond-vintage",
+  "chez-lamothe",
+];
 const SHOWROOM_SOURCE_SLUG = "showroom-montreal";
 const SHOWROOM_CHUNK_COUNT = 12;
 const LE_CENTERPIECE_SOURCE_SLUG = "le-centerpiece";

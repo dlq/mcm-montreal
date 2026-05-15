@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html as html_lib
 import json
 import re
 import unicodedata
@@ -133,6 +134,81 @@ SOURCE_DEFINITIONS = [
         ),
         parser="shopify_collection",
     ),
+    SourceDefinition(
+        slug="maison-singulier",
+        name="Maison Singulier",
+        website="https://maisonsingulier.com/",
+        city="Montreal",
+        province="QC",
+        country="Canada",
+        is_montreal_local=True,
+        shipping_summary="Montreal local source; large items may require a shipping quote.",
+        source_type="direct_shop",
+        crawl_priority=2,
+        notes="Shopify collections with live furniture inventory; archive collections are excluded.",
+        description="Montreal-based vintage furniture and home goods shop focused on modernist and mid-century design.",
+        style_focus="Modernist, Brazilian, Mid-Century, Postmodern, collectible furniture.",
+        listing_urls=(
+            "https://maisonsingulier.com/collections/seating",
+            "https://maisonsingulier.com/collections/tables",
+            "https://maisonsingulier.com/collections/storage",
+            "https://maisonsingulier.com/collections/lighting",
+        ),
+        parser="shopify_collection",
+    ),
+    SourceDefinition(
+        slug="yardsale-vintage",
+        name="Yardsale Vintage",
+        website="https://yardsale-vintage.com/",
+        city="Montreal",
+        province="QC",
+        country="Canada",
+        is_montreal_local=True,
+        shipping_summary="Montreal local pickup; shipping is available to Canada and the United States by quote.",
+        source_type="direct_shop",
+        crawl_priority=2,
+        notes="Cargo gallery; current Shop gallery is parsed and Archive gallery is excluded.",
+        description="Montreal studio focused on restored one-of-a-kind vintage furniture.",
+        style_focus="Restored vintage furniture, designer seating, MCM case goods.",
+        listing_urls=("https://yardsale-vintage.com/",),
+        parser="cargo_gallery",
+    ),
+    SourceDefinition(
+        slug="bond-vintage",
+        name="BOND Vintage",
+        website="https://bondvintage.com/",
+        city="Montreal",
+        province="QC",
+        country="Canada",
+        is_montreal_local=True,
+        shipping_summary="Montreal local source with online product cards and sold-out states.",
+        source_type="direct_shop",
+        crawl_priority=2,
+        notes="Shopify collection appears sparse and mostly sold out; parse visible collection only.",
+        description="Montreal vintage shop selling modern furniture and home accessories.",
+        style_focus="Vintage modern furniture, lighting, accessories, mixed-period design.",
+        listing_urls=("https://bondvintage.com/collections/collection",),
+        parser="shopify_collection",
+    ),
+    SourceDefinition(
+        slug="chez-lamothe",
+        name="Chez Lamothe",
+        website="https://www.chezlamothe.com/",
+        city="Montreal",
+        province="QC",
+        country="Canada",
+        is_montreal_local=True,
+        shipping_summary="Montreal local source; delivery in Montreal and regional shipping by quote.",
+        source_type="direct_shop",
+        crawl_priority=2,
+        notes="Square Online storefront API; product data includes prices, images, descriptions, and out-of-stock badges.",
+        description="Montreal shop specializing in restored mid-century furniture, especially teak and Scandinavian pieces.",
+        style_focus="Restored Mid-Century, teak, Scandinavian, Danish and Canadian furniture.",
+        listing_urls=(
+            "https://cdn5.editmysite.com/app/store/api/v28/editor/users/131647755/sites/345976907244501379/products",
+        ),
+        parser="square_storefront",
+    ),
 ]
 
 SHOWROOM_OVERRIDES: dict[str, dict[str, str]] = {
@@ -159,6 +235,10 @@ def fetch_source_listings(source: SourceDefinition) -> tuple[list[dict[str, Any]
             return _fetch_showroom(source), None
         if source.parser == "montreal_moderne":
             return _fetch_montreal_moderne(source), None
+        if source.parser == "cargo_gallery":
+            return _fetch_cargo_gallery(source), None
+        if source.parser == "square_storefront":
+            return _fetch_square_storefront(source), None
         raise ValueError(f"Unknown parser: {source.parser}")
     except Exception as exc:  # noqa: BLE001
         return _seed_fallback(source), str(exc)
@@ -281,6 +361,8 @@ def _parse_shopify_collection_product(
         "\n", strip=True
     )
     description = _clean_text(description_text)
+    if source.slug == "bond-vintage" and not _looks_like_furniture_text(f"{title} {description}"):
+        raise ValueError("Skipping non-furniture BOND Vintage item")
     if _is_current_production(description):
         raise ValueError("Skipping current-production Shopify item")
     variants = [variant for variant in product.get("variants", []) if isinstance(variant, dict)]
@@ -399,17 +481,51 @@ def _parse_shopify_product(source: SourceDefinition, url: str) -> dict[str, Any]
 
 def _fetch_showroom(source: SourceDefinition) -> list[dict[str, Any]]:
     listings_by_key: dict[str, dict[str, Any]] = {}
+    key_by_identity: dict[str, str] = {}
     for entry_url in source.listing_urls:
         for listing in _fetch_showroom_entry(source, entry_url):
-            existing = listings_by_key.get(listing["source_listing_key"])
-            if existing is None or (
-                listing["primary_image_url"] and not existing.get("primary_image_url")
-            ):
-                listings_by_key[listing["source_listing_key"]] = listing
+            key = str(listing["source_listing_key"])
+            identity = _showroom_listing_identity(listing)
+            duplicate_key = key_by_identity.get(identity) if identity else None
+            if duplicate_key and duplicate_key != key:
+                existing = listings_by_key[duplicate_key]
+                if _prefer_showroom_listing(listing, existing):
+                    del listings_by_key[duplicate_key]
+                    listings_by_key[key] = listing
+                    key_by_identity[identity] = key
+                continue
+
+            existing = listings_by_key.get(key)
+            if existing is None or _prefer_showroom_listing(listing, existing):
+                listings_by_key[key] = listing
+                if identity:
+                    key_by_identity[identity] = key
     listings = list(listings_by_key.values())
     if not listings:
         raise ValueError("No Showroom Montreal gallery items parsed")
     return listings
+
+
+def _showroom_listing_identity(listing: dict[str, Any]) -> str:
+    title = _normalize_lookup(str(listing.get("title") or ""))
+    image = str(listing.get("primary_image_url") or "")
+    description = _normalize_lookup(str(listing.get("source_description") or ""))
+    if not title or not image or not description:
+        return ""
+    return "|".join((title, image, description))
+
+
+def _prefer_showroom_listing(candidate: dict[str, Any], existing: dict[str, Any]) -> bool:
+    if candidate.get("primary_image_url") and not existing.get("primary_image_url"):
+        return True
+    return _showroom_source_priority(str(candidate.get("source_listing_url") or "")) > (
+        _showroom_source_priority(str(existing.get("source_listing_url") or ""))
+    )
+
+
+def _showroom_source_priority(url: str) -> int:
+    path = urllib.parse.urlsplit(url).path.strip("/")
+    return 0 if path == "nouveaute" else 1
 
 
 def _fetch_showroom_entry(source: SourceDefinition, entry_url: str) -> list[dict[str, Any]]:
@@ -794,6 +910,383 @@ def _extract_wix_products_json(html: str) -> list[dict[str, Any]]:
     return [item for item in payload if isinstance(item, dict)]
 
 
+def _fetch_cargo_gallery(source: SourceDefinition) -> list[dict[str, Any]]:
+    html = _fetch_html(source.listing_urls[0])
+    state = _extract_cargo_preloaded_state(html)
+    site_id = state.get("site", {}).get("id")
+    if not site_id:
+        raise ValueError("No Cargo site id found")
+
+    page_content = (
+        (state.get("pages", {}).get("byId", {}) or {}).get("U3904174187", {}).get("content", "")
+    )
+    soup = BeautifulSoup(page_content or html, "html.parser")
+    gallery = soup.select_one('gallery-columnized[thumbnail-index^="set:"]')
+    if not gallery:
+        raise ValueError("No Cargo shop gallery found")
+    set_id = gallery.get("thumbnail-index", "").removeprefix("set:")
+    metadata_raw = gallery.get("thumbnail-index-metadata", "")
+    if not set_id or not metadata_raw:
+        raise ValueError("No Cargo gallery metadata found")
+
+    metadata = json.loads(urllib.parse.unquote(metadata_raw))
+    indexes = sorted(
+        {
+            int(value["sort"])
+            for key, value in metadata.items()
+            if key != "root" and isinstance(value, dict) and isinstance(value.get("sort"), int)
+        }
+    )
+    if not indexes:
+        raise ValueError("No Cargo gallery indexes found")
+
+    pages: list[dict[str, Any]] = []
+    for index_batch in _chunks(indexes, 20):
+        payload = json.dumps([{"set_id": set_id, "index": index_batch}])
+        filter_url = f"https://api.cargo.site/v1/pages/{site_id}/filter/?" + urllib.parse.urlencode(
+            {"indexBySet": payload}
+        )
+        batch = json.loads(_fetch_html(filter_url))
+        pages.extend(page for page in batch if isinstance(page, dict))
+
+    listings_by_key: dict[str, dict[str, Any]] = {}
+    for page in pages:
+        try:
+            listing = _parse_cargo_page(source, page)
+        except ValueError:
+            continue
+        listings_by_key[listing["source_listing_key"]] = listing
+    if not listings_by_key:
+        raise ValueError("No Yardsale Vintage gallery items parsed")
+    return list(listings_by_key.values())
+
+
+def _extract_cargo_preloaded_state(html: str) -> dict[str, Any]:
+    marker = "window.__PRELOADED_STATE__="
+    start = html.find(marker)
+    if start < 0:
+        return {}
+    start += len(marker)
+    end = html.find("</script>", start)
+    if end < 0:
+        return {}
+    try:
+        payload = json.loads(html[start:end].strip().rstrip(";"))
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _parse_cargo_page(source: SourceDefinition, page: dict[str, Any]) -> dict[str, Any]:
+    raw_title = _clean_text(str(page.get("title", "")))
+    page_id = _clean_text(str(page.get("id", "")))
+    purl = _clean_text(str(page.get("purl", "")))
+    if not raw_title or not page_id or not purl:
+        raise ValueError("Cargo page is missing title, id, or purl")
+    title = _clean_cargo_title(raw_title)
+    content_text = BeautifulSoup(str(page.get("content") or ""), "html.parser").get_text(
+        "\n", strip=True
+    )
+    description = _clean_text(content_text)
+    price_match = re.search(r"(\d[\d\s,]*(?:\.\d{2})?)\s*\$", raw_title)
+    price_value = _to_float(price_match.group(1)) if price_match else None
+    image_urls = _cargo_page_image_urls(page)
+    designer, maker = _extract_designer_and_maker(title, description)
+    return {
+        "source_listing_url": urllib.parse.urljoin(source.website, purl),
+        "source_listing_key": f"yardsale-vintage:{page_id}",
+        "title": title,
+        "price_raw": price_match.group(0) if price_match else "Contact for price",
+        "price_value": price_value,
+        "currency": "CAD",
+        "primary_image_url": image_urls[0] if image_urls else "",
+        "additional_image_urls": image_urls[1:6],
+        "availability_status": "available",
+        "shipping_scope": _shipping_scope_for(source),
+        "ships_to_montreal": 1,
+        "shipping_note": source.shipping_summary,
+        "category": _categorize_listing(title, description),
+        "designer": designer,
+        "maker": maker,
+        "materials": _extract_materials(f"{title} {description}"),
+        "dimensions_text": _extract_dimensions(description),
+        "condition_text": _extract_condition(description),
+        "source_description": description,
+        "location_text": f"{source.city}, {source.province}",
+        "era": _extract_era(f"{title} {description}"),
+        "parse_confidence": 0.78,
+        "ingest_source_type": "live_fetch",
+    }
+
+
+def _clean_cargo_title(title: str) -> str:
+    title = re.sub(r"\s+-\s+\d[\d\s,]*(?:\.\d{2})?\s*\$.*$", "", title)
+    return _clean_text(title)
+
+
+def _cargo_page_image_urls(page: dict[str, Any]) -> list[str]:
+    candidates = []
+    thumbnail = page.get("thumbnail")
+    if isinstance(thumbnail, dict):
+        candidates.append(thumbnail)
+    candidates.extend(item for item in page.get("media", []) if isinstance(item, dict))
+    urls = []
+    for media in candidates:
+        url = _cargo_media_url(media)
+        if url and url not in urls:
+            urls.append(url)
+    return urls
+
+
+def _cargo_media_url(media: dict[str, Any]) -> str:
+    media_hash = _clean_text(str(media.get("hash", "")))
+    name = _clean_text(str(media.get("name", "")))
+    if not media_hash:
+        return ""
+    quoted_name = urllib.parse.quote(name) if name else "image"
+    return f"https://freight.cargo.site/w/1200/i/{media_hash}/{quoted_name}"
+
+
+def _fetch_square_storefront(source: SourceDefinition) -> list[dict[str, Any]]:
+    listings_by_key: dict[str, dict[str, Any]] = {}
+    page = 1
+    total_pages = 1
+    while page <= total_pages:
+        query = urllib.parse.urlencode(
+            {
+                "page": page,
+                "per_page": 180,
+                "sort_by": "popularity_score",
+                "sort_order": "desc",
+                "include": "images,media_files,discounts",
+                "excluded_fulfillment": "dine_in",
+                "cache-version": "2026-03-25",
+            }
+        )
+        payload = json.loads(_fetch_html(f"{source.listing_urls[0]}?{query}"))
+        products = payload.get("data", [])
+        if not isinstance(products, list):
+            break
+        for product in products:
+            if not isinstance(product, dict):
+                continue
+            try:
+                listing = _parse_square_storefront_product(source, product)
+            except ValueError:
+                continue
+            listings_by_key[listing["source_listing_key"]] = listing
+        pagination = (payload.get("meta") or {}).get("pagination") or {}
+        total_pages = int(pagination.get("total_pages") or page)
+        page += 1
+    if not listings_by_key:
+        raise ValueError("No Chez Lamothe storefront products parsed")
+    return list(listings_by_key.values())
+
+
+def _parse_square_storefront_product(
+    source: SourceDefinition, product: dict[str, Any]
+) -> dict[str, Any]:
+    title = _clean_text(str(product.get("name", "")))
+    product_id = _clean_text(str(product.get("site_product_id") or product.get("id") or ""))
+    description = _clean_text(
+        BeautifulSoup(str(product.get("short_description") or ""), "html.parser").get_text(
+            "\n", strip=True
+        )
+    )
+    if not title or not product_id:
+        raise ValueError("Square storefront product is missing title or id")
+    if not _looks_like_furniture_text(f"{title} {description}"):
+        raise ValueError("Skipping non-furniture Square product")
+    image_urls = _square_storefront_image_urls(product)
+    if not image_urls:
+        raise ValueError("Square storefront product is missing images")
+    price_value = _square_storefront_price_value(product)
+    sold_out = _square_storefront_product_is_sold_out(product, description)
+    designer, maker = _extract_designer_and_maker(title, description)
+    return {
+        "source_listing_url": product.get("absolute_site_link") or source.website,
+        "source_listing_key": f"chez-lamothe:{product_id}",
+        "title": title,
+        "price_raw": f"${price_value:,.2f} CAD" if price_value is not None else "Contact for price",
+        "price_value": price_value,
+        "currency": "CAD",
+        "primary_image_url": image_urls[0],
+        "additional_image_urls": image_urls[1:6],
+        "availability_status": "sold_out" if sold_out else "available",
+        "shipping_scope": _shipping_scope_for(source),
+        "ships_to_montreal": 1,
+        "shipping_note": source.shipping_summary,
+        "category": _categorize_listing(title, description),
+        "designer": designer,
+        "maker": maker,
+        "materials": _extract_materials(f"{title} {description}"),
+        "dimensions_text": _extract_dimensions(description),
+        "condition_text": _extract_condition(description),
+        "source_description": description,
+        "location_text": f"{source.city}, {source.province}",
+        "era": _extract_era(f"{title} {description}"),
+        "parse_confidence": 0.84,
+        "ingest_source_type": "live_fetch",
+    }
+
+
+def _square_storefront_image_urls(product: dict[str, Any]) -> list[str]:
+    image_rows = (product.get("images") or {}).get("data") or []
+    urls = []
+    for image in image_rows:
+        if not isinstance(image, dict):
+            continue
+        absolute_urls = (
+            image.get("absolute_urls") if isinstance(image.get("absolute_urls"), dict) else {}
+        )
+        url = (
+            absolute_urls.get("1280")
+            or absolute_urls.get("2560")
+            or image.get("absolute_url")
+            or image.get("url")
+            or ""
+        )
+        if url and url not in urls:
+            urls.append(str(url))
+    thumbnail = (product.get("thumbnail") or {}).get("data") or {}
+    fallback = (
+        thumbnail.get("absolute_url") or thumbnail.get("url") if isinstance(thumbnail, dict) else ""
+    )
+    if fallback and fallback not in urls:
+        urls.insert(0, str(fallback))
+    return urls
+
+
+def _square_storefront_price_value(product: dict[str, Any]) -> float | None:
+    price = product.get("price") if isinstance(product.get("price"), dict) else {}
+    raw_price = price.get("low")
+    if isinstance(raw_price, int | float):
+        return float(raw_price)
+    raw_subunits = price.get("low_subunits")
+    if isinstance(raw_subunits, int | float):
+        return float(raw_subunits) / 100
+    return None
+
+
+def _square_storefront_product_is_sold_out(product: dict[str, Any], description: str) -> bool:
+    badges = product.get("badges") if isinstance(product.get("badges"), dict) else {}
+    inventory = product.get("inventory") if isinstance(product.get("inventory"), dict) else {}
+    return bool(
+        badges.get("out_of_stock")
+        or inventory.get("all_variations_sold_out")
+        or inventory.get("marked_sold_out_at_all_existing_locations")
+        or _square_product_is_sold_out(str(product.get("name") or ""), description)
+    )
+
+
+def _parse_square_product_page(source: SourceDefinition, url: str, html: str) -> dict[str, Any]:
+    soup = BeautifulSoup(html, "html.parser")
+    title = _clean_text(
+        _meta_content(soup, "property", "og:title")
+        or _safe_text(soup.select_one("title"))
+        or _slug_to_title(url.rsplit("/", 2)[-2])
+    )
+    title = re.sub(r"\s*\|\s*Chez Lamothe\s*$", "", title).strip()
+    description = _clean_text(
+        html_lib.unescape(
+            _meta_content(soup, "property", "og:description")
+            or _meta_content(soup, "name", "description")
+        )
+    )
+    image = _meta_content(soup, "property", "og:image")
+    if not title or not image:
+        raise ValueError("Square product page is missing title or image")
+    if not _looks_like_furniture_text(f"{title} {description}"):
+        raise ValueError("Skipping non-furniture Square product")
+    sold_out = _square_product_is_sold_out(html, description)
+    designer, maker = _extract_designer_and_maker(title, description)
+    return {
+        "source_listing_url": url,
+        "source_listing_key": url,
+        "title": title,
+        "price_raw": "Contactez-nous pour les details",
+        "price_value": None,
+        "currency": "CAD",
+        "primary_image_url": image,
+        "additional_image_urls": [],
+        "availability_status": "sold_out" if sold_out else "available",
+        "shipping_scope": _shipping_scope_for(source),
+        "ships_to_montreal": 1,
+        "shipping_note": source.shipping_summary,
+        "category": _categorize_listing(title, description),
+        "designer": designer,
+        "maker": maker,
+        "materials": _extract_materials(f"{title} {description}"),
+        "dimensions_text": _extract_dimensions(description),
+        "condition_text": _extract_condition(description),
+        "source_description": description,
+        "location_text": f"{source.city}, {source.province}",
+        "era": _extract_era(f"{title} {description}"),
+        "parse_confidence": 0.66,
+        "ingest_source_type": "live_fetch",
+    }
+
+
+def _meta_content(soup: BeautifulSoup, attr: str, value: str) -> str:
+    node = soup.find("meta", attrs={attr: value})
+    return _clean_text(str(node.get("content", ""))) if node else ""
+
+
+def _square_product_is_sold_out(html: str, description: str) -> bool:
+    soup = BeautifulSoup(html, "html.parser")
+    for node in soup.select("script, style, template"):
+        node.decompose()
+    normalized = _normalize_lookup(f"{soup.get_text(' ', strip=True)} {description}")
+    sold_out_markers = (
+        "en rupture de stock",
+        "rupture de stock",
+        "article non disponible",
+        "sold out",
+        "out of stock",
+    )
+    return any(marker in normalized for marker in sold_out_markers)
+
+
+def _looks_like_furniture_product_url(url: str) -> bool:
+    return _looks_like_furniture_text(urllib.parse.unquote(url))
+
+
+def _looks_like_furniture_text(text: str) -> bool:
+    normalized = _normalize_lookup(text)
+    furniture_terms = (
+        "armoire",
+        "banc",
+        "bar",
+        "bibliotheque",
+        "buffet",
+        "bureau",
+        "cabinet",
+        "canape",
+        "chaise",
+        "chaises",
+        "chevet",
+        "commode",
+        "console",
+        "desserte",
+        "etagere",
+        "fauteuil",
+        "lampe",
+        "lampes",
+        "lit",
+        "luminaire",
+        "meuble",
+        "miroir",
+        "sofa",
+        "table",
+        "tables",
+    )
+    return any(term in normalized for term in furniture_terms)
+
+
+def _chunks(values: list[int], size: int) -> list[list[int]]:
+    return [values[index : index + size] for index in range(0, len(values), size)]
+
+
 def _fetch_html(url: str) -> str:
     request = urllib.request.Request(_ascii_safe_url(url), headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=18) as response:
@@ -1018,14 +1511,17 @@ def _categorize_listing(title: str, description: str) -> str:
         ("sideboards / credenzas", ["sideboard", "buffet", "credenza"]),
         ("dressers / commodes", ["dresser", "commode", "wardrobe"]),
         ("dining tables", ["dining table", "table a manger", "table en teck"]),
-        ("dining chairs", ["dining chair", "chair", "chaises", "tabouret"]),
+        ("dining chairs", ["dining chair", "chair", "chaises", "stool", "tabouret"]),
         ("lounge chairs", ["armchair", "fauteuil", "lounge chair"]),
         ("sofas", ["sofa", "canape"]),
-        ("coffee tables", ["coffee table", "table basse"]),
+        (
+            "coffee tables",
+            ["coffee table", "table basse", "table de salon", "tables de salon", "table d'appoint"],
+        ),
         ("desks", ["desk", "bureau", "pupitre"]),
         (
             "bookshelves / wall units",
-            ["bookcase", "bibliotheque", "unite murale", "wall unit", "etagere"],
+            ["bookcase", "bibliotheque", "unite murale", "wall unit", "etagere", "étagère"],
         ),
         ("nightstands", ["bedside", "chevet", "side table", "table d’appoint", "table d'appoint"]),
         ("beds / bedroom storage", ["bed", "lit"]),
