@@ -374,6 +374,9 @@ Likely `0.2.x` reliability work:
 
 - add external uptime checks or alert delivery if log-only/admin-dashboard monitoring is not enough
 - add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
+- investigate long-running source refreshes that write listings but leave `refresh_jobs` rows stuck
+  as `running`; Chez Lamothe production ingestion populated D1 listings on 2026-05-15, but its
+  job bookkeeping did not consistently reach `finish_refresh_job`
 - review production secrets handling: confirm owner storage and rotation for `D1_BRIDGE_TOKEN`,
   decide whether `MCM_ADMIN_TOKEN` and `MCM_MANUAL_REFRESH_TOKEN` should remain shared or be split,
   and document the owner/rotation process
