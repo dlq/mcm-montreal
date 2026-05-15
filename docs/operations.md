@@ -93,7 +93,7 @@ curl -fsS \
   "https://montreal-mcm.dalaque.workers.dev/internal/refresh-now?source=morceau"
 ```
 
-Omit `source` to enqueue all active launch sources.
+Omit `source` to enqueue all active sources.
 
 The apex custom domain should render the app, and `www` should redirect to the apex domain:
 
@@ -157,7 +157,7 @@ or source files.
 
 ## Refresh Behavior
 
-Cloudflare cron enqueues one refresh message per launch source. A Queue consumer processes one
+Cloudflare cron enqueues one refresh message per active source. A Queue consumer processes one
 message at a time, calls the private Worker-to-container refresh endpoint, and retries failures
 before sending exhausted messages to `montreal-mcm-refresh-dlq`.
 
@@ -169,5 +169,5 @@ already has records, fallback data is not treated as authoritative and existing 
 deactivated.
 
 A second cron runs two hours after the daily refresh window and logs a `refresh_job_monitor` event.
-It checks D1 for missing or non-success refresh jobs for each active launch source. This is log-only
+It checks D1 for missing or non-success refresh jobs for each active source. This is log-only
 monitoring; external alerting can be added later if needed.

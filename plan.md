@@ -1,7 +1,7 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-05-14
+Updated: 2026-05-15
 Current line: `0.2.x`
 
 ## Purpose
@@ -194,7 +194,7 @@ Completed in `0.1.2`:
 
 - add a Cloudflare Queue binding and producer in `src/worker.js`
 - add a queue consumer that runs refresh messages with controlled concurrency and retries
-- keep a guarded manual refresh endpoint that enqueues one source or all active launch sources
+- keep a guarded manual refresh endpoint that enqueues one source or all active sources
 - configure single-message queue batches, max concurrency 1, retries, and a dead-letter queue
 - document queue creation, retry, dead-letter, and manual force-refresh behavior in
   `docs/operations.md`
@@ -351,7 +351,7 @@ Completed in `0.1.2`:
 
 - add a Cloudflare Queue binding and producer in `src/worker.js`
 - add a queue consumer that runs one source refresh per message
-- keep a guarded manual refresh endpoint that enqueues one source or all active launch sources
+- keep a guarded manual refresh endpoint that enqueues one source or all active sources
 - configure single-message queue batches, max concurrency 1, retries, and a dead-letter queue
 - document queue creation, retry, dead-letter, and manual force-refresh behavior in
   `docs/operations.md`
@@ -592,7 +592,7 @@ The product loses trust quickly if sold or removed items look current.
 
 Mitigation:
 
-- daily refresh for launch sources
+- daily refresh for active sources
 - source-level freshness labels
 - conservative deactivation rules
 - clear admin visibility into refresh failures

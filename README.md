@@ -53,6 +53,10 @@ uv run app.py refresh morceau
 uv run app.py refresh showroom-montreal
 uv run app.py refresh montreal-moderne
 uv run app.py refresh le-centerpiece
+uv run app.py refresh maison-singulier
+uv run app.py refresh yardsale-vintage
+uv run app.py refresh bond-vintage
+uv run app.py refresh chez-lamothe
 ```
 
 Run tests:
@@ -112,12 +116,20 @@ For more detail, see:
 
 ## Source Ingestion
 
-The active launch sources are:
+The active sources are:
 
 1. Morceau
 2. Showroom Montreal
 3. Montreal Moderne
 4. Le Centerpiece
+5. Maison Singulier
+6. Yardsale Vintage
+7. BOND Vintage
+8. Chez Lamothe
+
+The first four are the original launch sources. Maison Singulier, Yardsale Vintage, BOND Vintage,
+and Chez Lamothe are the first local expansion sources. BOND Vintage currently may contribute zero
+public listings while its visible furniture inventory is sold out.
 
 The app tries live fetches first, then falls back to curated seed data when a source is unreachable
 or parsing fails. Fallback data can bootstrap an empty local database, but source failures do not
@@ -218,7 +230,7 @@ Admin routes are open in local development when `MCM_ADMIN_TOKEN` is unset. In p
 `MCM_ADMIN_TOKEN` and authenticate with HTTP Basic auth using any username and the token as the
 password, or send `Authorization: Bearer <token>` / `X-MCM-Admin-Token: <token>`.
 
-Cloudflare cron enqueues one refresh message per launch source. A Queue consumer processes one
+Cloudflare cron enqueues one refresh message per active source. A Queue consumer processes one
 message at a time, calls the private Worker-to-container refresh endpoint, and retries failures
 before sending exhausted messages to the dead-letter queue. Each source refresh records
 `refresh_jobs`, `crawl_runs`, and any `crawl_failures` rows in D1 so the admin dashboard can show
@@ -234,4 +246,4 @@ curl -fsS \
   "https://montreal-mcm.dalaque.workers.dev/internal/refresh-now?source=morceau"
 ```
 
-Omit `source` to enqueue all active launch sources.
+Omit `source` to enqueue all active sources.

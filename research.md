@@ -1,7 +1,7 @@
 # Montreal MCM Resale Research
 
 Date: 2026-04-26
-Updated: 2026-05-14
+Updated: 2026-05-15
 
 ## Goal
 
@@ -50,16 +50,16 @@ What is currently live in the source layer:
 This means the research priority is no longer just "what should we build first." It is now also
 "which sources are stable enough to keep refreshing, and what caveats should the parsers carry?"
 
-## Recommendation
+## Recommendation History And Current Status
 
-Start with a small set of stores that already have:
+The original research recommendation was to start with a small set of stores that already have:
 
 - public item detail pages
 - clear prices on-page
 - item photos on-page
 - explicit Canada-wide, Montreal, or international shipping language
 
-Best first spider targets:
+Original first spider targets:
 
 1. Morceau Montreal
 2. Showroom Montreal
@@ -68,7 +68,7 @@ Best first spider targets:
 5. Vintage Home Boutique
 6. Le Centerpiece
 
-Best secondary expansion targets:
+Original secondary expansion targets:
 
 1. Urbano Vintej
 2. Banana Lab
@@ -77,7 +77,7 @@ Best secondary expansion targets:
 5. Chairish
 6. Pamono
 
-Best manual / later-review targets:
+Original manual / later-review targets:
 
 1. Chez Lamothe
 2. Style Labo Antiquites
@@ -86,18 +86,27 @@ Best manual / later-review targets:
 5. Antiquites Van Horne
 6. Bien Beau
 
-Reason: the first group appears to expose item pages and prices clearly, while the manual group looks stronger as store discovery than as clean item-feed sources.
+Current implementation status:
 
-## Recommended Next Source Order From Here
+- Morceau, Showroom Montreal, Montreal Moderne, and Le Centerpiece became the original launch
+  sources.
+- Maison Singulier, Yardsale Vintage, BOND Vintage, and Chez Lamothe were added next as the first
+  local expansion sources.
+- Green Wall Vintage, Vintage Home Boutique, Urbano Vintej, Banana Lab, 1stDibs, Chairish, and
+  Pamono remain later candidates rather than current active sources.
+- Chez Lamothe graduated from manual/later-review to automated ingestion after the Square Online
+  storefront API path was verified.
 
-As of 2026-05-14, the next expansion should stay local-first. For Montreal and agglomeration-area
+## Recent Local Source Expansion
+
+As of 2026-05-15, the current expansion stays local-first. For Montreal and agglomeration-area
 shops, local pickup or local delivery is enough; Canada-wide shipping is not required.
 
 If the product later expands beyond the Montreal agglomeration, or if traffic materially shifts
 toward users outside Montreal, shipping requirements should be revisited before adding more
 non-local sources.
 
-### Selected Local Expansion Set
+### Implemented Local Expansion Set
 
 1. Maison Singulier
 2. Yardsale Vintage
@@ -164,10 +173,10 @@ Reason:
 The build has answered the "is this product worth prototyping?" question. The main research questions still worth validating are now:
 
 1. Which active source parsers are stable enough to rely on without frequent seed fallback?
-2. Can Maison Singulier and BOND Vintage be crawled cleanly without importing archive-only or sold
-   inventory?
-3. Can Yardsale Vintage and Chez Lamothe expose enough public listing data to graduate from
-   manual/profile-first sources to automated sources?
+2. Do Maison Singulier and BOND Vintage keep enough current, non-archive inventory online to remain
+   useful active sources?
+3. Do Yardsale Vintage and Chez Lamothe keep their current public data paths stable enough for
+   automated refreshes?
 4. Which sources mix in too much lighting or decor for a furniture-first launch?
 5. Which sources are most likely to create duplicate inventory if marketplace expansion happens later?
 
@@ -399,21 +408,9 @@ These are useful because they already solve discovery, but they are broader and 
   - phase 2 or 3
   - collectible European inventory
 
-## Montreal Shops Worth Tracking But Not Ideal First Spider Targets
+## Montreal Shops Worth Tracking But Not Currently Active
 
 These are important as part of the landscape, but I would not start here unless we confirm online item feeds.
-
-### Chez Lamothe
-
-- URL: https://www.chezlamothe.com/
-- Why it matters: clearly a local Montreal mid-century shop focused on recovered and restored quality pieces.
-- Local signal:
-  - third-party directory coverage places it on Rue Saint-Hubert in Montreal
-  - outside writeups describe it as a Montreal boutique for restored 1950s-1970s MCM furniture and decor
-- Crawlability: low to medium based on current evidence. The domain is live, but I could not verify a clean public inventory feed from the site in this pass.
-- Notes:
-  - Important to include in the research set.
-  - Better treated as a manual-review or social-first source unless the site exposes stable listing pages.
 
 ### Style Labo Antiquites
 
@@ -695,7 +692,7 @@ If the goal is to launch quickly with useful Montreal-relevant inventory, the be
 2. start with Montreal and Canada-friendly shops
 3. delay large marketplaces until the item model and deduping rules are proven
 
-If I were choosing the exact first four sources, I would start with:
+Original launch sources:
 
 1. Morceau
 2. Showroom Montreal
