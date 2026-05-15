@@ -169,31 +169,37 @@ const worker = await loadWorker();
 
   assert.equal(queue.sentBatches.length, 1);
   const messages = queue.sentBatches[0];
-  assert.equal(messages.length, 14);
+  assert.equal(messages.length, 34);
   assert.deepEqual(
     messages.map((message) => message.body.source_slug),
     [
       "morceau",
-      "showroom-montreal",
+      ...Array.from({ length: 12 }, () => "showroom-montreal"),
       "montreal-moderne",
       ...Array.from({ length: 7 }, () => "le-centerpiece"),
       "maison-singulier",
       "yardsale-vintage",
       "bond-vintage",
-      "chez-lamothe",
+      ...Array.from({ length: 10 }, () => "chez-lamothe"),
     ],
   );
   assert.deepEqual(
     messages
       .filter((message) => message.body.source_slug === "showroom-montreal")
       .map((message) => message.body.chunk_index),
-    [undefined],
+    Array.from({ length: 12 }, (_value, index) => index),
   );
   assert.deepEqual(
     messages
       .filter((message) => message.body.source_slug === "le-centerpiece")
       .map((message) => message.body.chunk_index),
     Array.from({ length: 7 }, (_value, index) => index),
+  );
+  assert.deepEqual(
+    messages
+      .filter((message) => message.body.source_slug === "chez-lamothe")
+      .map((message) => message.body.chunk_index),
+    Array.from({ length: 10 }, (_value, index) => index),
   );
   assert(messages.every((message) => message.body.trigger === "scheduled_refresh"));
   assert(messages.every((message) => message.body.message_id));
@@ -236,14 +242,38 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 1);
+  assert.equal(queue.sentBatches[0].length, 12);
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.source_slug),
-    ["showroom-montreal"],
+    Array.from({ length: 12 }, () => "showroom-montreal"),
   );
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.chunk_index),
-    [undefined],
+    Array.from({ length: 12 }, (_value, index) => index),
+  );
+  assert.equal(queue.sentBatches[0][0].body.trigger, "manual_refresh_now");
+}
+
+{
+  const { env, queue } = makeEnv();
+  const response = await worker.fetch(
+    new Request("https://montreal-mcm.test/internal/refresh-now?source=chez-lamothe", {
+      method: "POST",
+      headers: { Authorization: "Bearer refresh-token" },
+    }),
+    env,
+  );
+
+  assert.equal(response.status, 202);
+  assert.equal(queue.sentBatches.length, 1);
+  assert.equal(queue.sentBatches[0].length, 10);
+  assert.deepEqual(
+    queue.sentBatches[0].map((message) => message.body.source_slug),
+    Array.from({ length: 10 }, () => "chez-lamothe"),
+  );
+  assert.deepEqual(
+    queue.sentBatches[0].map((message) => message.body.chunk_index),
+    Array.from({ length: 10 }, (_value, index) => index),
   );
   assert.equal(queue.sentBatches[0][0].body.trigger, "manual_refresh_now");
 }
@@ -260,7 +290,7 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 14);
+  assert.equal(queue.sentBatches[0].length, 34);
 }
 
 {
@@ -315,6 +345,7 @@ const worker = await loadWorker();
   const { env, containerRequests } = makeEnv();
   const message = makeMessage({
     source_slug: "showroom-montreal",
+    chunk_index: 1,
     trigger: "test",
     message_id: "message-3",
   });
@@ -326,7 +357,7 @@ const worker = await loadWorker();
   assert.equal(containerRequests.length, 1);
   assert.equal(
     new URL(containerRequests[0].url).pathname,
-    "/cron/refresh/showroom-montreal",
+    "/cron/refresh/showroom-montreal/chunk/1",
   );
 }
 
@@ -337,6 +368,21 @@ const worker = await loadWorker();
     chunk_index: 12,
     trigger: "test",
     message_id: "message-4",
+  });
+
+  await worker.queue({ messages: [message] }, env);
+
+  assert.equal(message.acked, false);
+  assert.deepEqual(message.retried, { delaySeconds: 300 });
+  assert.equal(containerRequests.length, 0);
+}
+
+{
+  const { env, containerRequests } = makeEnv();
+  const message = makeMessage({
+    source_slug: "showroom-montreal",
+    trigger: "test",
+    message_id: "message-4b",
   });
 
   await worker.queue({ messages: [message] }, env);
@@ -373,6 +419,42 @@ const worker = await loadWorker();
     chunk_index: 7,
     trigger: "test",
     message_id: "message-6",
+  });
+
+  await worker.queue({ messages: [message] }, env);
+
+  assert.equal(message.acked, false);
+  assert.deepEqual(message.retried, { delaySeconds: 300 });
+  assert.equal(containerRequests.length, 0);
+}
+
+{
+  const { env, containerRequests } = makeEnv();
+  const message = makeMessage({
+    source_slug: "chez-lamothe",
+    chunk_index: 9,
+    trigger: "test",
+    message_id: "message-7",
+  });
+
+  await worker.queue({ messages: [message] }, env);
+
+  assert.equal(message.acked, true);
+  assert.equal(message.retried, null);
+  assert.equal(containerRequests.length, 1);
+  assert.equal(
+    new URL(containerRequests[0].url).pathname,
+    "/cron/refresh/chez-lamothe/chunk/9",
+  );
+}
+
+{
+  const { env, containerRequests } = makeEnv();
+  const message = makeMessage({
+    source_slug: "chez-lamothe",
+    chunk_index: 10,
+    trigger: "test",
+    message_id: "message-8",
   });
 
   await worker.queue({ messages: [message] }, env);

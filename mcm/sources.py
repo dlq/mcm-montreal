@@ -272,6 +272,22 @@ def fetch_le_centerpiece_entry_listings(
         return [], str(exc)
 
 
+def fetch_chez_lamothe_page_listings(
+    source: SourceDefinition,
+    page: int,
+    *,
+    per_page: int = 30,
+) -> tuple[list[dict[str, Any]], str | None]:
+    try:
+        if source.slug != "chez-lamothe" or source.parser != "square_storefront":
+            raise ValueError(f"Source does not use the Chez Lamothe parser: {source.slug}")
+        if page < 1:
+            raise ValueError(f"Unknown Chez Lamothe page: {page}")
+        return _fetch_square_storefront_page(source, page, per_page=per_page), None
+    except Exception as exc:  # noqa: BLE001
+        return [], str(exc)
+
+
 def _seed_fallback(source: SourceDefinition) -> list[dict[str, Any]]:
     seeded = []
     for item in SEED_LISTINGS.get(source.slug, []):
@@ -1052,28 +1068,8 @@ def _fetch_square_storefront(source: SourceDefinition) -> list[dict[str, Any]]:
     page = 1
     total_pages = 1
     while page <= total_pages:
-        query = urllib.parse.urlencode(
-            {
-                "page": page,
-                "per_page": 180,
-                "sort_by": "popularity_score",
-                "sort_order": "desc",
-                "include": "images,media_files,discounts",
-                "excluded_fulfillment": "dine_in",
-                "cache-version": "2026-03-25",
-            }
-        )
-        payload = json.loads(_fetch_html(f"{source.listing_urls[0]}?{query}"))
-        products = payload.get("data", [])
-        if not isinstance(products, list):
-            break
-        for product in products:
-            if not isinstance(product, dict):
-                continue
-            try:
-                listing = _parse_square_storefront_product(source, product)
-            except ValueError:
-                continue
+        payload, listings = _fetch_square_storefront_page_payload(source, page, per_page=180)
+        for listing in listings:
             listings_by_key[listing["source_listing_key"]] = listing
         pagination = (payload.get("meta") or {}).get("pagination") or {}
         total_pages = int(pagination.get("total_pages") or page)
@@ -1081,6 +1077,53 @@ def _fetch_square_storefront(source: SourceDefinition) -> list[dict[str, Any]]:
     if not listings_by_key:
         raise ValueError("No Chez Lamothe storefront products parsed")
     return list(listings_by_key.values())
+
+
+def _fetch_square_storefront_page(
+    source: SourceDefinition,
+    page: int,
+    *,
+    per_page: int,
+) -> list[dict[str, Any]]:
+    _payload, listings = _fetch_square_storefront_page_payload(
+        source,
+        page,
+        per_page=per_page,
+    )
+    return listings
+
+
+def _fetch_square_storefront_page_payload(
+    source: SourceDefinition,
+    page: int,
+    *,
+    per_page: int,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    query = urllib.parse.urlencode(
+        {
+            "page": page,
+            "per_page": per_page,
+            "sort_by": "popularity_score",
+            "sort_order": "desc",
+            "include": "images,media_files,discounts",
+            "excluded_fulfillment": "dine_in",
+            "cache-version": "2026-03-25",
+        }
+    )
+    payload = json.loads(_fetch_html(f"{source.listing_urls[0]}?{query}"))
+    products = payload.get("data", [])
+    if not isinstance(products, list):
+        return payload, []
+    listings_by_key: dict[str, dict[str, Any]] = {}
+    for product in products:
+        if not isinstance(product, dict):
+            continue
+        try:
+            listing = _parse_square_storefront_product(source, product)
+        except ValueError:
+            continue
+        listings_by_key[listing["source_listing_key"]] = listing
+    return payload, list(listings_by_key.values())
 
 
 def _parse_square_storefront_product(

@@ -684,6 +684,46 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.json["chunk"], 0)
         self.assertEqual(response.json["hidden"], 0)
 
+    def test_cron_can_refresh_one_chez_lamothe_chunk(self) -> None:
+        chunk_item = {
+            "source_listing_url": "https://www.chezlamothe.com/product/test-chair/1",
+            "source_listing_key": "chez-lamothe:test-chair",
+            "title": "Test Chair",
+            "price_raw": "$350.00 CAD",
+            "price_value": 350,
+            "currency": "CAD",
+            "primary_image_url": "https://example.com/chair.jpg",
+            "additional_image_urls": [],
+            "availability_status": "available",
+            "shipping_scope": "local_quote",
+            "ships_to_montreal": 1,
+            "shipping_note": "Local quote",
+            "category": "lounge chairs",
+            "designer": "",
+            "maker": "",
+            "era": "",
+            "materials": "",
+            "dimensions_text": "",
+            "condition_text": "",
+            "location_text": "Montreal, QC",
+            "source_description": "Chunk data",
+            "ingest_source_type": "live_fetch",
+            "parse_confidence": 0.9,
+        }
+        with patch(
+            "mcm.refresh.fetch_chez_lamothe_page_listings",
+            return_value=([chunk_item], None),
+        ):
+            response = self.client.post(
+                "/cron/refresh/chez-lamothe/chunk/0",
+                headers={"X-Cloudflare-Scheduled": "1"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["source"], "chez-lamothe")
+        self.assertEqual(response.json["chunk"], 0)
+        self.assertEqual(response.json["hidden"], 0)
+
     def test_refresh_error_does_not_deactivate_existing_inventory(self) -> None:
         fallback_item = {
             "source_listing_url": "https://example.com/fallback",

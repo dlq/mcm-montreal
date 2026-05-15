@@ -37,6 +37,7 @@ from .refresh import (
     listing_id_from_item_number,
     public_item_number,
     refresh_all_sources,
+    refresh_chez_lamothe_chunk,
     refresh_le_centerpiece_chunk,
     refresh_showroom_chunk,
     refresh_source_by_slug,
@@ -192,6 +193,27 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             abort(404)
         try:
             chunk = refresh_le_centerpiece_chunk(g.db, chunk_index)
+        except ValueError:
+            abort(404)
+        payload = {
+            "status": "ok",
+            "source": chunk.result.source_slug,
+            "chunk": chunk.chunk_index,
+            "entry_url": chunk.entry_url,
+            "listings": chunk.result.listings_found,
+            "new": chunk.result.new_count,
+            "hidden": chunk.result.hidden_count,
+            "warning": chunk.result.error,
+            "refreshed_at": datetime.now(UTC).isoformat(),
+        }
+        return payload, 502 if chunk.result.error else 200
+
+    @app.post("/cron/refresh/chez-lamothe/chunk/<int:chunk_index>")
+    def cron_refresh_chez_lamothe_chunk(chunk_index: int) -> Any:
+        if request.headers.get("X-Cloudflare-Scheduled") != "1":
+            abort(404)
+        try:
+            chunk = refresh_chez_lamothe_chunk(g.db, chunk_index)
         except ValueError:
             abort(404)
         payload = {

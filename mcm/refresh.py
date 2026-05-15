@@ -11,6 +11,7 @@ from .repository import get_shop_by_slug
 from .sources import (
     SOURCE_DEFINITIONS,
     SourceDefinition,
+    fetch_chez_lamothe_page_listings,
     fetch_le_centerpiece_entry_listings,
     fetch_showroom_entry_listings,
     fetch_source_listings,
@@ -125,6 +126,27 @@ def refresh_le_centerpiece_chunk(db: sqlite3.Connection, chunk_index: int) -> So
     return SourceChunkResult(result=result, chunk_index=chunk_index, entry_url=entry_url)
 
 
+def refresh_chez_lamothe_chunk(db: sqlite3.Connection, chunk_index: int) -> SourceChunkResult:
+    source = next((source for source in SOURCE_DEFINITIONS if source.slug == "chez-lamothe"), None)
+    if source is None:
+        raise ValueError("Unknown source slug: chez-lamothe")
+    if chunk_index < 0:
+        raise ValueError(f"Unknown Chez Lamothe chunk index: {chunk_index}")
+    page = chunk_index + 1
+    listings, error = fetch_chez_lamothe_page_listings(source, page)
+    result = _refresh_source_listings(
+        db,
+        source,
+        listings,
+        error,
+        crawl_is_authoritative=False,
+    )
+    db.commit()
+    return SourceChunkResult(
+        result=result, chunk_index=chunk_index, entry_url=source.listing_urls[0]
+    )
+
+
 def refresh_source(db: sqlite3.Connection, source: SourceDefinition) -> RefreshResult:
     listings, error = fetch_source_listings(source)
     return _refresh_source_listings(
@@ -172,6 +194,21 @@ def _refresh_source_listings(
             """,
             (shop["id"], key),
         ).fetchone()
+
+        if existing and not existing["is_active"]:
+            reconciled = find_reconciliation_candidate(
+                db,
+                int(shop["id"]),
+                item,
+                seen_keys,
+                timestamp,
+                key,
+            )
+            if reconciled and reconciled["id"] != existing["id"]:
+                reassign_listing_events(db, int(existing["id"]), int(reconciled["id"]), str(key))
+                db.execute("DELETE FROM listings WHERE id = ?", (existing["id"],))
+                existing = reconciled
+                reconciled_count += 1
 
         if not existing:
             existing = find_reconciliation_candidate(
@@ -453,6 +490,23 @@ def record_availability_event(
             to_status,
             event_type,
         ),
+    )
+
+
+def reassign_listing_events(
+    db: sqlite3.Connection,
+    from_listing_id: int,
+    to_listing_id: int,
+    source_listing_key: str,
+) -> None:
+    db.execute(
+        """
+        UPDATE listing_availability_events
+        SET listing_id = ?,
+            source_listing_key = ?
+        WHERE listing_id = ?
+        """,
+        (to_listing_id, source_listing_key, from_listing_id),
     )
 
 

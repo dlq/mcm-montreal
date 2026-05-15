@@ -20,6 +20,8 @@ const SHOWROOM_SOURCE_SLUG = "showroom-montreal";
 const SHOWROOM_CHUNK_COUNT = 12;
 const LE_CENTERPIECE_SOURCE_SLUG = "le-centerpiece";
 const LE_CENTERPIECE_CHUNK_COUNT = 7;
+const CHEZ_LAMOTHE_SOURCE_SLUG = "chez-lamothe";
+const CHEZ_LAMOTHE_CHUNK_COUNT = 10;
 const RETRY_DELAY_SECONDS = 300;
 const STALE_REFRESH_JOB_AGE_MS = 90 * 60 * 1000;
 
@@ -183,8 +185,18 @@ async function enqueueRefreshSources(env, sourceSlugs, trigger) {
 }
 
 function refreshMessagesForSource(sourceSlug, trigger) {
+  if (sourceSlug === SHOWROOM_SOURCE_SLUG) {
+    return Array.from({ length: SHOWROOM_CHUNK_COUNT }, (_value, chunkIndex) =>
+      refreshMessageBody(sourceSlug, trigger, chunkIndex),
+    );
+  }
   if (sourceSlug === LE_CENTERPIECE_SOURCE_SLUG) {
     return Array.from({ length: LE_CENTERPIECE_CHUNK_COUNT }, (_value, chunkIndex) =>
+      refreshMessageBody(sourceSlug, trigger, chunkIndex),
+    );
+  }
+  if (sourceSlug === CHEZ_LAMOTHE_SOURCE_SLUG) {
+    return Array.from({ length: CHEZ_LAMOTHE_CHUNK_COUNT }, (_value, chunkIndex) =>
       refreshMessageBody(sourceSlug, trigger, chunkIndex),
     );
   }
@@ -252,9 +264,6 @@ async function consumeRefreshMessage(message, env) {
 
 function refreshCronPath(sourceSlug, chunkIndex) {
   if (sourceSlug === SHOWROOM_SOURCE_SLUG) {
-    if (chunkIndex == null) {
-      return `/cron/refresh/${sourceSlug}`;
-    }
     if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= SHOWROOM_CHUNK_COUNT) {
       throw new Error(`Invalid Showroom chunk index: ${chunkIndex}`);
     }
@@ -269,6 +278,12 @@ function refreshCronPath(sourceSlug, chunkIndex) {
       throw new Error(`Invalid Le Centerpiece chunk index: ${chunkIndex}`);
     }
     return `/cron/refresh/le-centerpiece/chunk/${chunkIndex}`;
+  }
+  if (sourceSlug === CHEZ_LAMOTHE_SOURCE_SLUG) {
+    if (!Number.isInteger(chunkIndex) || chunkIndex < 0 || chunkIndex >= CHEZ_LAMOTHE_CHUNK_COUNT) {
+      throw new Error(`Invalid Chez Lamothe chunk index: ${chunkIndex}`);
+    }
+    return `/cron/refresh/chez-lamothe/chunk/${chunkIndex}`;
   }
   return `/cron/refresh/${sourceSlug}`;
 }
