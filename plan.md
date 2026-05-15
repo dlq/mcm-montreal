@@ -576,7 +576,13 @@ Questions to settle:
 
 - Is the site primarily a buyer utility, an SEO property, or a trade workflow tool?
 - Would designers value boards, private notes, alerts, or exportable shortlists?
-- Are affiliate links or paid shop placements compatible with trust?
+- Are affiliate links, related ads, or paid shop placements compatible with trust?
+- Which ad categories are relevant enough to feel useful rather than extractive, such as
+  Article.com, IKEA, related furniture/home stores, local furniture repair, upholstery,
+  moving/delivery, estate sales, or design services?
+- Should ads be direct-sold/sponsorship placements first, or should the site test a network only
+  after traffic is high enough and placement quality can be controlled?
+- How should ads be labelled and separated from organic listings so source trust is preserved?
 
 Likely work:
 
@@ -584,6 +590,8 @@ Likely work:
 - private notes on saved items
 - shareable shortlists
 - analytics for outbound source clicks
+- related-ad inventory research for home/design/furniture advertisers
+- small, clearly labelled sponsorship or contextual-ad experiments outside listing cards
 - careful monetization experiments only after the core catalogue is trusted
 
 ### 0.3.x Success Criteria
