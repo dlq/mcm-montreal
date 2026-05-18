@@ -1093,6 +1093,7 @@ class AppTests(unittest.TestCase):
         response = self.client.get("/")
 
         self.assertIn("data-image-fallback", response.text)
+        self.assertIn("onerror=", response.text)
         self.assertIn("Image not available", response.text)
 
     def test_detail_page_localizes_canonical_ingest_values(self) -> None:

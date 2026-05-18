@@ -28,6 +28,7 @@
             <img src="{{ listing.primary_image_url }}"
                  alt="{{ listing.title }}"
                  data-image-fallback
+                 onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex')"
                  loading="lazy"
                  decoding="async">
             <div class="image-fallback hidden h-full items-center justify-center text-sm text-ink/45">
