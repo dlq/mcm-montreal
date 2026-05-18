@@ -169,5 +169,12 @@ already has records, fallback data is not treated as authoritative and existing 
 deactivated.
 
 A second cron runs two hours after the daily refresh window and logs a `refresh_job_monitor` event.
-It checks D1 for missing or non-success refresh jobs for each active source. This is log-only
-monitoring; external alerting can be added later if needed.
+It checks D1 for:
+
+- missing daily refresh jobs, including missing chunk rows for chunked sources
+- non-success refresh jobs
+- jobs still marked `running` after stale-job marking
+- suspicious hidden-listing spikes
+- unknown source slugs in the refresh ledger
+
+This is log-only monitoring; external alerting can be added later if needed.

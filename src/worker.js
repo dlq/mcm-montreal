@@ -25,6 +25,8 @@ const CHEZ_LAMOTHE_SOURCE_SLUG = "chez-lamothe";
 const CHEZ_LAMOTHE_CHUNK_COUNT = 10;
 const RETRY_DELAY_SECONDS = 300;
 const STALE_REFRESH_JOB_AGE_MS = 90 * 60 * 1000;
+const HIDDEN_SPIKE_MIN_COUNT = 50;
+const HIDDEN_SPIKE_MIN_RATIO = 0.25;
 const CONTAINER_START_RETRY_PATTERNS = [
   "container is not running",
   "container suddenly disconnected",
@@ -327,6 +329,7 @@ async function checkRefreshJobs(env) {
   const result = await env.DB.prepare(
     `
     SELECT source_slug, status, started_at, finished_at, error_message, hidden_count
+      , listings_found, new_count, reconciled_count
     FROM refresh_jobs
     WHERE started_at >= ?
     ORDER BY started_at DESC
@@ -334,28 +337,76 @@ async function checkRefreshJobs(env) {
   )
     .bind(`${today}T00:00:00`)
     .all();
-  const latestJobs = new Map();
+  const jobsBySource = new Map();
   for (const job of result.results || []) {
-    if (!latestJobs.has(job.source_slug)) {
-      latestJobs.set(job.source_slug, job);
-    }
+    const sourceJobs = jobsBySource.get(job.source_slug) || [];
+    sourceJobs.push(job);
+    jobsBySource.set(job.source_slug, sourceJobs);
   }
 
   const warnings = [];
   for (const sourceSlug of SOURCE_SLUGS) {
-    const job = latestJobs.get(sourceSlug);
-    if (!job) {
-      warnings.push({ source_slug: sourceSlug, reason: "missing_refresh_job" });
-      continue;
-    }
-    if (job.status !== "success") {
+    const sourceJobs = jobsBySource.get(sourceSlug) || [];
+    const expectedJobs = expectedRefreshJobCount(sourceSlug);
+    if (sourceJobs.length < expectedJobs) {
       warnings.push({
         source_slug: sourceSlug,
-        reason: "refresh_job_not_success",
-        status: job.status,
+        reason: "missing_refresh_jobs",
+        expected_jobs: expectedJobs,
+        observed_jobs: sourceJobs.length,
+      });
+      continue;
+    }
+
+    const nonSuccessJobs = sourceJobs.filter((job) => job.status !== "success");
+    if (nonSuccessJobs.length > 0) {
+      warnings.push({
+        source_slug: sourceSlug,
+        reason: "refresh_jobs_not_success",
+        count: nonSuccessJobs.length,
+        statuses: summarizeJobStatuses(nonSuccessJobs),
+        latest_started_at: nonSuccessJobs[0]?.started_at || "",
+        latest_finished_at: nonSuccessJobs[0]?.finished_at || "",
+        latest_error_message: nonSuccessJobs[0]?.error_message || "",
+      });
+    }
+
+    for (const job of sourceJobs) {
+      if (hasSuspiciousHiddenCount(job)) {
+        const listingsFound = Number(job.listings_found) || 0;
+        const hiddenCount = Number(job.hidden_count) || 0;
+        const hiddenRatio = listingsFound > 0 ? hiddenCount / listingsFound : null;
+        warnings.push({
+          source_slug: sourceSlug,
+          reason: "suspicious_hidden_count",
+          started_at: job.started_at,
+          finished_at: job.finished_at,
+          status: job.status,
+          listings_found: listingsFound,
+          hidden_count: hiddenCount,
+          hidden_ratio: hiddenRatio,
+        });
+      }
+    }
+  }
+
+  const unknownSourceJobs = Array.from(jobsBySource.keys()).filter(
+    (sourceSlug) => !SOURCE_SLUGS.includes(sourceSlug),
+  );
+  for (const sourceSlug of unknownSourceJobs) {
+    warnings.push({
+      source_slug: sourceSlug,
+      reason: "unknown_refresh_source",
+      observed_jobs: jobsBySource.get(sourceSlug)?.length || 0,
+    });
+  }
+
+  for (const job of result.results || []) {
+    if (job.status === "running") {
+      warnings.push({
+        source_slug: job.source_slug,
+        reason: "refresh_job_still_running",
         started_at: job.started_at,
-        finished_at: job.finished_at,
-        error_message: job.error_message,
       });
     }
   }
@@ -371,6 +422,39 @@ async function checkRefreshJobs(env) {
     return;
   }
   console.log(JSON.stringify(payload));
+}
+
+function expectedRefreshJobCount(sourceSlug) {
+  if (sourceSlug === SHOWROOM_SOURCE_SLUG) {
+    return SHOWROOM_CHUNK_COUNT;
+  }
+  if (sourceSlug === LE_CENTERPIECE_SOURCE_SLUG) {
+    return LE_CENTERPIECE_CHUNK_COUNT;
+  }
+  if (sourceSlug === CHEZ_LAMOTHE_SOURCE_SLUG) {
+    return CHEZ_LAMOTHE_CHUNK_COUNT;
+  }
+  return 1;
+}
+
+function summarizeJobStatuses(jobs) {
+  const counts = {};
+  for (const job of jobs) {
+    counts[job.status] = (counts[job.status] || 0) + 1;
+  }
+  return counts;
+}
+
+function hasSuspiciousHiddenCount(job) {
+  const listingsFound = Number(job.listings_found) || 0;
+  const hiddenCount = Number(job.hidden_count) || 0;
+  if (hiddenCount < HIDDEN_SPIKE_MIN_COUNT) {
+    return false;
+  }
+  if (listingsFound <= 0) {
+    return true;
+  }
+  return hiddenCount / listingsFound >= HIDDEN_SPIKE_MIN_RATIO;
 }
 
 async function markStaleRefreshJobs(env, checkedAt, staleCutoff) {

@@ -74,7 +74,7 @@ function makeCtx() {
   };
 }
 
-function makeDb(results = []) {
+function makeDb(results = [], runChanges = 2) {
   const calls = [];
   return {
     calls,
@@ -92,11 +92,51 @@ function makeDb(results = []) {
         },
         async run() {
           call.method = "run";
-          return { meta: { changes: 2 } };
+          return { meta: { changes: runChanges } };
         },
       };
     },
   };
+}
+
+async function captureConsole(callback) {
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+  const logs = [];
+  const warnings = [];
+  console.log = (message) => logs.push(message);
+  console.warn = (message) => warnings.push(message);
+  try {
+    await callback();
+  } finally {
+    console.log = originalLog;
+    console.warn = originalWarn;
+  }
+  return { logs, warnings };
+}
+
+function refreshJob(sourceSlug, overrides = {}) {
+  return {
+    source_slug: sourceSlug,
+    status: "success",
+    started_at: "2026-05-12T09:24:00+00:00",
+    finished_at: "2026-05-12T09:25:00+00:00",
+    error_message: "",
+    hidden_count: 0,
+    listings_found: 10,
+    new_count: 0,
+    reconciled_count: 0,
+    ...overrides,
+  };
+}
+
+function refreshJobs(sourceSlug, count, overrides = {}) {
+  return Array.from({ length: count }, (_value, index) =>
+    refreshJob(sourceSlug, {
+      started_at: `2026-05-12T09:${String(24 + index).padStart(2, "0")}:00+00:00`,
+      ...overrides,
+    }),
+  );
 }
 
 function makeMessage(body, attempts = 1) {
@@ -153,9 +193,11 @@ const worker = await loadWorker();
   ]);
   const ctx = makeCtx();
 
-  await worker.scheduled({ cron: "23 11 * * *" }, { DB: db }, ctx);
-  assert.equal(ctx.promises.length, 1);
-  await Promise.all(ctx.promises);
+  const captured = await captureConsole(async () => {
+    await worker.scheduled({ cron: "23 11 * * *" }, { DB: db }, ctx);
+    assert.equal(ctx.promises.length, 1);
+    await Promise.all(ctx.promises);
+  });
 
   assert.equal(db.calls.length, 2);
   assert.match(db.calls[0].sql, /UPDATE refresh_jobs/);
@@ -165,6 +207,79 @@ const worker = await loadWorker();
   assert.match(db.calls[0].params[1], /Marked stale by refresh monitor/);
   assert.equal(db.calls[1].method, "all");
   assert.match(db.calls[1].sql, /SELECT source_slug/);
+  const monitorWarning = captured.warnings
+    .map((message) => JSON.parse(message))
+    .find((payload) => payload.event === "refresh_job_monitor");
+  assert(monitorWarning);
+  assert(monitorWarning.warnings.some((warning) => warning.reason === "missing_refresh_jobs"));
+  assert(
+    monitorWarning.warnings.some(
+      (warning) =>
+        warning.source_slug === "showroom-montreal" &&
+        warning.expected_jobs === 12 &&
+        warning.observed_jobs === 1,
+    ),
+  );
+}
+
+{
+  const db = makeDb(
+    [
+      ...refreshJobs("morceau", 1),
+      ...refreshJobs("showroom-montreal", 12),
+      ...refreshJobs("montreal-moderne", 1),
+      ...refreshJobs("le-centerpiece", 7),
+      ...refreshJobs("maison-singulier", 1),
+      ...refreshJobs("yardsale-vintage", 1),
+      ...refreshJobs("bond-vintage", 1),
+      ...refreshJobs("chez-lamothe", 10),
+    ],
+    0,
+  );
+  const ctx = makeCtx();
+
+  const captured = await captureConsole(async () => {
+    await worker.scheduled({ cron: "23 11 * * *" }, { DB: db }, ctx);
+    assert.equal(ctx.promises.length, 1);
+    await Promise.all(ctx.promises);
+  });
+
+  assert.equal(captured.warnings.length, 0);
+  const monitorLog = captured.logs.map((message) => JSON.parse(message))[0];
+  assert.equal(monitorLog.event, "refresh_job_monitor");
+  assert.deepEqual(monitorLog.warnings, []);
+}
+
+{
+  const db = makeDb(
+    [
+      ...refreshJobs("morceau", 1, { listings_found: 100, hidden_count: 50 }),
+      ...refreshJobs("showroom-montreal", 12),
+      ...refreshJobs("montreal-moderne", 1),
+      ...refreshJobs("le-centerpiece", 7),
+      ...refreshJobs("maison-singulier", 1),
+      ...refreshJobs("yardsale-vintage", 1),
+      ...refreshJobs("bond-vintage", 1),
+      ...refreshJobs("chez-lamothe", 10),
+    ],
+    0,
+  );
+  const ctx = makeCtx();
+
+  const captured = await captureConsole(async () => {
+    await worker.scheduled({ cron: "23 11 * * *" }, { DB: db }, ctx);
+    assert.equal(ctx.promises.length, 1);
+    await Promise.all(ctx.promises);
+  });
+
+  const monitorWarning = captured.warnings.map((message) => JSON.parse(message))[0];
+  assert.equal(monitorWarning.event, "refresh_job_monitor");
+  assert(
+    monitorWarning.warnings.some(
+      (warning) =>
+        warning.source_slug === "morceau" && warning.reason === "suspicious_hidden_count",
+    ),
+  );
 }
 
 {

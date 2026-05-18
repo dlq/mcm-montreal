@@ -376,7 +376,6 @@ Completed on 2026-05-14:
 Likely `0.2.x` reliability work:
 
 - add external uptime checks or alert delivery if log-only/admin-dashboard monitoring is not enough
-- add monitor cron status checks for missing daily source jobs and suspicious hidden-count spikes
 - investigate long-running source refreshes that write listings but leave `refresh_jobs` rows stuck
   as `running`; Chez Lamothe production ingestion populated D1 listings on 2026-05-15, but its
   job bookkeeping did not consistently reach `finish_refresh_job`
@@ -390,6 +389,15 @@ Cloudflare resources created:
 
 - `montreal-mcm-refresh`
 - `montreal-mcm-refresh-dlq`
+
+Completed in `0.2.x`:
+
+- harden the refresh monitor so it checks all same-day refresh rows rather than only the latest row
+  per source
+- validate expected same-day job counts for chunked sources: Showroom Montreal, Le Centerpiece, and
+  Chez Lamothe
+- log monitor warnings for missing jobs, non-success jobs, still-running jobs, suspicious
+  hidden-count spikes, and unknown source slugs
 
 Decision:
 
