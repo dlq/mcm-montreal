@@ -1,7 +1,7 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-05-15
+Updated: 2026-05-18
 Current line: `0.2.x`
 
 ## Purpose
@@ -76,6 +76,8 @@ data.
 - D1 core-table counts after import: 6 shops, 850 listings, 116 crawl runs, 17 crawl failures, 25
   listing identity reviews.
 - D1 listing count after the forced Le Centerpiece chunk refresh on 2026-05-12: 1,463 listings.
+- Production source expansion checks on 2026-05-18 confirmed public listings for Habitat Mobilier
+  (21), Green Wall Vintage (19), and the first gradual Mostly Danish chunk slice.
 - Legacy local-account favourite tables (`users`, `favourite_listings`, `favourite_shops`) are not
   part of the production model. D1 migration `0002_drop_legacy_favourites.sql` drops them if present.
 
@@ -489,6 +491,13 @@ Likely work:
 - collection-style browse pages such as teak storage, lounge chairs, dining sets, lighting
 - compare mode for multiple saved items
 
+Completed in `0.2.x`:
+
+- replace free-text Location filtering with a dropdown of current listing locations
+- add broken-image fallbacks so upstream `403` / missing source images render as "Image not
+  available" instead of browser broken-image icons
+- make the shops index responsive at one, two, and three columns as viewport width allows
+
 ### Source Expansion
 
 Current decision:
@@ -505,14 +514,14 @@ Current decision:
   corridors.
 - Regional research on 2026-05-15 identified Habitat Mobilier, Green Wall Vintage, and Mostly
   Danish as the first regional expansion set; those sources were implemented locally for `0.2.1`.
+- Production ingestion on 2026-05-18 confirmed Habitat Mobilier and Green Wall Vintage are visible
+  publicly, and Mostly Danish is ingesting through the planned rotating chunk path.
 - Deja Vu Meubles, Cornwall's Little Market, and A Fine Thing fit the regional taste/location
   criteria, but should wait because their public websites do not currently expose enough reliable
   item-level prices, details, and descriptions for ingestion on par with the existing shops.
 
 Likely work:
 
-- run production ingestion and verify public counts for Habitat Mobilier and Green Wall Vintage,
-  then start the rotating Mostly Danish ingestion before tagging `0.2.1`
 - leave Deja Vu Meubles, Cornwall's Little Market, and A Fine Thing out of the next automated batch
   unless stable item feeds are verified
 - monitor Chez Lamothe's Square storefront API path/cache version and add a fallback if it changes
