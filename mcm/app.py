@@ -67,6 +67,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.environ.get("MCM_DATABASE", BASE_DIR / "data" / "mcm.db"))
 
 
+def static_asset_version(filename: str) -> int:
+    path = BASE_DIR / "static" / filename
+    try:
+        return int(path.stat().st_mtime)
+    except OSError:
+        return 0
+
+
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(
         __name__,
@@ -120,6 +128,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "public_item_number": public_item_number,
             "shipping_note_text": shipping_note_text,
             "shop_text": shop_text,
+            "static_asset_version": static_asset_version,
             "lang_url_en": language_url("en"),
             "lang_url_fr": language_url("fr"),
             "now_iso": datetime.now(UTC).isoformat(),

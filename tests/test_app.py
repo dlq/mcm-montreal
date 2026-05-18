@@ -184,6 +184,11 @@ class AppTests(unittest.TestCase):
         response = self.client.get("/?price_min=abc")
         self.assertEqual(response.status_code, 200)
 
+    def test_static_assets_are_versioned(self) -> None:
+        response = self.client.get("/")
+        self.assertIn("/static/app.css?v=", response.text)
+        self.assertIn("/static/app.js?v=", response.text)
+
     def test_sold_out_filter_requires_available_to_sold_history(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)

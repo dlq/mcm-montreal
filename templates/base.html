@@ -32,7 +32,8 @@
       }
     </script>
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='app.css', v=static_asset_version('app.css') ) }}">
   </head>
   <body class="min-h-screen bg-oat text-ink">
     <div class="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 md:px-8 lg:px-10">
@@ -59,6 +60,7 @@
       </header>
       {% block content %}{% endblock %}
     </div>
-    <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='app.js', v=static_asset_version('app.js')) }}"
+            defer></script>
   </body>
 </html>
