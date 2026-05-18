@@ -190,6 +190,20 @@ def list_filter_values(db: sqlite3.Connection, field: str) -> list[str]:
     return values[:30]
 
 
+def list_location_filter_values(db: sqlite3.Connection) -> list[str]:
+    rows = db.execute(
+        """
+        SELECT DISTINCT location_text AS value
+        FROM listings
+        WHERE location_text != ''
+          AND is_active = 1
+          AND COALESCE(NULLIF(availability_override, ''), availability_status) != 'removed'
+        ORDER BY location_text
+        """
+    ).fetchall()
+    return [str(row["value"]).strip() for row in rows if str(row["value"]).strip()]
+
+
 def list_designer_filter_values(db: sqlite3.Connection) -> list[str]:
     rows = db.execute(
         """

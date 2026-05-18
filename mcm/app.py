@@ -55,6 +55,7 @@ from .repository import (
     list_favourite_listings,
     list_favourite_shops,
     list_filter_values,
+    list_location_filter_values,
     list_shops,
     query_listings,
     toggle_favourite_listing,
@@ -137,6 +138,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             categories=list_filter_values(g.db, "category"),
             materials=list_filter_values(g.db, "materials"),
             designers=list_filter_values(g.db, "designer"),
+            locations=list_location_filter_values(g.db),
         )
 
     @app.get("/healthz")

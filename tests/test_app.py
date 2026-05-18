@@ -1066,6 +1066,14 @@ class AppTests(unittest.TestCase):
         self.assertIn("1 listing", response.text)
         self.assertNotIn("1 listings", response.text)
 
+    def test_location_filter_uses_existing_locations(self) -> None:
+        response = self.client.get("/")
+
+        self.assertIn('name="location"', response.text)
+        self.assertIn('<option value="">All locations</option>', response.text)
+        self.assertIn('<option value="Montreal, QC"', response.text)
+        self.assertNotIn('placeholder="Montreal, Ottawa, Toronto"', response.text)
+
     def test_listing_grid_omits_redundant_location(self) -> None:
         response = self.client.get("/")
         self.assertIn("lounge chairs", response.text)
@@ -1075,6 +1083,12 @@ class AppTests(unittest.TestCase):
         response = self.client.get("/")
         self.assertIn('loading="lazy"', response.text)
         self.assertIn('decoding="async"', response.text)
+
+    def test_listing_images_render_unavailable_fallback(self) -> None:
+        response = self.client.get("/")
+
+        self.assertIn("data-image-fallback", response.text)
+        self.assertIn("Image not available", response.text)
 
     def test_detail_page_localizes_canonical_ingest_values(self) -> None:
         with self.app.app_context():

@@ -101,11 +101,17 @@
         <div>
           <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                  for="{{ id_prefix }}location">{{ t("filters.location") }}</label>
-          <input class="w-full bg-transparent px-0 py-2 text-sm"
-                 id="{{ id_prefix }}location"
-                 name="location"
-                 value="{{ filters.location }}"
-                 placeholder="{{ t('filters.location_placeholder') }}">
+          <select class="w-full bg-transparent px-0 py-2 text-sm"
+                  id="{{ id_prefix }}location"
+                  name="location">
+            <option value="">{{ t("filters.all_locations") }}</option>
+            {% for location in locations %}
+              <option value="{{ location }}"
+                      {% if filters.location == location %}selected{% endif %}>
+                {{ location }}
+              </option>
+            {% endfor %}
+          </select>
         </div>
       </div>
       <div>
