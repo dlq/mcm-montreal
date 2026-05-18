@@ -481,6 +481,12 @@ Questions to settle:
 - Which filters are genuinely useful once inventory grows?
 - Should search be simple text search, SQLite/D1 FTS, or an external search service later?
 - Are designer/maker filters good enough without canonical entities?
+- Is the current i18n/l10n structure still clear enough as translated UI text, source-specific
+  labels, and localized formatting grow?
+- Are Jinja templates still easy to scan and safely modify, or should repeated listing/filter/shop
+  fragments be split further?
+- Is the Python application structure still contributor-friendly, especially around repository
+  queries, source parsers, refresh orchestration, and presentation helpers?
 
 Likely work:
 
@@ -490,6 +496,12 @@ Likely work:
 - richer shop pages
 - collection-style browse pages such as teak storage, lounge chairs, dining sets, lighting
 - compare mode for multiple saved items
+- review and simplify i18n/l10n boundaries before translated strings and formatting rules spread
+  further
+- review Jinja template structure for readability, repeated fragments, and progressive HTMX
+  behavior
+- review Python module boundaries and naming so public contributors can understand ingestion,
+  persistence, and rendering paths quickly
 
 Completed in `0.2.x`:
 
