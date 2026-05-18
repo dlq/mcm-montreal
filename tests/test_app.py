@@ -1469,7 +1469,9 @@ class AppTests(unittest.TestCase):
             )
 
         self.assertEqual(len(listings), 1)
-        self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-real")
+        self.assertEqual(
+            listings[0]["source_listing_key"], "showroom:chaises-en-teck-60s:fc24cc-real"
+        )
 
     def test_showroom_french_dimensions_and_era_are_extracted(self) -> None:
         text = (
@@ -1517,7 +1519,9 @@ class AppTests(unittest.TestCase):
             )
 
         self.assertEqual(len(listings), 1)
-        self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-real")
+        self.assertEqual(
+            listings[0]["source_listing_key"], "showroom:fauteuil-en-teck-60s:fc24cc-real"
+        )
 
     def test_showroom_gallery_marks_sold_items(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")
@@ -1547,9 +1551,13 @@ class AppTests(unittest.TestCase):
             )
 
         self.assertEqual(len(listings), 2)
-        self.assertEqual(listings[0]["source_listing_key"], "showroom:dataItem-sold")
+        self.assertEqual(
+            listings[0]["source_listing_key"], "showroom:buffet-en-teck-60s:fc24cc-sold"
+        )
         self.assertEqual(listings[0]["availability_status"], "sold_out")
-        self.assertEqual(listings[1]["source_listing_key"], "showroom:dataItem-real")
+        self.assertEqual(
+            listings[1]["source_listing_key"], "showroom:fauteuil-en-teck-60s:fc24cc-real"
+        )
         self.assertEqual(listings[1]["availability_status"], "available")
 
     def test_showroom_gallery_marks_title_overlay_sold_items(self) -> None:
