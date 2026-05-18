@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import html as html_lib
 import json
 import re
@@ -598,7 +599,11 @@ def _extract_showroom_gallery_listings(
         listings.append(
             {
                 "source_listing_url": _showroom_lightbox_url(entry_url, item_id),
-                "source_listing_key": _showroom_source_listing_key(title, primary_image_url),
+                "source_listing_key": _showroom_source_listing_key(
+                    title,
+                    primary_image_url,
+                    description,
+                ),
                 "title": title,
                 "price_raw": price_line
                 or ("Vendu" if sold_out else "Contactez nous pour les details"),
@@ -626,7 +631,11 @@ def _extract_showroom_gallery_listings(
     return listings
 
 
-def _showroom_source_listing_key(title: str, image_url: str) -> str:
+def _showroom_source_listing_key(title: str, image_url: str, description: str = "") -> str:
+    normalized_description = _normalize_lookup(description)
+    if normalized_description:
+        description_hash = hashlib.sha1(normalized_description.encode("utf-8")).hexdigest()[:12]
+        return f"showroom:{_slugify(title)}:{description_hash}"
     image_path = urllib.parse.urlsplit(image_url).path.rsplit("/", 1)[-1]
     image_id = image_path.split("~", 1)[0] or image_path
     return f"showroom:{_slugify(title)}:{_slugify(image_id)}"
@@ -706,7 +715,7 @@ def _extract_showroom_legacy_headings(
         listings.append(
             {
                 "source_listing_url": entry_url,
-                "source_listing_key": f"showroom:{normalized_text}",
+                "source_listing_key": _showroom_source_listing_key(title_text, image, title_text),
                 "title": title_text,
                 "price_raw": price_match.group(0)
                 if price_match

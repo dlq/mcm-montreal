@@ -37,6 +37,7 @@ from mcm.sources import (
     _parse_shopify_collection_product,
     _parse_square_product_page,
     _parse_square_storefront_product,
+    _showroom_source_listing_key,
     _square_product_is_sold_out,
 )
 
@@ -828,6 +829,56 @@ class AppTests(unittest.TestCase):
             finally:
                 db.close()
 
+    def test_refresh_reconciles_source_key_drift_with_description_case_change(self) -> None:
+        refreshed_item = {
+            "source_listing_url": "https://example.com/listing?lightbox=new-key",
+            "source_listing_key": "drifted-key",
+            "title": "Sample Chair",
+            "price_raw": "$250",
+            "price_value": 250,
+            "currency": "CAD",
+            "primary_image_url": "https://example.com/different-image.jpg",
+            "additional_image_urls": [],
+            "availability_status": "available",
+            "shipping_scope": "canada",
+            "ships_to_montreal": 1,
+            "shipping_note": "Ships to Montreal",
+            "category": "lounge chairs",
+            "designer": "Test Designer",
+            "maker": "",
+            "era": "1960s",
+            "materials": "teak",
+            "dimensions_text": "20 x 20 x 30",
+            "condition_text": "Good",
+            "location_text": "Montreal, QC",
+            "source_description": "sample DESCRIPTION",
+            "ingest_source_type": "test",
+            "parse_confidence": 1.0,
+        }
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                with patch(
+                    "mcm.refresh.fetch_source_listings",
+                    return_value=([refreshed_item], None),
+                ):
+                    refresh_all_sources(db, progress=lambda _message: None)
+                listing = db.execute(
+                    """
+                    SELECT id, source_listing_key, first_seen_at, primary_image_url
+                    FROM listings
+                    WHERE id = ?
+                    """,
+                    (self.listing_id,),
+                ).fetchone()
+                self.assertEqual(listing["source_listing_key"], "drifted-key")
+                self.assertEqual(listing["first_seen_at"], "2026-05-06T00:00:00+00:00")
+                self.assertEqual(
+                    listing["primary_image_url"], "https://example.com/different-image.jpg"
+                )
+            finally:
+                db.close()
+
     def test_refresh_logs_ambiguous_source_key_drift(self) -> None:
         ambiguous_item = {
             "source_listing_url": "https://example.com/listing?lightbox=ambiguous-key",
@@ -1470,7 +1521,12 @@ class AppTests(unittest.TestCase):
 
         self.assertEqual(len(listings), 1)
         self.assertEqual(
-            listings[0]["source_listing_key"], "showroom:chaises-en-teck-60s:fc24cc-real"
+            listings[0]["source_listing_key"],
+            _showroom_source_listing_key(
+                "Chaises en teck '60s",
+                "https://static.wixstatic.com/media/fc24cc_real~mv2.jpg",
+                "Chaises en teck '60s 1200 $ / 4",
+            ),
         )
 
     def test_showroom_french_dimensions_and_era_are_extracted(self) -> None:
@@ -1520,7 +1576,12 @@ class AppTests(unittest.TestCase):
 
         self.assertEqual(len(listings), 1)
         self.assertEqual(
-            listings[0]["source_listing_key"], "showroom:fauteuil-en-teck-60s:fc24cc-real"
+            listings[0]["source_listing_key"],
+            _showroom_source_listing_key(
+                "Fauteuil en teck '60s",
+                "https://static.wixstatic.com/media/fc24cc_real~mv2.jpg",
+                "Fauteuil en teck '60s 1850 $",
+            ),
         )
 
     def test_showroom_gallery_marks_sold_items(self) -> None:
@@ -1552,11 +1613,21 @@ class AppTests(unittest.TestCase):
 
         self.assertEqual(len(listings), 2)
         self.assertEqual(
-            listings[0]["source_listing_key"], "showroom:buffet-en-teck-60s:fc24cc-sold"
+            listings[0]["source_listing_key"],
+            _showroom_source_listing_key(
+                "Buffet en teck '60s",
+                "https://static.wixstatic.com/media/fc24cc_sold~mv2.jpg",
+                "Buffet en teck '60s Vendu",
+            ),
         )
         self.assertEqual(listings[0]["availability_status"], "sold_out")
         self.assertEqual(
-            listings[1]["source_listing_key"], "showroom:fauteuil-en-teck-60s:fc24cc-real"
+            listings[1]["source_listing_key"],
+            _showroom_source_listing_key(
+                "Fauteuil en teck '60s",
+                "https://static.wixstatic.com/media/fc24cc_real~mv2.jpg",
+                "Fauteuil en teck '60s 1850 $",
+            ),
         )
         self.assertEqual(listings[1]["availability_status"], "available")
 
@@ -1586,6 +1657,26 @@ class AppTests(unittest.TestCase):
         self.assertEqual(len(listings), 1)
         self.assertEqual(listings[0]["title"], "TINGSTROMS, série Casino SWEDEN")
         self.assertEqual(listings[0]["availability_status"], "sold_out")
+
+    def test_showroom_key_uses_description_before_image(self) -> None:
+        title = "Lampes, suspensions en acier '60s Jo Hammerborg pour Fog & Morup, Denmark"
+        description = (
+            "Lampes, suspensions en acier '60s Jo Hammerborg pour Fog & Morup, Denmark "
+            "modèle Corona (Cône) 9.5'' D x 18''H 1500 $ / l'ensemble"
+        )
+
+        first_key = _showroom_source_listing_key(
+            title,
+            "https://static.wixstatic.com/media/fc24cc_first~mv2.jpg",
+            description,
+        )
+        second_key = _showroom_source_listing_key(
+            title,
+            "https://static.wixstatic.com/media/fc24cc_second~mv2.jpg",
+            description.lower(),
+        )
+
+        self.assertEqual(first_key, second_key)
 
     def test_showroom_full_refresh_keeps_all_unique_gallery_items(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "showroom-montreal")

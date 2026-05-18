@@ -633,8 +633,9 @@ def reconciliation_score(row: sqlite3.Row, item: dict[str, object]) -> int:
     if item_image and item_image == row["primary_image_url"]:
         score += 2
 
-    item_description = str(item.get("source_description") or "")
-    if item_description and item_description == row["source_description"]:
+    item_description = normalize_text(str(item.get("source_description") or ""))
+    row_description = normalize_text(str(row["source_description"] or ""))
+    if item_description and item_description == row_description:
         score += 2
 
     item_price = item.get("price_value")
