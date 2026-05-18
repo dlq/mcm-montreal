@@ -35,6 +35,10 @@ function makeQueue() {
 function makeEnv(containerResponse = new Response("ok", { status: 200 })) {
   const queue = makeQueue();
   const containerRequests = [];
+  const containerStartCalls = [];
+  const containerResponses = Array.isArray(containerResponse)
+    ? [...containerResponse]
+    : [containerResponse];
   return {
     env: {
       REFRESH_QUEUE: queue,
@@ -45,7 +49,10 @@ function makeEnv(containerResponse = new Response("ok", { status: 200 })) {
           return {
             async fetch(request) {
               containerRequests.push(request);
-              return containerResponse;
+              return containerResponses.shift() || new Response("ok", { status: 200 });
+            },
+            async startAndWaitForPorts(options) {
+              containerStartCalls.push(options);
             },
           };
         },
@@ -53,6 +60,7 @@ function makeEnv(containerResponse = new Response("ok", { status: 200 })) {
     },
     queue,
     containerRequests,
+    containerStartCalls,
   };
 }
 
@@ -291,6 +299,22 @@ const worker = await loadWorker();
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
   assert.equal(queue.sentBatches[0].length, 34);
+}
+
+{
+  const { env, containerRequests, containerStartCalls } = makeEnv([
+    new Response("Error proxying request to container: The container is not running, consider calling start()", {
+      status: 500,
+    }),
+    new Response("started", { status: 200 }),
+  ]);
+  const response = await worker.fetch(new Request("https://montreal-mcm.test/"), env);
+
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "started");
+  assert.equal(containerRequests.length, 2);
+  assert.equal(containerStartCalls.length, 1);
+  assert.deepEqual(containerStartCalls[0].ports, [8080]);
 }
 
 {

@@ -1,6 +1,7 @@
 import { Container } from "@cloudflare/containers";
 
 const CONTAINER_INSTANCE_NAME = "web-d1";
+const CONTAINER_PORT = 8080;
 const DEFAULT_APEX_HOSTNAME = "montrealmcm.ca";
 const DEFAULT_WWW_HOSTNAME = "www.montrealmcm.ca";
 const DEFAULT_D1_BRIDGE_URL = "https://montreal-mcm.dalaque.workers.dev/internal/d1/query";
@@ -24,9 +25,14 @@ const CHEZ_LAMOTHE_SOURCE_SLUG = "chez-lamothe";
 const CHEZ_LAMOTHE_CHUNK_COUNT = 10;
 const RETRY_DELAY_SECONDS = 300;
 const STALE_REFRESH_JOB_AGE_MS = 90 * 60 * 1000;
+const CONTAINER_START_RETRY_PATTERNS = [
+  "container is not running",
+  "container suddenly disconnected",
+  "network connection lost",
+];
 
 export class McmContainer extends Container {
-  defaultPort = 8080;
+  defaultPort = CONTAINER_PORT;
   sleepAfter = "30m";
   pingEndpoint = "/readyz";
 
@@ -401,7 +407,23 @@ async function fetchContainer(request, env) {
   const started = Date.now();
   const url = new URL(request.url);
   const container = env.MCM_CONTAINER.getByName(CONTAINER_INSTANCE_NAME);
-  const response = await container.fetch(request);
+  const retryRequest = request.clone();
+  let retriedAfterStart = false;
+  let response = await container.fetch(request);
+  if (await shouldRetryAfterContainerStart(response)) {
+    retriedAfterStart = true;
+    console.warn(
+      JSON.stringify({
+        event: "worker_container_start_retry",
+        method: request.method,
+        path: url.pathname,
+        cf_ray: request.headers.get("cf-ray"),
+        colo: request.cf?.colo,
+      }),
+    );
+    await startContainer(container, retryRequest.signal);
+    response = await container.fetch(retryRequest);
+  }
   const elapsedMs = Date.now() - started;
   console.log(
     JSON.stringify({
@@ -410,6 +432,7 @@ async function fetchContainer(request, env) {
       path: url.pathname,
       status: response.status,
       elapsed_ms: elapsedMs,
+      retried_after_start: retriedAfterStart,
       cf_ray: request.headers.get("cf-ray"),
       colo: request.cf?.colo,
     }),
@@ -421,4 +444,31 @@ async function fetchContainer(request, env) {
     statusText: response.statusText,
     headers,
   });
+}
+
+async function shouldRetryAfterContainerStart(response) {
+  if (response.status !== 500) {
+    return false;
+  }
+  const body = await response.clone().text();
+  const normalizedBody = body.toLowerCase();
+  return CONTAINER_START_RETRY_PATTERNS.some((pattern) => normalizedBody.includes(pattern));
+}
+
+async function startContainer(container, abortSignal) {
+  if (typeof container.startAndWaitForPorts === "function") {
+    await container.startAndWaitForPorts({
+      ports: [CONTAINER_PORT],
+      cancellationOptions: {
+        abort: abortSignal,
+        instanceGetTimeoutMS: 10_000,
+        portReadyTimeoutMS: 30_000,
+        waitInterval: 500,
+      },
+    });
+    return;
+  }
+  if (typeof container.start === "function") {
+    await container.start();
+  }
 }
