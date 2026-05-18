@@ -494,6 +494,7 @@ Likely work:
 - better text search
 - designer/maker cleanup
 - richer shop pages
+- simple black-and-white location maps on shop index cards and shop detail pages
 - collection-style browse pages such as teak storage, lounge chairs, dining sets, lighting
 - compare mode for multiple saved items
 - review and simplify i18n/l10n boundaries before translated strings and formatting rules spread
