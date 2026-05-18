@@ -223,6 +223,10 @@ textarea:focus {
   width: 100%;
 }
 
+img[data-image-fallback].hidden {
+  display: none;
+}
+
 .listing-card:hover img {
   opacity: 0.94;
   transform: scale(1.01);

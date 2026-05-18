@@ -1096,6 +1096,9 @@ class AppTests(unittest.TestCase):
         self.assertIn("onerror=", response.text)
         self.assertIn("Image not available", response.text)
 
+        css = (Path(__file__).parent.parent / "static" / "app.css").read_text()
+        self.assertIn("img[data-image-fallback].hidden", css)
+
     def test_detail_page_localizes_canonical_ingest_values(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)
