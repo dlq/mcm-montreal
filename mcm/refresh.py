@@ -13,6 +13,7 @@ from .sources import (
     SourceDefinition,
     fetch_chez_lamothe_page_listings,
     fetch_le_centerpiece_entry_listings,
+    fetch_shopify_collection_page_listings,
     fetch_showroom_entry_listings,
     fetch_source_listings,
 )
@@ -145,6 +146,33 @@ def refresh_chez_lamothe_chunk(db: sqlite3.Connection, chunk_index: int) -> Sour
     return SourceChunkResult(
         result=result, chunk_index=chunk_index, entry_url=source.listing_urls[0]
     )
+
+
+def refresh_mostly_danish_chunk(db: sqlite3.Connection, chunk_index: int) -> SourceChunkResult:
+    source = next((source for source in SOURCE_DEFINITIONS if source.slug == "mostly-danish"), None)
+    if source is None:
+        raise ValueError("Unknown source slug: mostly-danish")
+    pages_per_collection = 6
+    if chunk_index < 0 or chunk_index >= len(source.listing_urls) * pages_per_collection:
+        raise ValueError(f"Unknown Mostly Danish chunk index: {chunk_index}")
+    collection_index = chunk_index // pages_per_collection
+    page = (chunk_index % pages_per_collection) + 1
+    entry_url = source.listing_urls[collection_index]
+    listings, error = fetch_shopify_collection_page_listings(
+        source,
+        entry_url,
+        page,
+        per_page=100,
+    )
+    result = _refresh_source_listings(
+        db,
+        source,
+        listings,
+        error,
+        crawl_is_authoritative=False,
+    )
+    db.commit()
+    return SourceChunkResult(result=result, chunk_index=chunk_index, entry_url=entry_url)
 
 
 def refresh_source(db: sqlite3.Connection, source: SourceDefinition) -> RefreshResult:

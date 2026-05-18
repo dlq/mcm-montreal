@@ -1,6 +1,6 @@
 [project]
 name = "mcm-montreal"
-version = "0.2.0"
+version = "0.2.1"
 description = "Montreal-first discovery app for vintage and resale mid-century modern furniture."
 readme = "README.md"
 requires-python = ">=3.12"

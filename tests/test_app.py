@@ -37,6 +37,7 @@ from mcm.sources import (
     _parse_shopify_collection_product,
     _parse_square_product_page,
     _parse_square_storefront_product,
+    _parse_squarespace_store_item,
     _showroom_source_listing_key,
     _square_product_is_sold_out,
 )
@@ -1451,6 +1452,51 @@ class AppTests(unittest.TestCase):
         self.assertEqual(listing["price_raw"], "$18,995.00 CAD")
         self.assertEqual(listing["availability_status"], "available")
         self.assertIn("wood", listing["materials"])
+
+    def test_squarespace_store_item_parses_habitat_listing(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "habitat-mobilier")
+        listing = _parse_squarespace_store_item(
+            source,
+            {
+                "id": "habitat-test",
+                "title": "Buffet en teck",
+                "fullUrl": "/boutique/p/buffet-teck",
+                "excerpt": (
+                    "<p>Punch Design. Canada. Années 60.</p>"
+                    "<p>Entièrement en teck. Largeur : 72” Profondeur : 18”</p>"
+                ),
+                "assetUrl": "https://images.squarespace-cdn.com/buffet.jpg",
+                "variants": [
+                    {
+                        "qtyInStock": 1,
+                        "priceMoney": {"currency": "CAD", "value": "1675.00"},
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(listing["source_listing_key"], "habitat-mobilier:habitat-test")
+        self.assertEqual(
+            listing["source_listing_url"], "https://habitatmobilier.com/boutique/p/buffet-teck"
+        )
+        self.assertEqual(listing["price_value"], 1675)
+        self.assertEqual(listing["availability_status"], "available")
+        self.assertEqual(listing["materials"], "teak")
+
+    def test_squarespace_store_item_skips_out_of_stock_habitat_items(self) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "habitat-mobilier")
+        with self.assertRaises(ValueError):
+            _parse_squarespace_store_item(
+                source,
+                {
+                    "id": "habitat-sold",
+                    "title": "Fauteuil en teck",
+                    "fullUrl": "/boutique/p/fauteuil-teck",
+                    "excerpt": "<p>Fauteuil en teck.</p>",
+                    "assetUrl": "https://images.squarespace-cdn.com/fauteuil.jpg",
+                    "variants": [{"qtyInStock": 0, "priceMoney": {"value": "695.00"}}],
+                },
+            )
 
     def test_shopify_collection_product_skips_gift_cards(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "morceau")

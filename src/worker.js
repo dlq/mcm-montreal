@@ -16,13 +16,19 @@ const SOURCE_SLUGS = [
   "yardsale-vintage",
   "bond-vintage",
   "chez-lamothe",
+  "habitat-mobilier",
+  "green-wall-vintage",
+  "mostly-danish",
 ];
 const SHOWROOM_SOURCE_SLUG = "showroom-montreal";
 const SHOWROOM_CHUNK_COUNT = 12;
 const LE_CENTERPIECE_SOURCE_SLUG = "le-centerpiece";
 const LE_CENTERPIECE_CHUNK_COUNT = 7;
 const CHEZ_LAMOTHE_SOURCE_SLUG = "chez-lamothe";
-const CHEZ_LAMOTHE_CHUNK_COUNT = 10;
+const CHEZ_LAMOTHE_CHUNK_COUNT = 20;
+const MOSTLY_DANISH_SOURCE_SLUG = "mostly-danish";
+const MOSTLY_DANISH_CHUNK_COUNT = 30;
+const MOSTLY_DANISH_CHUNKS_PER_REFRESH = 5;
 const RETRY_DELAY_SECONDS = 300;
 const STALE_REFRESH_JOB_AGE_MS = 90 * 60 * 1000;
 const HIDDEN_SPIKE_MIN_COUNT = 50;
@@ -208,7 +214,21 @@ function refreshMessagesForSource(sourceSlug, trigger) {
       refreshMessageBody(sourceSlug, trigger, chunkIndex),
     );
   }
+  if (sourceSlug === MOSTLY_DANISH_SOURCE_SLUG) {
+    return mostlyDanishChunkIndexes().map((chunkIndex) =>
+      refreshMessageBody(sourceSlug, trigger, chunkIndex),
+    );
+  }
   return [refreshMessageBody(sourceSlug, trigger)];
+}
+
+function mostlyDanishChunkIndexes(now = new Date()) {
+  const dayIndex = Math.floor(now.getTime() / 86_400_000);
+  const startIndex = (dayIndex * MOSTLY_DANISH_CHUNKS_PER_REFRESH) % MOSTLY_DANISH_CHUNK_COUNT;
+  return Array.from(
+    { length: MOSTLY_DANISH_CHUNKS_PER_REFRESH },
+    (_value, offset) => (startIndex + offset) % MOSTLY_DANISH_CHUNK_COUNT,
+  );
 }
 
 function refreshMessageBody(sourceSlug, trigger, chunkIndex = null) {
@@ -292,6 +312,16 @@ function refreshCronPath(sourceSlug, chunkIndex) {
       throw new Error(`Invalid Chez Lamothe chunk index: ${chunkIndex}`);
     }
     return `/cron/refresh/chez-lamothe/chunk/${chunkIndex}`;
+  }
+  if (sourceSlug === MOSTLY_DANISH_SOURCE_SLUG) {
+    if (
+      !Number.isInteger(chunkIndex) ||
+      chunkIndex < 0 ||
+      chunkIndex >= MOSTLY_DANISH_CHUNK_COUNT
+    ) {
+      throw new Error(`Invalid Mostly Danish chunk index: ${chunkIndex}`);
+    }
+    return `/cron/refresh/mostly-danish/chunk/${chunkIndex}`;
   }
   return `/cron/refresh/${sourceSlug}`;
 }
@@ -433,6 +463,9 @@ function expectedRefreshJobCount(sourceSlug) {
   }
   if (sourceSlug === CHEZ_LAMOTHE_SOURCE_SLUG) {
     return CHEZ_LAMOTHE_CHUNK_COUNT;
+  }
+  if (sourceSlug === MOSTLY_DANISH_SOURCE_SLUG) {
+    return MOSTLY_DANISH_CHUNKS_PER_REFRESH;
   }
   return 1;
 }

@@ -232,7 +232,10 @@ const worker = await loadWorker();
       ...refreshJobs("maison-singulier", 1),
       ...refreshJobs("yardsale-vintage", 1),
       ...refreshJobs("bond-vintage", 1),
-      ...refreshJobs("chez-lamothe", 10),
+      ...refreshJobs("chez-lamothe", 20),
+      ...refreshJobs("habitat-mobilier", 1),
+      ...refreshJobs("green-wall-vintage", 1),
+      ...refreshJobs("mostly-danish", 5),
     ],
     0,
   );
@@ -260,7 +263,10 @@ const worker = await loadWorker();
       ...refreshJobs("maison-singulier", 1),
       ...refreshJobs("yardsale-vintage", 1),
       ...refreshJobs("bond-vintage", 1),
-      ...refreshJobs("chez-lamothe", 10),
+      ...refreshJobs("chez-lamothe", 20),
+      ...refreshJobs("habitat-mobilier", 1),
+      ...refreshJobs("green-wall-vintage", 1),
+      ...refreshJobs("mostly-danish", 5),
     ],
     0,
   );
@@ -292,7 +298,7 @@ const worker = await loadWorker();
 
   assert.equal(queue.sentBatches.length, 1);
   const messages = queue.sentBatches[0];
-  assert.equal(messages.length, 34);
+  assert.equal(messages.length, 51);
   assert.deepEqual(
     messages.map((message) => message.body.source_slug),
     [
@@ -303,7 +309,10 @@ const worker = await loadWorker();
       "maison-singulier",
       "yardsale-vintage",
       "bond-vintage",
-      ...Array.from({ length: 10 }, () => "chez-lamothe"),
+      ...Array.from({ length: 20 }, () => "chez-lamothe"),
+      "habitat-mobilier",
+      "green-wall-vintage",
+      ...Array.from({ length: 5 }, () => "mostly-danish"),
     ],
   );
   assert.deepEqual(
@@ -322,8 +331,14 @@ const worker = await loadWorker();
     messages
       .filter((message) => message.body.source_slug === "chez-lamothe")
       .map((message) => message.body.chunk_index),
-    Array.from({ length: 10 }, (_value, index) => index),
+    Array.from({ length: 20 }, (_value, index) => index),
   );
+  const mostlyDanishChunkIndexes = messages
+    .filter((message) => message.body.source_slug === "mostly-danish")
+    .map((message) => message.body.chunk_index);
+  assert.equal(mostlyDanishChunkIndexes.length, 5);
+  assert.equal(new Set(mostlyDanishChunkIndexes).size, 5);
+  assert(mostlyDanishChunkIndexes.every((chunkIndex) => chunkIndex >= 0 && chunkIndex < 30));
   assert(messages.every((message) => message.body.trigger === "scheduled_refresh"));
   assert(messages.every((message) => message.body.message_id));
   assert(messages.every((message) => message.body.enqueued_at));
@@ -389,14 +404,14 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 10);
+  assert.equal(queue.sentBatches[0].length, 20);
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.source_slug),
-    Array.from({ length: 10 }, () => "chez-lamothe"),
+    Array.from({ length: 20 }, () => "chez-lamothe"),
   );
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.chunk_index),
-    Array.from({ length: 10 }, (_value, index) => index),
+    Array.from({ length: 20 }, (_value, index) => index),
   );
   assert.equal(queue.sentBatches[0][0].body.trigger, "manual_refresh_now");
 }
@@ -413,7 +428,7 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 34);
+  assert.equal(queue.sentBatches[0].length, 51);
 }
 
 {
@@ -571,7 +586,7 @@ const worker = await loadWorker();
   const { env, containerRequests } = makeEnv();
   const message = makeMessage({
     source_slug: "chez-lamothe",
-    chunk_index: 9,
+    chunk_index: 19,
     trigger: "test",
     message_id: "message-7",
   });
@@ -583,7 +598,7 @@ const worker = await loadWorker();
   assert.equal(containerRequests.length, 1);
   assert.equal(
     new URL(containerRequests[0].url).pathname,
-    "/cron/refresh/chez-lamothe/chunk/9",
+    "/cron/refresh/chez-lamothe/chunk/19",
   );
 }
 
@@ -591,7 +606,7 @@ const worker = await loadWorker();
   const { env, containerRequests } = makeEnv();
   const message = makeMessage({
     source_slug: "chez-lamothe",
-    chunk_index: 10,
+    chunk_index: 20,
     trigger: "test",
     message_id: "message-8",
   });

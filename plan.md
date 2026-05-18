@@ -91,6 +91,9 @@ Current active sources in code:
 6. Yardsale Vintage
 7. BOND Vintage
 8. Chez Lamothe
+9. Habitat Mobilier
+10. Green Wall Vintage
+11. Mostly Danish
 
 Morceau should be treated as Vintage-collection-only ingestion. Its broader furniture and
 new-arrivals collections include current-production design inventory outside the app scope.
@@ -107,6 +110,13 @@ Implementation stance:
 - Chez Lamothe local refresh should stay materially faster than the earlier sitemap/product-page
   approach, but the hardcoded Square API path/cache version should be revisited if Square changes
   its published frontend API.
+- Habitat Mobilier uses Squarespace store JSON. Treat only in-stock product rows as current public
+  inventory so sold archive rows do not create brand-new public records.
+- Green Wall Vintage uses Shopify collection JSON with non-furniture products filtered out.
+- Mostly Danish uses selected Shopify furniture collections only; outdoor, Oriental, accents, and
+  archive collections stay excluded because the broader site mixes several non-MCM categories.
+- Mostly Danish is intentionally ingested gradually: production refreshes enqueue 5 of 30 bounded
+  Shopify collection-page chunks per run so the large catalogue does not monopolize the queue.
 - Local pickup or local delivery is enough for Montreal and agglomeration-area shops right now;
   Canada-wide shipping is not required for local sources.
 - If the product expands beyond the Montreal agglomeration, or traffic materially shifts toward
@@ -485,25 +495,24 @@ Current decision:
 
 - Maison Singulier, Yardsale Vintage, BOND Vintage, and Chez Lamothe have source definitions and
   local ingestion paths.
+- Habitat Mobilier, Green Wall Vintage, and Mostly Danish have source definitions and local
+  ingestion paths as the first regional road-trip sources.
 - Keep BOND Vintage active as a source, but expect zero public listings while its visible furniture
   inventory remains sold out.
 - Treat Chez Lamothe as useful but slightly more coupled to Square Online internals than the
   Shopify/Cargo sources because it follows the public storefront API path observed in the browser.
-- Revisit Green Wall Vintage now that regional road-trip sources are in scope; keep Vintage Home
-  Boutique later because it is outside the Ottawa/Quebec City/Townships pickup corridors.
-- Regional research on 2026-05-15 identified the next expansion set as Habitat Mobilier, Green Wall
-  Vintage, and Mostly Danish.
+- Keep Vintage Home Boutique later because it is outside the Ottawa/Quebec City/Townships pickup
+  corridors.
+- Regional research on 2026-05-15 identified Habitat Mobilier, Green Wall Vintage, and Mostly
+  Danish as the first regional expansion set; those sources were implemented locally for `0.2.1`.
 - Deja Vu Meubles, Cornwall's Little Market, and A Fine Thing fit the regional taste/location
   criteria, but should wait because their public websites do not currently expose enough reliable
   item-level prices, details, and descriptions for ingestion on par with the existing shops.
 
 Likely work:
 
-- add Habitat Mobilier first if its public shop page can be parsed cleanly while excluding sold
-  items from brand-new public ingestion
-- add Green Wall Vintage next if its Shopify structure matches existing collection parsers
-- spike Mostly Danish with strict category filtering because the site mixes vintage Scandinavian/MCM,
-  outdoor teak, Oriental antiques, and services
+- run production ingestion and verify public counts for Habitat Mobilier and Green Wall Vintage,
+  then start the rotating Mostly Danish ingestion before tagging `0.2.1`
 - leave Deja Vu Meubles, Cornwall's Little Market, and A Fine Thing out of the next automated batch
   unless stable item feeds are verified
 - monitor Chez Lamothe's Square storefront API path/cache version and add a fallback if it changes

@@ -210,6 +210,63 @@ SOURCE_DEFINITIONS = [
         ),
         parser="square_storefront",
     ),
+    SourceDefinition(
+        slug="habitat-mobilier",
+        name="Habitat Mobilier",
+        website="https://habitatmobilier.com/",
+        city="West Brome",
+        province="QC",
+        country="Canada",
+        is_montreal_local=False,
+        shipping_summary="Eastern Townships source; delivery available in greater Montreal and across Quebec.",
+        source_type="direct_shop",
+        crawl_priority=3,
+        notes="Squarespace store; only in-stock product rows are treated as current public inventory.",
+        description="West Brome shop focused on restored Scandinavian and mid-century vintage furniture.",
+        style_focus="Restored Scandinavian, Danish, teak, rosewood, walnut, mid-century furniture.",
+        listing_urls=("https://habitatmobilier.com/boutique",),
+        parser="squarespace_store",
+    ),
+    SourceDefinition(
+        slug="green-wall-vintage",
+        name="Green Wall Vintage",
+        website="https://www.greenwallvintage.ca/",
+        city="Ottawa",
+        province="ON",
+        country="Canada",
+        is_montreal_local=False,
+        shipping_summary="Ottawa regional source with delivery available across Canada and the United States.",
+        source_type="direct_shop",
+        crawl_priority=3,
+        notes="Shopify inventory with visible prices and stock states; non-furniture products are filtered.",
+        description="Ottawa-area vintage shop with a strong mid-century modern furniture catalogue.",
+        style_focus="Mid-century modern, Danish-inspired, teak, walnut, rosewood furniture.",
+        listing_urls=("https://www.greenwallvintage.ca/collections/all",),
+        parser="shopify_collection",
+    ),
+    SourceDefinition(
+        slug="mostly-danish",
+        name="Mostly Danish",
+        website="https://mostlydanish.com/",
+        city="Ingleside",
+        province="ON",
+        country="Canada",
+        is_montreal_local=False,
+        shipping_summary="Regional Montreal-Ottawa corridor source; pickup or delivery by quote.",
+        source_type="direct_shop",
+        crawl_priority=3,
+        notes="Shopify furniture collections only; outdoor, Oriental, accents, and archive collections are excluded.",
+        description="Regional Scandinavian furniture source with Danish and teak vintage inventory.",
+        style_focus="Danish, Scandinavian, teak, rosewood, seating, tables, sideboards, storage.",
+        listing_urls=(
+            "https://mostlydanish.com/collections/wm-seating",
+            "https://mostlydanish.com/collections/wm-tables",
+            "https://mostlydanish.com/collections/wm-sideboards",
+            "https://mostlydanish.com/collections/wm-storage",
+            "https://mostlydanish.com/collections/wm-office",
+        ),
+        parser="shopify_collection",
+    ),
 ]
 
 SHOWROOM_OVERRIDES: dict[str, dict[str, str]] = {
@@ -240,6 +297,8 @@ def fetch_source_listings(source: SourceDefinition) -> tuple[list[dict[str, Any]
             return _fetch_cargo_gallery(source), None
         if source.parser == "square_storefront":
             return _fetch_square_storefront(source), None
+        if source.parser == "squarespace_store":
+            return _fetch_squarespace_store(source), None
         raise ValueError(f"Unknown parser: {source.parser}")
     except Exception as exc:  # noqa: BLE001
         return _seed_fallback(source), str(exc)
@@ -277,7 +336,7 @@ def fetch_chez_lamothe_page_listings(
     source: SourceDefinition,
     page: int,
     *,
-    per_page: int = 30,
+    per_page: int = 15,
 ) -> tuple[list[dict[str, Any]], str | None]:
     try:
         if source.slug != "chez-lamothe" or source.parser != "square_storefront":
@@ -285,6 +344,36 @@ def fetch_chez_lamothe_page_listings(
         if page < 1:
             raise ValueError(f"Unknown Chez Lamothe page: {page}")
         return _fetch_square_storefront_page(source, page, per_page=per_page), None
+    except Exception as exc:  # noqa: BLE001
+        return [], str(exc)
+
+
+def fetch_shopify_collection_page_listings(
+    source: SourceDefinition,
+    entry_url: str,
+    page: int,
+    *,
+    per_page: int = 100,
+    include_sold_out: bool = True,
+) -> tuple[list[dict[str, Any]], str | None]:
+    try:
+        if source.parser != "shopify_collection":
+            raise ValueError(f"Source does not use the Shopify collection parser: {source.slug}")
+        if entry_url not in source.listing_urls:
+            raise ValueError(f"Unknown Shopify collection URL: {entry_url}")
+        if page < 1:
+            raise ValueError(f"Unknown Shopify collection page: {page}")
+        products = _fetch_shopify_collection_products_page(entry_url, page, per_page=per_page)
+        listings = []
+        for product in products:
+            try:
+                listing = _parse_shopify_collection_product(source, product)
+            except ValueError:
+                continue
+            if not include_sold_out and listing["availability_status"] == "sold_out":
+                continue
+            listings.append(listing)
+        return listings, None
     except Exception as exc:  # noqa: BLE001
         return [], str(exc)
 
@@ -306,7 +395,7 @@ def _fetch_shopify_collection(source: SourceDefinition) -> list[dict[str, Any]]:
             listings_by_url[listing["source_listing_url"]] = listing
 
     if listings_by_url:
-        return list(listings_by_url.values())[:200]
+        return list(listings_by_url.values())[: _source_listing_limit(source)]
 
     product_urls: list[str] = []
     for entry_url in source.listing_urls:
@@ -333,6 +422,12 @@ def _fetch_shopify_collection(source: SourceDefinition) -> list[dict[str, Any]]:
     return listings
 
 
+def _source_listing_limit(source: SourceDefinition) -> int:
+    if source.slug == "mostly-danish":
+        return 600
+    return 200
+
+
 def _fetch_shopify_collection_entry(
     source: SourceDefinition,
     entry_url: str,
@@ -354,16 +449,25 @@ def _fetch_shopify_collection_entry(
 def _fetch_shopify_collection_products(entry_url: str) -> list[dict[str, Any]]:
     all_products: list[dict[str, Any]] = []
     for page in range(1, 11):
-        products_url = f"{entry_url.rstrip('/')}/products.json?limit=250&page={page}"
-        try:
-            payload = json.loads(_fetch_html(products_url))
-        except (json.JSONDecodeError, urllib.error.URLError):
-            break
-        products = [product for product in payload.get("products", []) if isinstance(product, dict)]
+        products = _fetch_shopify_collection_products_page(entry_url, page, per_page=250)
         if not products:
             break
         all_products.extend(products)
     return all_products
+
+
+def _fetch_shopify_collection_products_page(
+    entry_url: str,
+    page: int,
+    *,
+    per_page: int,
+) -> list[dict[str, Any]]:
+    products_url = f"{entry_url.rstrip('/')}/products.json?limit={per_page}&page={page}"
+    try:
+        payload = json.loads(_fetch_html(products_url))
+    except (json.JSONDecodeError, urllib.error.URLError):
+        return []
+    return [product for product in payload.get("products", []) if isinstance(product, dict)]
 
 
 def _parse_shopify_collection_product(
@@ -380,6 +484,10 @@ def _parse_shopify_collection_product(
     description = _clean_text(description_text)
     if source.slug == "bond-vintage" and not _looks_like_furniture_text(f"{title} {description}"):
         raise ValueError("Skipping non-furniture BOND Vintage item")
+    if source.slug == "green-wall-vintage" and not _looks_like_furniture_text(
+        f"{title} {description}"
+    ):
+        raise ValueError("Skipping non-furniture Green Wall Vintage item")
     if _is_current_production(description):
         raise ValueError("Skipping current-production Shopify item")
     variants = [variant for variant in product.get("variants", []) if isinstance(variant, dict)]
@@ -392,6 +500,8 @@ def _parse_shopify_collection_product(
         (_to_float(str(variant.get("price", ""))) for variant in variants if variant.get("price")),
         None,
     )
+    if price_value == 0:
+        price_value = None
     availability = (
         "available" if any(variant.get("available") for variant in variants) else "sold_out"
     )
@@ -406,7 +516,7 @@ def _parse_shopify_collection_product(
         "source_listing_url": url,
         "source_listing_key": url,
         "title": title,
-        "price_raw": f"${price_value:,.2f} CAD" if price_value is not None else "",
+        "price_raw": f"${price_value:,.2f} CAD" if price_value is not None else "Contact for price",
         "price_value": price_value,
         "currency": "CAD",
         "primary_image_url": images[0] if images else "",
@@ -427,6 +537,124 @@ def _parse_shopify_collection_product(
         "parse_confidence": 0.86,
         "ingest_source_type": "live_fetch",
     }
+
+
+def _fetch_squarespace_store(source: SourceDefinition) -> list[dict[str, Any]]:
+    listings_by_key: dict[str, dict[str, Any]] = {}
+    offset = 0
+    for _page in range(10):
+        page_url = source.listing_urls[0]
+        query = "format=json-pretty"
+        if offset > 0:
+            query += f"&offset={offset}"
+        separator = "&" if "?" in page_url else "?"
+        payload = json.loads(_fetch_html(f"{page_url}{separator}{query}"))
+        items = payload.get("items") or []
+        if not isinstance(items, list):
+            break
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            try:
+                listing = _parse_squarespace_store_item(source, item)
+            except ValueError:
+                continue
+            listings_by_key[listing["source_listing_key"]] = listing
+        pagination = payload.get("pagination") or {}
+        if not isinstance(pagination, dict) or not pagination.get("nextPage"):
+            break
+        next_offset = pagination.get("nextPageOffset")
+        if not isinstance(next_offset, int) or next_offset <= offset:
+            break
+        offset = next_offset
+    if not listings_by_key:
+        raise ValueError(f"No Squarespace store items parsed from {source.listing_urls[0]}")
+    return list(listings_by_key.values())[:200]
+
+
+def _parse_squarespace_store_item(
+    source: SourceDefinition,
+    item: dict[str, Any],
+) -> dict[str, Any]:
+    title = _clean_text(str(item.get("title") or ""))
+    item_id = _clean_text(str(item.get("id") or ""))
+    full_url = _clean_text(str(item.get("fullUrl") or ""))
+    if not title or not item_id or not full_url:
+        raise ValueError("Squarespace item is missing title, id, or URL")
+    description_text = BeautifulSoup(
+        str(item.get("excerpt") or item.get("body") or ""), "html.parser"
+    ).get_text("\n", strip=True)
+    description = _clean_text(description_text)
+    if not _looks_like_furniture_text(f"{title} {description}"):
+        raise ValueError("Skipping non-furniture Squarespace item")
+    variants = item.get("variants") or []
+    if not isinstance(variants, list):
+        variants = []
+    available_variants = [
+        variant
+        for variant in variants
+        if isinstance(variant, dict)
+        and (variant.get("unlimited") or int(variant.get("qtyInStock") or 0) > 0)
+    ]
+    if not available_variants:
+        raise ValueError("Skipping out-of-stock Squarespace item")
+    price_value = _squarespace_variant_price(available_variants)
+    image_urls = _squarespace_item_image_urls(item)
+    if not image_urls:
+        raise ValueError("Squarespace item is missing images")
+    designer, maker = _extract_designer_and_maker(title, description)
+    return {
+        "source_listing_url": urllib.parse.urljoin(source.website, full_url),
+        "source_listing_key": f"{source.slug}:{item_id}",
+        "title": title,
+        "price_raw": f"${price_value:,.2f} CAD" if price_value is not None else "Contact for price",
+        "price_value": price_value,
+        "currency": "CAD",
+        "primary_image_url": image_urls[0],
+        "additional_image_urls": image_urls[1:6],
+        "availability_status": "available",
+        "shipping_scope": _shipping_scope_for(source),
+        "ships_to_montreal": 1,
+        "shipping_note": source.shipping_summary,
+        "category": _categorize_listing(title, description),
+        "designer": designer,
+        "maker": maker,
+        "materials": _extract_materials(f"{title} {description}"),
+        "dimensions_text": _extract_dimensions(description),
+        "condition_text": _extract_condition(description),
+        "source_description": description,
+        "location_text": f"{source.city}, {source.province}",
+        "era": _extract_era(f"{title} {description}"),
+        "parse_confidence": 0.82,
+        "ingest_source_type": "live_fetch",
+    }
+
+
+def _squarespace_variant_price(variants: list[dict[str, Any]]) -> float | None:
+    for variant in variants:
+        price_money = variant.get("priceMoney")
+        if isinstance(price_money, dict):
+            value = _to_float(str(price_money.get("value") or ""))
+            if value and value > 0:
+                return value
+        price = variant.get("price")
+        if isinstance(price, int | float) and price > 0:
+            return float(price) / 100
+    return None
+
+
+def _squarespace_item_image_urls(item: dict[str, Any]) -> list[str]:
+    urls = []
+    asset_url = str(item.get("assetUrl") or "")
+    if asset_url:
+        urls.append(asset_url)
+    for image in item.get("items") or []:
+        if not isinstance(image, dict):
+            continue
+        url = str(image.get("assetUrl") or image.get("url") or "")
+        if url and url not in urls:
+            urls.append(url)
+    return urls
 
 
 def _parse_shopify_product(source: SourceDefinition, url: str) -> dict[str, Any]:
@@ -456,6 +684,8 @@ def _parse_shopify_product(source: SourceDefinition, url: str) -> dict[str, Any]
     if isinstance(images, str):
         images = [images]
     price_value = _to_float(str(offers.get("price") or "") or _extract_price_text(soup))
+    if price_value == 0:
+        price_value = None
     availability = _normalize_availability(
         offers.get("availability"),
         soup.get_text(" ", strip=True),

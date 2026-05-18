@@ -261,6 +261,21 @@ Implementation stance:
 - Do not add Deja Vu Meubles, Cornwall's Little Market, or A Fine Thing in this implementation
   batch unless a stable item feed with prices, item details, and item URLs is found.
 
+Implementation findings on 2026-05-18:
+
+- Habitat Mobilier exposes Squarespace store JSON at `/boutique?format=json-pretty`, including
+  product ids, URLs, images, descriptions, variant stock, and prices. The live parser treats only
+  in-stock variants as current public inventory and parsed 21 current listings locally.
+- Green Wall Vintage exposes Shopify product JSON through `/collections/all/products.json`. The
+  live parser filters non-furniture products and parsed 39 furniture listings locally.
+- Mostly Danish exposes Shopify collection JSON. The implementation uses selected furniture
+  collections (`wm-seating`, `wm-tables`, `wm-sideboards`, `wm-storage`, `wm-office`) and excludes
+  outdoor, Oriental, accents, and archive collections. A local refresh found 200 source rows and
+  kept 159 active public listings after existing sold-out semantics skipped brand-new sold rows.
+- A deeper collection-size check found 1,306 source rows across the selected Mostly Danish
+  collections, so production ingestion should be gradual rather than a single monolithic source
+  refresh. The Worker now rotates through 5 of 30 collection-page chunks per refresh run.
+
 ## Research Questions That Still Matter
 
 The build has answered the "is this product worth prototyping?" question. The main research questions still worth validating are now:
