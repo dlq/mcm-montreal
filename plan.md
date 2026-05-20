@@ -117,6 +117,9 @@ Implementation stance:
 - Green Wall Vintage uses Shopify collection JSON with non-furniture products filtered out.
 - Mostly Danish uses selected Shopify furniture collections only; outdoor, Oriental, accents, and
   archive collections stay excluded because the broader site mixes several non-MCM categories.
+- Mostly Danish may still include a meaningful amount of later modern furniture that feels outside
+  the MCM focus. Avoid subjective item-by-item filtering for now, but revisit its collection scope,
+  shop weighting, or source notes if it starts diluting the catalogue.
 - Mostly Danish is intentionally ingested gradually: production refreshes enqueue 5 of 30 bounded
   Shopify collection-page chunks per run so the large catalogue does not monopolize the queue.
 - Local pickup or local delivery is enough for Montreal and agglomeration-area shops right now;
@@ -538,6 +541,8 @@ Likely work:
 - leave Deja Vu Meubles, Cornwall's Little Market, and A Fine Thing out of the next automated batch
   unless stable item feeds are verified
 - monitor Chez Lamothe's Square storefront API path/cache version and add a fallback if it changes
+- review Mostly Danish after more chunks ingest to decide whether its selected collections are too
+  broad for the MCM-first product promise
 - add profile/manual-source handling for high-quality local shops that still lack clean catalogs
 - restore location on cards when inventory becomes meaningfully non-Montreal
 - add source-specific notes for shipping and reliability; treat local delivery as enough inside the

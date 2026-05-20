@@ -275,6 +275,24 @@ Implementation findings on 2026-05-18:
 - A deeper collection-size check found 1,306 source rows across the selected Mostly Danish
   collections, so production ingestion should be gradual rather than a single monolithic source
   refresh. The Worker now rotates through 5 of 30 collection-page chunks per refresh run.
+- Mostly Danish does expose narrower Shopify category pages, but not a clean era taxonomy that
+  separates "MCM" from later "modern" inventory. Public navigation includes broad furniture
+  collections (`wm-seating`, `wm-tables`, `wm-sideboards`, `wm-storage`, `wm-office`) plus
+  subcollections such as `wm-seating-armchairs-recliners`, `wm-seating-dining`,
+  `wm-seating-sofas`, `wm-tables-coffee`, `wm-tables-dining`,
+  `wm-storage-buffets-hutches`, `wm-storage-cabinets-bookcases`,
+  `wm-storage-dressers`, `wm-office-chairs`, `wm-office-desks-conference-tables`,
+  and `wm-office-storage-shelving`. It also has `featured`, `solid-teak`,
+  `arne-jacobsen`, and `wm-collectors-items` collections that may be more aligned with the
+  site's thesis, but those are not complete furniture-type feeds.
+- A 2026-05-20 count of Mostly Danish collection pages found the current broad feeds remain large:
+  `wm-seating` 566, `wm-tables` 269, `wm-sideboards` 195, `wm-storage` 142, and `wm-office` 134.
+  More specific candidates include `featured` 23, `solid-teak` 136, `arne-jacobsen` 10,
+  `wm-collectors-items` 141, `wm-storage-buffets-hutches` 39, `wm-storage-dressers` 26,
+  `wm-tables-coffee` 108, and `wm-tables-dining` 213. The collection names are still imperfect:
+  sampled "Mid-Century Modern Armchairs & Recliners" products included late-20th-century and
+  21st-century items, so any tighter scope should prefer collection-level inclusion/exclusion or
+  source weighting rather than subjective item-by-item MCM judgments.
 
 ## Research Questions That Still Matter
 
