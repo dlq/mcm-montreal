@@ -649,6 +649,9 @@ Live design audit notes from 2026-05-20:
   unstyled 404.
 - Strengthen interactive hierarchy for primary filter actions and favourite saved states without
   abandoning the restrained visual style.
+- Review the UI against W3C/WCAG accessibility guidance, including semantic structure, keyboard
+  navigation, focus states, color contrast, form labels, language switching, favourite controls, and
+  screen-reader behavior.
 
 ### 0.3.x Success Criteria
 
