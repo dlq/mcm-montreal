@@ -667,6 +667,32 @@ The `0.3.x` line is successful when:
 - normalized entities improve search and browsing quality
 - any broader source or monetization strategy preserves trust
 
+## 0.4.x Development: Assisted Relevance And Classification
+
+The `0.4.x` line may explore model-assisted catalogue judgment after enough reviewed inventory
+exists. This should remain future research if the product does not yet have enough examples,
+review capacity, or clear user value.
+
+### MCM Relevance Scoring
+
+Questions to settle:
+
+- Can the app collect enough admin-reviewed examples to distinguish "clearly MCM", "MCM-adjacent",
+  "modern but not MCM", and "irrelevant" without encoding arbitrary taste as fact?
+- Should a model use listing text only, images only, or combined evidence from title, description,
+  source category, materials, designer/maker, era text, price, and image cues?
+- How should explanations and provenance be shown so model output remains reviewable?
+- Is this useful for source weighting and admin triage before it is safe for public filtering?
+
+Likely work:
+
+- build a reviewed training/evaluation dataset from existing listings and admin decisions
+- store model-suggested MCM relevance confidence separately from source facts and manual overrides
+- use the score first for admin review, source-scope tuning, and "MCM-adjacent" warnings rather than
+  automatic public exclusion
+- keep the option to move this work back to future research if simpler collection-level scope rules
+  are enough
+
 ## Cross-Cutting Risks
 
 ### Source Fragility
@@ -733,3 +759,5 @@ growth.
 
 For `0.3.x`, build authority: editorial discovery, normalized entities, broader source strategy, and
 trade workflows only where they reinforce trust.
+
+For `0.4.x`, consider assistive relevance scoring only if reviewed data and user value justify it.
