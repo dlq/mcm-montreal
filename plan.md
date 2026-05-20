@@ -633,6 +633,23 @@ Likely work:
 - small, clearly labelled sponsorship or contextual-ad experiments outside listing cards
 - careful monetization experiments only after the core catalogue is trusted
 
+### UI Quality And Responsive Polish
+
+Live design audit notes from 2026-05-20:
+
+- On mobile listing detail pages, item identity appears too late because the large gallery and
+  thumbnails push title, price, favourite action, and metadata below the first viewport.
+- The mobile filter drawer is long enough that apply/reset controls are not immediately visible,
+  making filtering feel heavier than it is.
+- Listing image frames need a more intentional loading/unavailable state so slow, blocked, or
+  missing source images do not create large blank wells.
+- Shop index cards are becoming text-heavy at three columns; simplify card metadata before adding
+  black-and-white shop maps.
+- Add a branded 404 page with recovery paths back to listings/search instead of Flask's default
+  unstyled 404.
+- Strengthen interactive hierarchy for primary filter actions and favourite saved states without
+  abandoning the restrained visual style.
+
 ### 0.3.x Success Criteria
 
 The `0.3.x` line is successful when:
