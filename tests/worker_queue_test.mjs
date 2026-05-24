@@ -45,7 +45,7 @@ function makeEnv(containerResponse = new Response("ok", { status: 200 })) {
       MCM_MANUAL_REFRESH_TOKEN: "refresh-token",
       MCM_CONTAINER: {
         getByName(name) {
-          assert.equal(name, "web-d1-v5");
+          assert.equal(name, "web-d1-v6");
           return {
             async fetch(request) {
               containerRequests.push(request);
