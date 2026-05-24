@@ -130,6 +130,24 @@ class AppTests(unittest.TestCase):
             response = self.client.get(path, follow_redirects=True)
             self.assertEqual(response.status_code, 200, path)
 
+    def test_shop_pages_include_location_maps(self) -> None:
+        response = self.client.get("/shops")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('class="shop-map shop-map-card"', response.text)
+        self.assertIn("Location map", response.text)
+        self.assertIn("Simple map showing Morceau near Montreal.", response.text)
+
+        detail_response = self.client.get("/shops/morceau")
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertIn('class="shop-map shop-map-detail"', detail_response.text)
+        self.assertIn("Location map", detail_response.text)
+
+    def test_shop_location_maps_are_localized(self) -> None:
+        response = self.client.get("/shops/morceau?lang=fr")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Carte du lieu", response.text)
+        self.assertIn("Carte simple montrant Morceau près de Montreal.", response.text)
+
     def test_locale_files_have_matching_keys(self) -> None:
         self.assertEqual(set(TRANSLATIONS_EN), set(TRANSLATIONS_FR))
 

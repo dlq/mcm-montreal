@@ -103,6 +103,8 @@ TRANSLATIONS_FR = {
     "shop.source_site": "Site source",
     "shop.notes": "Notes",
     "shop.current_listings": "Annonces actuelles",
+    "shop.map_title": "Carte du lieu",
+    "shop.map_aria": "Carte simple montrant {name} près de {location}.",
     "favourites.saved": "Favoris",
     "favourites.title": "Votre sélection",
     "favourites.subtitle": "Les annonces et boutiques sauvegardées restent avec ce navigateur grâce à un jeton privé du site.",

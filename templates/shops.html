@@ -16,6 +16,8 @@
             <p class="text-sm leading-6 text-ink/65">{{ shop_text(shop, "description") }}</p>
             <p class="mt-2 text-sm leading-6 text-ink/55">{{ shop_text(shop, "style_focus") }}</p>
           </div>
+          {% set shop_map_variant = "card" %}
+          {% include "_shop_map.html" %}
           <dl class="shop-card-metadata mt-5 grid gap-4 text-sm sm:grid-cols-2">
             <div>
               <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.location") }}</dt>

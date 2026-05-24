@@ -10,6 +10,8 @@
         {% include "_favourite_shop_button.html" %}
       </div>
       <p class="text-sm leading-7 text-ink/75">{{ shop_text(shop, "description") }}</p>
+      {% set shop_map_variant = "detail" %}
+      {% include "_shop_map.html" %}
       <dl class="mt-6 space-y-4 text-sm">
         <div>
           <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.location") }}</dt>

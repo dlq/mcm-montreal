@@ -103,6 +103,8 @@ TRANSLATIONS_EN = {
     "shop.source_site": "Source site",
     "shop.notes": "Notes",
     "shop.current_listings": "Current listings",
+    "shop.map_title": "Location map",
+    "shop.map_aria": "Simple map showing {name} near {location}.",
     "favourites.saved": "Saved",
     "favourites.title": "Your shortlist",
     "favourites.subtitle": "Saved listings and shops stay with this browser using a private first-party token.",
