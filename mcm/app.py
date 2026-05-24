@@ -8,9 +8,10 @@ from datetime import UTC, datetime
 from functools import wraps
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlparse
 
 from flask import Flask, Response, abort, g, redirect, render_template, request, session, url_for
+from werkzeug.datastructures import MultiDict
 
 from .db import get_db, initialize_storage
 from .i18n import (
@@ -227,7 +228,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/saved-searches")
     def create_saved_search() -> Any:
-        filters = build_listing_filters(request.form)
+        form_data = request.form
+        if not any(value.strip() for value in form_data.values()) and request.referrer:
+            referrer = urlparse(request.referrer)
+            if referrer.netloc == request.host:
+                form_data = MultiDict(parse_qsl(referrer.query, keep_blank_values=True))
+        filters = build_listing_filters(form_data)
         query_string = saved_search_query_string(filters)
         if query_string:
             save_search(g.db, saved_search_name(filters), query_string)

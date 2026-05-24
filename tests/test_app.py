@@ -391,6 +391,28 @@ class AppTests(unittest.TestCase):
             finally:
                 db.close()
 
+    def test_saved_searches_fall_back_to_same_host_referrer_query(self) -> None:
+        response = self.client.post(
+            "/saved-searches",
+            headers={"Referer": "http://localhost/?price_max=1000"},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('href="/?price_max=1000"', response.text)
+        self.assertIn("(1)", response.text)
+
+    def test_saved_searches_ignore_cross_host_referrer_query(self) -> None:
+        response = self.client.post(
+            "/saved-searches",
+            headers={"Referer": "https://example.com/?price_max=1000"},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("No saved searches yet.", response.text)
+        self.assertIn("(0)", response.text)
+
     def test_refresh_runs_without_request_context(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)

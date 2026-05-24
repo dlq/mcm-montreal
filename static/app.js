@@ -12,8 +12,47 @@ class AvailabilityPill extends HTMLElement {
   }
 }
 
+class ListingFilters extends HTMLElement {
+  connectedCallback() {
+    const saveForm = this.querySelector("form[data-save-search-form]");
+    if (!saveForm || saveForm.dataset.ready) {
+      return;
+    }
+
+    saveForm.dataset.ready = "true";
+    saveForm.addEventListener("submit", () => {
+      this.syncSaveForm(saveForm);
+    });
+  }
+
+  syncSaveForm(saveForm) {
+    const filterForm = this.querySelector("form[data-filter-form]");
+    if (!filterForm) {
+      return;
+    }
+
+    saveForm.querySelectorAll("input[data-synced-filter]").forEach((input) => {
+      input.remove();
+    });
+
+    new FormData(filterForm).forEach((value, key) => {
+      if (typeof value !== "string" || value.trim() === "") {
+        return;
+      }
+
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = key;
+      input.value = value;
+      input.dataset.syncedFilter = "true";
+      saveForm.append(input);
+    });
+  }
+}
+
 customElements.define("favorite-toggle", FavoriteToggle);
 customElements.define("availability-pill", AvailabilityPill);
+customElements.define("listing-filters", ListingFilters);
 
 function showImageFallback(image) {
   if (!(image instanceof HTMLImageElement) || !image.dataset.imageFallback) {
