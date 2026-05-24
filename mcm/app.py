@@ -60,6 +60,8 @@ from .repository import (
     list_favourite_listings,
     list_favourite_shops,
     list_filter_values,
+    list_listing_availability_events,
+    list_listing_price_events,
     list_location_filter_values,
     list_saved_searches,
     list_shops,
@@ -400,7 +402,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         shop = get_shop(g.db, listing["source_shop_id"])
         if not shop:
             abort(404)
-        return render_template("listing_detail.html", listing=listing, shop=shop)
+        return render_template(
+            "listing_detail.html",
+            listing=listing,
+            shop=shop,
+            price_events=list_listing_price_events(g.db, int(listing["id"])),
+            availability_events=list_listing_availability_events(g.db, int(listing["id"])),
+        )
 
     @app.get("/shops")
     def shops() -> str:

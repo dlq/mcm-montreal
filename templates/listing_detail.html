@@ -111,6 +111,27 @@
           {{ freshness_label(listing.last_checked_at) }} · {{ t("listing.first_seen", value=date_text(listing.first_seen_at) ) }}
         </p>
       </div>
+      {% if price_events or availability_events %}
+        <div class="mt-6 border-t border-ink/10 pt-5">
+          <h2 class="text-sm font-medium">{{ t("listing.history") }}</h2>
+          <div class="mt-3 space-y-3 text-sm text-ink/70">
+            {% for event in price_events %}
+              <p>
+                <span class="font-medium text-ink">{{ t("listing.price_history") }}</span>
+                · {{ date_text(event.observed_at) }}
+                · {{ event.from_price_raw or t("listing.price_unknown") }} → {{ event.to_price_raw or t("listing.price_unknown") }}
+              </p>
+            {% endfor %}
+            {% for event in availability_events %}
+              <p>
+                <span class="font-medium text-ink">{{ t("listing.availability_history") }}</span>
+                · {{ date_text(event.observed_at) }}
+                · {{ status_label(event.from_status) if event.from_status else t("listing.discovered") }} → {{ status_label(event.to_status) }}
+              </p>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
       <div class="mt-6 flex flex-wrap gap-3">
         {% set has_item_page = not listing.source_listing_key.startswith("showroom:") %}
         <a class="detail-primary-action text-sm font-semibold"

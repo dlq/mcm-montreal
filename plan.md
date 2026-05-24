@@ -504,6 +504,17 @@ Likely work:
 - keep removed listings in internal history
 - add listing timeline data for admin review
 
+Started locally after `0.2.2`:
+
+- add D1/local schema for `listing_price_events`
+- record discovered and changed source prices during refresh
+- reuse existing `listing_availability_events` for availability history
+- show recent price and availability history on listing detail pages when history rows exist
+
+Deployment note:
+
+- apply D1 migration `0008_listing_price_events.sql` before deploying the history-reading app code
+
 ### Discovery Improvements
 
 Questions to settle:

@@ -172,6 +172,36 @@ def get_listing(db: sqlite3.Connection, listing_id: int) -> dict[str, Any] | Non
     return annotate_listing_row(row) if row else None
 
 
+def list_listing_price_events(db: sqlite3.Connection, listing_id: int) -> list[dict[str, Any]]:
+    rows = db.execute(
+        """
+        SELECT *
+        FROM listing_price_events
+        WHERE listing_id = ?
+        ORDER BY observed_at DESC, id DESC
+        LIMIT 12
+        """,
+        (listing_id,),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def list_listing_availability_events(
+    db: sqlite3.Connection, listing_id: int
+) -> list[dict[str, Any]]:
+    rows = db.execute(
+        """
+        SELECT *
+        FROM listing_availability_events
+        WHERE listing_id = ?
+        ORDER BY observed_at DESC, id DESC
+        LIMIT 12
+        """,
+        (listing_id,),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def list_shops(db: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = db.execute(
         """

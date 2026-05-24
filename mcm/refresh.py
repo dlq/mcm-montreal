@@ -234,7 +234,9 @@ def _refresh_source_listings(
         seen_keys.add(key)
         existing = db.execute(
             """
-            SELECT id, first_seen_at, availability_status, is_active
+            SELECT
+                id, first_seen_at, availability_status, is_active,
+                price_raw, price_value, currency
             FROM listings
             WHERE source_shop_id = ? AND source_listing_key = ?
             """,
@@ -283,6 +285,12 @@ def _refresh_source_listings(
         if existing:
             old_status = str(existing["availability_status"] or "")
             new_status = str(item.get("availability_status", "unknown"))
+            old_price_raw = str(existing["price_raw"] or "")
+            old_price_value = existing["price_value"]
+            old_currency = str(existing["currency"] or "CAD")
+            new_price_raw = str(item.get("price_raw", ""))
+            new_price_value = item.get("price_value")
+            new_currency = str(item.get("currency", "CAD"))
             db.execute(
                 """
                 UPDATE listings
@@ -353,6 +361,20 @@ def _refresh_source_listings(
                     str(key),
                     old_status,
                     new_status,
+                    timestamp,
+                    "source_refresh",
+                )
+            if price_changed(old_price_raw, old_price_value, old_currency, item):
+                record_price_event(
+                    db,
+                    int(existing["id"]),
+                    int(shop["id"]),
+                    str(key),
+                    old_price_raw,
+                    old_price_value,
+                    new_price_raw,
+                    new_price_value,
+                    new_currency,
                     timestamp,
                     "source_refresh",
                 )
@@ -455,6 +477,20 @@ def _refresh_source_listings(
                 timestamp,
                 "discovered",
             )
+            if item.get("price_raw") or item.get("price_value") is not None:
+                record_price_event(
+                    db,
+                    int(created["id"]),
+                    int(shop["id"]),
+                    str(key),
+                    "",
+                    None,
+                    str(item.get("price_raw", "")),
+                    item.get("price_value"),
+                    str(item.get("currency", "CAD")),
+                    timestamp,
+                    "discovered",
+                )
     deactivated = 0
     if crawl_is_authoritative:
         rows_to_deactivate = db.execute(
@@ -539,6 +575,55 @@ def record_availability_event(
     )
 
 
+def price_changed(
+    old_price_raw: str,
+    old_price_value: object,
+    old_currency: str,
+    item: dict[str, object],
+) -> bool:
+    return (
+        old_price_raw != str(item.get("price_raw", ""))
+        or old_price_value != item.get("price_value")
+        or old_currency != str(item.get("currency", "CAD"))
+    )
+
+
+def record_price_event(
+    db: sqlite3.Connection,
+    listing_id: int,
+    shop_id: int,
+    source_listing_key: str,
+    from_price_raw: str,
+    from_price_value: object,
+    to_price_raw: str,
+    to_price_value: object,
+    currency: str,
+    observed_at: str,
+    event_type: str,
+) -> None:
+    db.execute(
+        """
+        INSERT INTO listing_price_events (
+            listing_id, shop_id, source_listing_key, observed_at,
+            from_price_raw, from_price_value, to_price_raw, to_price_value,
+            currency, event_type
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            listing_id,
+            shop_id,
+            source_listing_key,
+            observed_at,
+            from_price_raw,
+            from_price_value,
+            to_price_raw,
+            to_price_value,
+            currency,
+            event_type,
+        ),
+    )
+
+
 def reassign_listing_events(
     db: sqlite3.Connection,
     from_listing_id: int,
@@ -548,6 +633,15 @@ def reassign_listing_events(
     db.execute(
         """
         UPDATE listing_availability_events
+        SET listing_id = ?,
+            source_listing_key = ?
+        WHERE listing_id = ?
+        """,
+        (to_listing_id, source_listing_key, from_listing_id),
+    )
+    db.execute(
+        """
+        UPDATE listing_price_events
         SET listing_id = ?,
             source_listing_key = ?
         WHERE listing_id = ?
@@ -647,7 +741,7 @@ def find_reconciliation_candidate(
         """
         SELECT
             id, source_listing_key, first_seen_at, availability_status, is_active,
-            price_value, primary_image_url, source_description
+            price_raw, price_value, currency, primary_image_url, source_description
         FROM listings
         WHERE source_shop_id = ?
           AND normalized_title = ?

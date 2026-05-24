@@ -442,6 +442,106 @@ class AppTests(unittest.TestCase):
             finally:
                 db.close()
 
+    def test_refresh_records_price_history_changes(self) -> None:
+        item = {
+            "source_listing_url": "https://example.com/listing",
+            "source_listing_key": "sample-key",
+            "title": "Sample Chair",
+            "price_raw": "$200",
+            "price_value": 200,
+            "currency": "CAD",
+            "primary_image_url": "https://example.com/image.jpg",
+            "additional_image_urls": [],
+            "availability_status": "available",
+            "shipping_scope": "canada",
+            "ships_to_montreal": 1,
+            "shipping_note": "Ships to Montreal",
+            "category": "lounge chairs",
+            "designer": "Test Designer",
+            "maker": "",
+            "era": "1960s",
+            "materials": "teak",
+            "dimensions_text": "20 x 20 x 30",
+            "condition_text": "Good",
+            "location_text": "Montreal, QC",
+            "source_description": "Sample description",
+            "ingest_source_type": "test",
+            "parse_confidence": 1.0,
+        }
+
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                with patch("mcm.refresh.fetch_source_listings", return_value=([item], None)):
+                    refresh_source_by_slug(db, "morceau")
+                event = db.execute(
+                    """
+                    SELECT from_price_raw, from_price_value, to_price_raw, to_price_value
+                    FROM listing_price_events
+                    WHERE listing_id = ?
+                    """,
+                    (self.listing_id,),
+                ).fetchone()
+                self.assertEqual(event["from_price_raw"], "$250")
+                self.assertEqual(event["from_price_value"], 250)
+                self.assertEqual(event["to_price_raw"], "$200")
+                self.assertEqual(event["to_price_value"], 200)
+            finally:
+                db.close()
+
+        response = self.client.get(f"/listing/{public_item_number(self.listing_id)}")
+        self.assertIn("History", response.text)
+        self.assertIn("$250", response.text)
+        self.assertIn("$200", response.text)
+
+    def test_refresh_records_discovered_price_history(self) -> None:
+        item = {
+            "source_listing_url": "https://example.com/new-listing",
+            "source_listing_key": "new-price-key",
+            "title": "New Price Chair",
+            "price_raw": "$500",
+            "price_value": 500,
+            "currency": "CAD",
+            "primary_image_url": "",
+            "additional_image_urls": [],
+            "availability_status": "available",
+            "shipping_scope": "canada",
+            "ships_to_montreal": 1,
+            "shipping_note": "Ships to Montreal",
+            "category": "lounge chairs",
+            "designer": "",
+            "maker": "",
+            "era": "",
+            "materials": "teak",
+            "dimensions_text": "",
+            "condition_text": "",
+            "location_text": "Montreal, QC",
+            "source_description": "",
+            "ingest_source_type": "test",
+            "parse_confidence": 1.0,
+        }
+
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                with patch("mcm.refresh.fetch_source_listings", return_value=([item], None)):
+                    refresh_source_by_slug(db, "morceau")
+                event = db.execute(
+                    """
+                    SELECT from_price_raw, from_price_value, to_price_raw,
+                           to_price_value, event_type
+                    FROM listing_price_events
+                    WHERE source_listing_key = 'new-price-key'
+                    """
+                ).fetchone()
+                self.assertEqual(event["from_price_raw"], "")
+                self.assertIsNone(event["from_price_value"])
+                self.assertEqual(event["to_price_raw"], "$500")
+                self.assertEqual(event["to_price_value"], 500)
+                self.assertEqual(event["event_type"], "discovered")
+            finally:
+                db.close()
+
     def test_refresh_records_per_source_job_status(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)
