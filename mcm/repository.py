@@ -23,6 +23,14 @@ SEARCH_FIELDS = (
     "COALESCE(NULLIF(l.category_override, ''), l.category)",
     "l.source_description",
 )
+SEARCH_SCORE_FIELDS = (
+    ("l.title", 16),
+    ("l.designer", 12),
+    ("l.maker", 12),
+    ("COALESCE(NULLIF(l.category_override, ''), l.category)", 10),
+    ("l.materials", 8),
+    ("l.source_description", 3),
+)
 SEARCH_SYNONYM_GROUPS = (
     ("teak", "teck"),
     ("rosewood", "palissandre"),
@@ -95,6 +103,7 @@ def query_listings(
     offset: int = 0,
 ) -> list[dict[str, Any]]:
     clauses, params = listing_query_parts(filters, include_inactive)
+    sort = sanitize_sort(filters.get("sort", "curated"))
     order_by = {
         "curated": "CASE WHEN s.slug = 'mostly-danish' THEN 1 ELSE 0 END ASC, l.first_seen_at DESC",
         "newest": "l.first_seen_at DESC",
@@ -102,7 +111,12 @@ def query_listings(
         "price_low": "CASE WHEN l.price_value IS NULL THEN 1 ELSE 0 END, l.price_value ASC",
         "price_high": "CASE WHEN l.price_value IS NULL THEN 1 ELSE 0 END, l.price_value DESC",
         "recent_source": "l.last_seen_at DESC",
-    }[sanitize_sort(filters.get("sort", "curated"))]
+    }[sort]
+    order_params: list[Any] = []
+    if filters.get("q") and sort == "curated":
+        score_sql, order_params = search_score_expression(filters["q"])
+        if score_sql:
+            order_by = f"{score_sql} DESC, {order_by}"
     page_clause = ""
     page_params: list[Any] = []
     if limit is not None:
@@ -121,7 +135,7 @@ def query_listings(
         ORDER BY {order_by}
         {page_clause}
         """,
-        [*params, *page_params],
+        [*params, *order_params, *page_params],
     ).fetchall()
     return annotate_listing_rows(rows)
 
@@ -220,6 +234,22 @@ def search_term_groups(query: str) -> list[list[str]]:
         terms = sorted(SEARCH_SYNONYMS.get(token, {token}))
         groups.append(terms)
     return groups
+
+
+def search_score_expression(query: str) -> tuple[str, list[str]]:
+    groups = search_term_groups(query)
+    if not groups:
+        return "", []
+    score_parts = []
+    params: list[str] = []
+    for group in groups:
+        for field, weight in SEARCH_SCORE_FIELDS:
+            matches = []
+            for term in group:
+                matches.append(f"{field} LIKE ?")
+                params.append(f"%{term}%")
+            score_parts.append(f"CASE WHEN {' OR '.join(matches)} THEN {weight} ELSE 0 END")
+    return " + ".join(score_parts), params
 
 
 def get_listing(db: sqlite3.Connection, listing_id: int) -> dict[str, Any] | None:

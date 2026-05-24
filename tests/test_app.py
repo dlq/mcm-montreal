@@ -1530,6 +1530,61 @@ class AppTests(unittest.TestCase):
         self.assertIn("Buffet en teck", match_response.text)
         self.assertIn("0 listings", miss_response.text)
 
+    def test_search_ranks_title_matches_before_description_matches(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET title = 'Generic Cabinet',
+                        normalized_title = 'generic cabinet',
+                        materials = '',
+                        source_description = 'A teak sideboard in restored condition.'
+                    WHERE id = ?
+                    """,
+                    (self.listing_id,),
+                )
+                db.execute(
+                    """
+                    INSERT INTO listings (
+                        source_shop_id, source_listing_url, source_listing_key, title,
+                        normalized_title, price_raw, price_value, currency, primary_image_url,
+                        additional_image_urls, availability_status, shipping_scope,
+                        ships_to_montreal, shipping_note, last_seen_at, last_checked_at,
+                        first_seen_at, category, subcategory, designer, maker, era, materials,
+                        dimensions_text, width, depth, height, condition_text, location_text,
+                        source_description, ingest_source_type, parse_confidence, dedupe_group_id,
+                        is_active, is_featured, manual_notes, availability_override,
+                        category_override
+                    )
+                    SELECT
+                        source_shop_id, 'https://example.com/title-match', 'title-match-key',
+                        'Teak Sideboard', 'teak sideboard', price_raw, price_value, currency,
+                        primary_image_url, additional_image_urls, availability_status,
+                        shipping_scope, ships_to_montreal, shipping_note, last_seen_at,
+                        last_checked_at, first_seen_at, category, subcategory, designer, maker,
+                        era, '', dimensions_text, width, depth, height, condition_text,
+                        location_text, '', ingest_source_type, parse_confidence, dedupe_group_id,
+                        is_active, is_featured, manual_notes, availability_override,
+                        category_override
+                    FROM listings
+                    WHERE id = ?
+                    """,
+                    (self.listing_id,),
+                )
+                db.commit()
+                rows = query_listings(
+                    db,
+                    {"q": "teak sideboard", "sort": "curated", "availability": "available"},
+                    include_inactive=False,
+                )
+                self.assertGreaterEqual(len(rows), 2)
+                self.assertEqual(rows[0]["title"], "Teak Sideboard")
+                self.assertEqual(rows[1]["title"], "Generic Cabinet")
+            finally:
+                db.close()
+
     def test_material_dropdown_localizes_canonical_materials(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)

@@ -550,6 +550,8 @@ Completed in `0.2.x`:
 - replace free-text Location filtering with a dropdown of current listing locations
 - add curated bilingual synonym expansion for listing search so English/French terms such as
   `teak` / `teck`, `rosewood` / `palissandre`, and `sideboard` / `buffet` find the same inventory
+- rank default search results by weighted field relevance so title/designer/category/material
+  matches appear ahead of weaker description-only matches
 - add broken-image fallbacks so upstream `403` / missing source images render as "Image not
   available" instead of browser broken-image icons
 - make the shops index responsive at one, two, and three columns as viewport width allows
