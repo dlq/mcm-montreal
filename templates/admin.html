@@ -41,6 +41,9 @@
                       {% if source.last_job_status %}
                         {{ source.last_job_status }}
                         <span class="text-ink/45">
+                          {% if source.last_job_chunk_index is not none %}
+                            · chunk {{ source.last_job_chunk_index }}
+                          {% endif %}
                           · +{{ source.last_job_new_count or 0 }} / -{{ source.last_job_hidden_count or 0 }}
                         </span>
                       {% else %}

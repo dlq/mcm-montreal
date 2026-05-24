@@ -440,6 +440,13 @@ def admin_sources(db: sqlite3.Connection) -> list[sqlite3.Row]:
                 LIMIT 1
             ) AS last_job_hidden_count,
             (
+                SELECT rj.chunk_index
+                FROM refresh_jobs rj
+                WHERE rj.shop_id = s.id
+                ORDER BY rj.started_at DESC, rj.id DESC
+                LIMIT 1
+            ) AS last_job_chunk_index,
+            (
                 SELECT COUNT(*)
                 FROM listings l
                 WHERE l.source_shop_id = s.id

@@ -129,6 +129,8 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             shop_id INTEGER NOT NULL,
             source_slug TEXT NOT NULL,
+            chunk_index INTEGER,
+            entry_url TEXT NOT NULL DEFAULT '',
             started_at TEXT NOT NULL,
             finished_at TEXT NOT NULL DEFAULT '',
             status TEXT NOT NULL,
@@ -144,7 +146,24 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             ON listing_availability_events(listing_id, from_status, to_status);
         """
     )
+    ensure_refresh_job_columns(db)
     db.commit()
+
+
+def ensure_refresh_job_columns(db: sqlite3.Connection) -> None:
+    existing_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(refresh_jobs)").fetchall()
+    }
+    if "chunk_index" not in existing_columns:
+        db.execute("ALTER TABLE refresh_jobs ADD COLUMN chunk_index INTEGER")
+    if "entry_url" not in existing_columns:
+        db.execute("ALTER TABLE refresh_jobs ADD COLUMN entry_url TEXT NOT NULL DEFAULT ''")
+    db.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_refresh_jobs_source_chunk_started
+            ON refresh_jobs(source_slug, chunk_index, started_at)
+        """
+    )
 
 
 def ensure_shops_seeded(db: sqlite3.Connection) -> None:

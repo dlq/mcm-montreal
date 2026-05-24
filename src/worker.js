@@ -358,8 +358,8 @@ async function checkRefreshJobs(env) {
   await markStaleRefreshJobs(env, checkedAt.toISOString(), staleCutoff);
   const result = await env.DB.prepare(
     `
-    SELECT source_slug, status, started_at, finished_at, error_message, hidden_count
-      , listings_found, new_count, reconciled_count
+    SELECT source_slug, chunk_index, entry_url, status, started_at, finished_at, error_message
+      , hidden_count, listings_found, new_count, reconciled_count
     FROM refresh_jobs
     WHERE started_at >= ?
     ORDER BY started_at DESC
@@ -379,11 +379,13 @@ async function checkRefreshJobs(env) {
     const sourceJobs = jobsBySource.get(sourceSlug) || [];
     const expectedJobs = expectedRefreshJobCount(sourceSlug);
     if (sourceJobs.length < expectedJobs) {
+      const missingChunkIndexes = missingExpectedChunkIndexes(sourceSlug, sourceJobs);
       warnings.push({
         source_slug: sourceSlug,
         reason: "missing_refresh_jobs",
         expected_jobs: expectedJobs,
         observed_jobs: sourceJobs.length,
+        ...(missingChunkIndexes.length > 0 ? { missing_chunk_indexes: missingChunkIndexes } : {}),
       });
       continue;
     }
@@ -398,6 +400,7 @@ async function checkRefreshJobs(env) {
         latest_started_at: nonSuccessJobs[0]?.started_at || "",
         latest_finished_at: nonSuccessJobs[0]?.finished_at || "",
         latest_error_message: nonSuccessJobs[0]?.error_message || "",
+        affected_chunk_indexes: chunkIndexesForJobs(nonSuccessJobs),
       });
     }
 
@@ -437,6 +440,7 @@ async function checkRefreshJobs(env) {
         source_slug: job.source_slug,
         reason: "refresh_job_still_running",
         started_at: job.started_at,
+        chunk_index: job.chunk_index ?? null,
       });
     }
   }
@@ -468,6 +472,38 @@ function expectedRefreshJobCount(sourceSlug) {
     return MOSTLY_DANISH_CHUNKS_PER_REFRESH;
   }
   return 1;
+}
+
+function expectedChunkIndexes(sourceSlug) {
+  if (sourceSlug === SHOWROOM_SOURCE_SLUG) {
+    return Array.from({ length: SHOWROOM_CHUNK_COUNT }, (_value, index) => index);
+  }
+  if (sourceSlug === LE_CENTERPIECE_SOURCE_SLUG) {
+    return Array.from({ length: LE_CENTERPIECE_CHUNK_COUNT }, (_value, index) => index);
+  }
+  if (sourceSlug === CHEZ_LAMOTHE_SOURCE_SLUG) {
+    return Array.from({ length: CHEZ_LAMOTHE_CHUNK_COUNT }, (_value, index) => index);
+  }
+  return [];
+}
+
+function missingExpectedChunkIndexes(sourceSlug, jobs) {
+  const expected = expectedChunkIndexes(sourceSlug);
+  if (expected.length === 0 || jobs.every((job) => job.chunk_index == null)) {
+    return [];
+  }
+  const observed = new Set(
+    jobs
+      .map((job) => Number(job.chunk_index))
+      .filter((chunkIndex) => Number.isInteger(chunkIndex) && chunkIndex >= 0),
+  );
+  return expected.filter((chunkIndex) => !observed.has(chunkIndex));
+}
+
+function chunkIndexesForJobs(jobs) {
+  return jobs
+    .map((job) => job.chunk_index)
+    .filter((chunkIndex) => chunkIndex !== null && chunkIndex !== undefined);
 }
 
 function summarizeJobStatuses(jobs) {

@@ -36,6 +36,7 @@ class RefreshJobRef:
     shop_id: int
     source_slug: str
     started_at: str
+    chunk_index: int | None = None
 
 
 @dataclass(frozen=True)
@@ -101,6 +102,8 @@ def refresh_showroom_chunk(db: sqlite3.Connection, chunk_index: int) -> Showroom
         listings,
         error,
         crawl_is_authoritative=False,
+        chunk_index=chunk_index,
+        entry_url=entry_url,
     )
     db.commit()
     return ShowroomChunkResult(result=result, chunk_index=chunk_index, entry_url=entry_url)
@@ -122,6 +125,8 @@ def refresh_le_centerpiece_chunk(db: sqlite3.Connection, chunk_index: int) -> So
         listings,
         error,
         crawl_is_authoritative=False,
+        chunk_index=chunk_index,
+        entry_url=entry_url,
     )
     db.commit()
     return SourceChunkResult(result=result, chunk_index=chunk_index, entry_url=entry_url)
@@ -141,6 +146,8 @@ def refresh_chez_lamothe_chunk(db: sqlite3.Connection, chunk_index: int) -> Sour
         listings,
         error,
         crawl_is_authoritative=False,
+        chunk_index=chunk_index,
+        entry_url=source.listing_urls[0],
     )
     db.commit()
     return SourceChunkResult(
@@ -170,6 +177,8 @@ def refresh_mostly_danish_chunk(db: sqlite3.Connection, chunk_index: int) -> Sou
         listings,
         error,
         crawl_is_authoritative=False,
+        chunk_index=chunk_index,
+        entry_url=f"{entry_url}?page={page}",
     )
     db.commit()
     return SourceChunkResult(result=result, chunk_index=chunk_index, entry_url=entry_url)
@@ -193,6 +202,8 @@ def _refresh_source_listings(
     error: str | None,
     *,
     crawl_is_authoritative: bool,
+    chunk_index: int | None = None,
+    entry_url: str = "",
 ) -> RefreshResult:
     started_at = datetime.now(UTC).isoformat()
     timestamp = started_at
@@ -200,7 +211,14 @@ def _refresh_source_listings(
     shop = get_shop_by_slug(db, source.slug)
     if not shop:
         raise RuntimeError(f"Missing shop record for source slug: {source.slug}")
-    job = start_refresh_job(db, int(shop["id"]), source.slug, started_at)
+    job = start_refresh_job(
+        db,
+        int(shop["id"]),
+        source.slug,
+        started_at,
+        chunk_index=chunk_index,
+        entry_url=entry_url,
+    )
     existing_listing_count = db.execute(
         "SELECT COUNT(*) AS count FROM listings WHERE source_shop_id = ?",
         (shop["id"],),
@@ -543,15 +561,25 @@ def start_refresh_job(
     shop_id: int,
     source_slug: str,
     started_at: str,
+    *,
+    chunk_index: int | None = None,
+    entry_url: str = "",
 ) -> RefreshJobRef:
     db.execute(
         """
-        INSERT INTO refresh_jobs (shop_id, source_slug, started_at, status)
-        VALUES (?, ?, ?, 'running')
+        INSERT INTO refresh_jobs (
+            shop_id, source_slug, chunk_index, entry_url, started_at, status
+        )
+        VALUES (?, ?, ?, ?, ?, 'running')
         """,
-        (shop_id, source_slug, started_at),
+        (shop_id, source_slug, chunk_index, entry_url, started_at),
     )
-    return RefreshJobRef(shop_id=shop_id, source_slug=source_slug, started_at=started_at)
+    return RefreshJobRef(
+        shop_id=shop_id,
+        source_slug=source_slug,
+        started_at=started_at,
+        chunk_index=chunk_index,
+    )
 
 
 def finish_refresh_job(

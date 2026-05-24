@@ -423,6 +423,8 @@ Completed in `0.2.x`:
   Chez Lamothe
 - log monitor warnings for missing jobs, non-success jobs, still-running jobs, suspicious
   hidden-count spikes, and unknown source slugs
+- add chunk metadata to `refresh_jobs` so chunked source failures can identify the affected
+  `chunk_index` and source URL instead of only reporting source-level counts
 
 Decision:
 

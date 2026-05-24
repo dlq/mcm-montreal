@@ -121,6 +121,8 @@ function refreshJob(sourceSlug, overrides = {}) {
     status: "success",
     started_at: "2026-05-12T09:24:00+00:00",
     finished_at: "2026-05-12T09:25:00+00:00",
+    chunk_index: null,
+    entry_url: "",
     error_message: "",
     hidden_count: 0,
     listings_found: 10,
@@ -134,6 +136,16 @@ function refreshJobs(sourceSlug, count, overrides = {}) {
   return Array.from({ length: count }, (_value, index) =>
     refreshJob(sourceSlug, {
       started_at: `2026-05-12T09:${String(24 + index).padStart(2, "0")}:00+00:00`,
+      ...overrides,
+    }),
+  );
+}
+
+function refreshChunkJobs(sourceSlug, chunkIndexes, overrides = {}) {
+  return chunkIndexes.map((chunkIndex) =>
+    refreshJob(sourceSlug, {
+      chunk_index: chunkIndex,
+      started_at: `2026-05-12T09:${String(24 + chunkIndex).padStart(2, "0")}:00+00:00`,
       ...overrides,
     }),
   );
@@ -251,6 +263,42 @@ const worker = await loadWorker();
   const monitorLog = captured.logs.map((message) => JSON.parse(message))[0];
   assert.equal(monitorLog.event, "refresh_job_monitor");
   assert.deepEqual(monitorLog.warnings, []);
+}
+
+{
+  const db = makeDb(
+    [
+      ...refreshJobs("morceau", 1),
+      ...refreshChunkJobs(
+        "showroom-montreal",
+        Array.from({ length: 12 }, (_value, index) => index).filter((index) => index !== 7),
+      ),
+      ...refreshJobs("montreal-moderne", 1),
+      ...refreshJobs("le-centerpiece", 7),
+      ...refreshJobs("maison-singulier", 1),
+      ...refreshJobs("yardsale-vintage", 1),
+      ...refreshJobs("bond-vintage", 1),
+      ...refreshJobs("chez-lamothe", 20),
+      ...refreshJobs("habitat-mobilier", 1),
+      ...refreshJobs("green-wall-vintage", 1),
+      ...refreshJobs("mostly-danish", 5),
+    ],
+    0,
+  );
+  const ctx = makeCtx();
+
+  const captured = await captureConsole(async () => {
+    await worker.scheduled({ cron: "23 11 * * *" }, { DB: db }, ctx);
+    assert.equal(ctx.promises.length, 1);
+    await Promise.all(ctx.promises);
+  });
+
+  const monitorWarning = captured.warnings.map((message) => JSON.parse(message))[0];
+  const missingWarning = monitorWarning.warnings.find(
+    (warning) => warning.source_slug === "showroom-montreal",
+  );
+  assert.equal(missingWarning.reason, "missing_refresh_jobs");
+  assert.deepEqual(missingWarning.missing_chunk_indexes, [7]);
 }
 
 {

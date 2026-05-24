@@ -162,7 +162,8 @@ message at a time, calls the private Worker-to-container refresh endpoint, and r
 before sending exhausted messages to `montreal-mcm-refresh-dlq`.
 
 Each completed source refresh records a row in `refresh_jobs`, plus the existing `crawl_runs` and
-`crawl_failures` records.
+`crawl_failures` records. Chunked sources also record `chunk_index` and `entry_url` so monitor logs
+and admin status can identify the specific chunk involved.
 
 Conservative source failure behavior is intentional: if a source fetch or parser fails and the shop
 already has records, fallback data is not treated as authoritative and existing listings are not

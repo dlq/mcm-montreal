@@ -645,9 +645,20 @@ class AppTests(unittest.TestCase):
                 created = db.execute(
                     "SELECT id FROM listings WHERE source_listing_key = 'showroom:new'"
                 ).fetchone()
+                job = db.execute(
+                    """
+                    SELECT chunk_index, entry_url
+                    FROM refresh_jobs
+                    WHERE source_slug = 'showroom-montreal'
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """
+                ).fetchone()
                 self.assertEqual(existing["is_active"], 1)
                 self.assertEqual(existing["availability_status"], "available")
                 self.assertIsNotNone(created)
+                self.assertEqual(job["chunk_index"], 0)
+                self.assertEqual(job["entry_url"], "https://www.showroommtl.com/nouveaute")
             finally:
                 db.close()
 
