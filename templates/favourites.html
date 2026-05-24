@@ -9,6 +9,22 @@
       </div>
       <aside class="favourite-shop-rail space-y-3">
         <div class="favourite-shops-toolbar border-b border-ink/10 pb-3">
+          <p class="text-sm font-medium text-ink/60">{{ t("saved_searches.title") }}</p>
+        </div>
+        {% for search in saved_searches %}
+          <div class="flex items-center justify-between gap-3 border-b border-ink/10 py-3">
+            <a class="text-sm font-medium hover:text-moss"
+               href="{{ url_for("listings") }}?{{ search.query_string }}">{{ search.name }}</a>
+            <form method="post"
+                  action="{{ url_for('remove_saved_search', saved_search_id=search.id) }}">
+              <button class="text-xs font-semibold uppercase tracking-[0.16em] text-ink/45 hover:text-clay"
+                      type="submit">{{ t("saved_searches.delete") }}</button>
+            </form>
+          </div>
+        {% else %}
+          <p class="text-sm text-ink/60">{{ t("saved_searches.empty") }}</p>
+        {% endfor %}
+        <div class="favourite-shops-toolbar border-b border-ink/10 pb-3">
           <p class="text-sm font-medium text-ink/60">
             {% if saved_shops|length == 1 %}
               {{ t("favourites.shop_count_one") }}

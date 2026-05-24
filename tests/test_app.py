@@ -314,6 +314,67 @@ class AppTests(unittest.TestCase):
             finally:
                 db.close()
 
+    def test_saved_searches_create_list_and_delete(self) -> None:
+        response = self.client.post(
+            "/saved-searches",
+            data={"q": "teak", "category": "lounge chairs", "sort": "newest"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("q=teak", response.headers["Location"])
+        self.assertIn("category=lounge+chairs", response.headers["Location"])
+        searches_response = self.client.get("/favourites")
+        self.assertIn("teak / lounge chairs", searches_response.text)
+        self.assertIn("Saved searches", searches_response.text)
+
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                saved = db.execute(
+                    """
+                    SELECT id, query_string
+                    FROM anonymous_saved_searches
+                    LIMIT 1
+                    """
+                ).fetchone()
+                self.assertIn("q=teak", saved["query_string"])
+                self.assertIn("category=lounge+chairs", saved["query_string"])
+                self.assertIn("sort=newest", saved["query_string"])
+                saved_id = int(saved["id"])
+            finally:
+                db.close()
+
+        delete_response = self.client.post(
+            f"/saved-searches/{saved_id}/delete",
+            follow_redirects=True,
+        )
+
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertIn("No saved searches yet.", delete_response.text)
+
+    def test_saved_searches_route_redirects_to_favourites(self) -> None:
+        response = self.client.get("/saved-searches")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/favourites")
+
+    def test_saved_searches_do_not_duplicate_same_query(self) -> None:
+        for _index in range(2):
+            self.client.post(
+                "/saved-searches",
+                data={"q": "teak", "category": "lounge chairs"},
+            )
+
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                count = db.execute(
+                    "SELECT COUNT(*) AS count FROM anonymous_saved_searches"
+                ).fetchone()["count"]
+                self.assertEqual(count, 1)
+            finally:
+                db.close()
+
     def test_refresh_runs_without_request_context(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)

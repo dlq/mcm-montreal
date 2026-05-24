@@ -157,6 +157,15 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL,
             PRIMARY KEY (owner_key, shop_id)
         );
+        CREATE TABLE IF NOT EXISTS anonymous_saved_searches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner_key TEXT NOT NULL,
+            name TEXT NOT NULL,
+            query_string TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(owner_key, query_string)
+        );
         CREATE INDEX IF NOT EXISTS idx_listing_availability_events_listing
             ON listing_availability_events(listing_id, observed_at);
         CREATE INDEX IF NOT EXISTS idx_listing_availability_events_transition
@@ -165,6 +174,8 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             ON anonymous_favourite_listings(listing_id);
         CREATE INDEX IF NOT EXISTS idx_anonymous_favourite_shops_shop
             ON anonymous_favourite_shops(shop_id);
+        CREATE INDEX IF NOT EXISTS idx_anonymous_saved_searches_owner
+            ON anonymous_saved_searches(owner_key, updated_at);
         """
     )
     ensure_refresh_job_columns(db)

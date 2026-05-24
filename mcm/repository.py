@@ -421,6 +421,52 @@ def favourite_counts() -> dict[str, int]:
     }
 
 
+def save_search(db: sqlite3.Connection, name: str, query_string: str) -> None:
+    owner_key = current_owner_key()
+    if not owner_key or not query_string:
+        return
+    now = datetime.now(UTC).isoformat()
+    db.execute(
+        """
+        INSERT INTO anonymous_saved_searches (
+            owner_key, name, query_string, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(owner_key, query_string) DO UPDATE SET
+            name = excluded.name,
+            updated_at = excluded.updated_at
+        """,
+        (owner_key, name, query_string, now, now),
+    )
+    db.commit()
+
+
+def delete_saved_search(db: sqlite3.Connection, saved_search_id: int) -> None:
+    owner_key = current_owner_key()
+    if not owner_key:
+        return
+    db.execute(
+        "DELETE FROM anonymous_saved_searches WHERE owner_key = ? AND id = ?",
+        (owner_key, saved_search_id),
+    )
+    db.commit()
+
+
+def list_saved_searches(db: sqlite3.Connection) -> list[dict[str, Any]]:
+    owner_key = current_owner_key()
+    if not owner_key:
+        return []
+    rows = db.execute(
+        """
+        SELECT id, name, query_string, created_at, updated_at
+        FROM anonymous_saved_searches
+        WHERE owner_key = ?
+        ORDER BY updated_at DESC, id DESC
+        """,
+        (owner_key,),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def admin_sources(db: sqlite3.Connection) -> list[sqlite3.Row]:
     return db.execute(
         """

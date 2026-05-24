@@ -169,5 +169,15 @@
         </button>
       </div>
     </form>
+    <form class="mt-3"
+          method="post"
+          action="{{ url_for('create_saved_search') }}">
+      {% for key, value in filters.items() %}
+        {% if value %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}
+      {% endfor %}
+      <button class="listing-toolbar-reset text-sm font-semibold" type="submit">
+        {{ t("saved_searches.save_current") }}
+      </button>
+    </form>
   </listing-filters>
 </aside>

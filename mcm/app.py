@@ -49,6 +49,7 @@ from .repository import (
     admin_sources,
     build_listing_filters,
     count_listings,
+    delete_saved_search,
     favourite_counts,
     find_duplicate_candidates,
     get_listing,
@@ -59,8 +60,10 @@ from .repository import (
     list_favourite_shops,
     list_filter_values,
     list_location_filter_values,
+    list_saved_searches,
     list_shops,
     query_listings,
+    save_search,
     toggle_favourite_listing,
     toggle_favourite_shop,
     update_listing_overrides,
@@ -77,6 +80,37 @@ def static_asset_version(filename: str) -> int:
         return int(path.stat().st_mtime)
     except OSError:
         return 0
+
+
+def saved_search_query_string(filters: dict[str, str]) -> str:
+    values = {
+        key: value
+        for key, value in filters.items()
+        if value
+        and not (key == "availability" and value == "available")
+        and not (key == "sort" and value == "curated")
+    }
+    return urlencode(values)
+
+
+def saved_search_name(filters: dict[str, str]) -> str:
+    parts = []
+    if filters.get("q"):
+        parts.append(filters["q"])
+    for key in ("shop", "category", "material", "designer", "location"):
+        if filters.get(key):
+            parts.append(filters[key])
+    if filters.get("price_min") or filters.get("price_max"):
+        parts.append(
+            " ".join(
+                value
+                for value in (filters.get("price_min", ""), filters.get("price_max", ""))
+                if value
+            )
+        )
+    if filters.get("availability") and filters["availability"] != "available":
+        parts.append(filters["availability"].replace("_", " "))
+    return " / ".join(parts)[:120] or "Default browse"
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
@@ -145,6 +179,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "now_iso": datetime.now(UTC).isoformat(),
         }
 
+    def listing_context(filters: dict[str, str]) -> dict[str, Any]:
+        return {
+            "shops": list_shops(g.db),
+            "categories": list_filter_values(g.db, "category"),
+            "materials": list_filter_values(g.db, "materials"),
+            "designers": list_filter_values(g.db, "designer"),
+            "locations": list_location_filter_values(g.db),
+            "saved_searches": list_saved_searches(g.db),
+        }
+
     @app.get("/")
     def listings() -> str:
         filters = build_listing_filters(request.args)
@@ -178,12 +222,27 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             has_more_listings=has_more_listings,
             next_page_url=next_page_url,
             filters=filters,
-            shops=list_shops(g.db),
-            categories=list_filter_values(g.db, "category"),
-            materials=list_filter_values(g.db, "materials"),
-            designers=list_filter_values(g.db, "designer"),
-            locations=list_location_filter_values(g.db),
+            **listing_context(filters),
         )
+
+    @app.post("/saved-searches")
+    def create_saved_search() -> Any:
+        filters = build_listing_filters(request.form)
+        query_string = saved_search_query_string(filters)
+        if query_string:
+            save_search(g.db, saved_search_name(filters), query_string)
+        return redirect(
+            f"{url_for('listings')}?{query_string}" if query_string else url_for("listings")
+        )
+
+    @app.get("/saved-searches")
+    def saved_searches() -> Any:
+        return redirect(url_for("favourites"))
+
+    @app.post("/saved-searches/<int:saved_search_id>/delete")
+    def remove_saved_search(saved_search_id: int) -> Any:
+        delete_saved_search(g.db, saved_search_id)
+        return redirect(url_for("favourites"))
 
     @app.get("/healthz")
     def healthz() -> tuple[str, int]:
@@ -354,6 +413,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "favourites.html",
             saved_listings=list_favourite_listings(g.db),
             saved_shops=list_favourite_shops(g.db),
+            saved_searches=list_saved_searches(g.db),
         )
 
     @app.get("/language/<lang_code>")

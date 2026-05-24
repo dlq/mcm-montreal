@@ -449,6 +449,14 @@ Likely work:
 - email when a saved search gets a new match
 - email when a saved item changes status or appears removed
 
+Completed locally after `0.2.2`:
+
+- saved searches share the durable anonymous identity model with favourites
+- users can save the current listing filters and manage saved searches from the existing Favourites
+  page
+- saved search alerts and email capture remain deferred until matching and notification semantics
+  are clearer
+
 ### Durable Anonymous Identity
 
 Browser-session favourites are enough for the MVP, but they are fragile across devices.
@@ -472,6 +480,13 @@ Likely work:
 - migration path from session favourites
 - saved shops that survive browser session loss
 - optional email capture only when needed for alerts
+
+Completed locally after `0.2.2`:
+
+- durable anonymous identity uses a signed first-party browser cookie and stores only a hashed
+  `owner_key` in D1
+- listing and shop favourites moved behind the anonymous owner key
+- old session favourite IDs migrate into the durable favourite tables when the browser returns
 
 ### Price And Availability History
 

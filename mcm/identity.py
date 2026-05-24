@@ -42,7 +42,7 @@ def persist_anonymous_identity(response: Response) -> Response:
             sign_identity_token(token),
             max_age=ANONYMOUS_COOKIE_MAX_AGE,
             httponly=True,
-            secure=request.is_secure,
+            secure=request.is_secure or bool(current_app.config.get("D1_BRIDGE_URL")),
             samesite="Lax",
         )
     return response
