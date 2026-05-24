@@ -1,7 +1,7 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-05-18
+Updated: 2026-05-24
 Current line: `0.2.x`
 
 ## Purpose
@@ -44,6 +44,7 @@ The live `0.1.x` MVP includes:
 - Cloudflare D1 production database
 - daily Cloudflare refresh cron and later refresh-monitor cron
 - protected production admin routes
+- lazy-loaded listing cards in 48-card batches on the public browse page
 
 The local development app remains Flask + SQLite at `data/mcm.db`.
 
@@ -57,6 +58,10 @@ data.
 - Release tag `0.1.0`: Cloudflare container deployment baseline
 - Release tag `0.1.2`: Cloudflare Queue-backed refresh baseline with Showroom and Le Centerpiece
   chunking
+- Release tag `0.2.1`: regional source expansion baseline with Habitat Mobilier, Green Wall
+  Vintage, and gradual Mostly Danish ingestion
+- Release tag `0.2.2`: public browse performance release with 48-card lazy loading and a rotated
+  Cloudflare container instance so the deployed container serves the current image
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
@@ -384,6 +389,8 @@ Completed in `0.1.2`:
 - deploy stale `running` job marking in the monitor cron so admin status is not noisy
 - deploy Le Centerpiece collection chunks with sold-out Shopify products skipped in chunked refreshes
 - confirm forced production runs for Showroom and Le Centerpiece complete as successful chunk jobs
+- rotate the named Cloudflare container instance when a deployed image needs a fresh warm container
+  to pick up the current filesystem
 
 Completed on 2026-05-14:
 
@@ -516,6 +523,9 @@ Completed in `0.2.x`:
 - add broken-image fallbacks so upstream `403` / missing source images render as "Image not
   available" instead of browser broken-image icons
 - make the shops index responsive at one, two, and three columns as viewport width allows
+- make the public listing grid lazy-load cards in 48-card batches. On 2026-05-24, the live initial
+  HTML dropped from about 3.25 MB / 1,311 cards to about 145 KB / 48 cards, with a warmed response
+  around 1.2 seconds and subsequent HTMX batches around 115 KB.
 
 ### Source Expansion
 
