@@ -1,6 +1,6 @@
 import { Container } from "@cloudflare/containers";
 
-const CONTAINER_INSTANCE_NAME = "web-d1-v4";
+const CONTAINER_INSTANCE_NAME = "web-d1-v5";
 const CONTAINER_PORT = 8080;
 const DEFAULT_APEX_HOSTNAME = "montrealmcm.ca";
 const DEFAULT_WWW_HOSTNAME = "www.montrealmcm.ca";
