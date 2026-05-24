@@ -45,6 +45,9 @@ The live `0.1.x` MVP includes:
 - daily Cloudflare refresh cron and later refresh-monitor cron
 - protected production admin routes
 - lazy-loaded listing cards in 48-card batches on the public browse page
+- durable anonymous favourites, saved shops, and saved searches
+- bilingual synonym-expanded listing search with weighted default ranking
+- listing detail history for recorded price and availability changes
 
 The local development app remains Flask + SQLite at `data/mcm.db`.
 
@@ -449,11 +452,14 @@ Likely work:
 - email when a saved search gets a new match
 - email when a saved item changes status or appears removed
 
-Completed locally after `0.2.2`:
+Completed in `0.2.x`:
 
 - saved searches share the durable anonymous identity model with favourites
 - users can save the current listing filters and manage saved searches from the existing Favourites
   page
+- saving a search after HTMX filter updates now captures the current visible filter form, with a
+  same-origin referrer fallback for empty posts
+- the Favourites nav count reflects saved listings, saved shops, and saved searches together
 - saved search alerts and email capture remain deferred until matching and notification semantics
   are clearer
 
@@ -481,7 +487,7 @@ Likely work:
 - saved shops that survive browser session loss
 - optional email capture only when needed for alerts
 
-Completed locally after `0.2.2`:
+Completed in `0.2.x`:
 
 - durable anonymous identity uses a signed first-party browser cookie and stores only a hashed
   `owner_key` in D1
@@ -504,16 +510,20 @@ Likely work:
 - keep removed listings in internal history
 - add listing timeline data for admin review
 
-Started locally after `0.2.2`:
+Completed in `0.2.x`:
 
 - add D1/local schema for `listing_price_events`
 - record discovered and changed source prices during refresh
 - reuse existing `listing_availability_events` for availability history
 - show recent price and availability history on listing detail pages when history rows exist
+- apply D1 migration `0008_listing_price_events.sql` to production before deploying the
+  history-reading app code; completed on 2026-05-24
 
-Deployment note:
+Remaining follow-up:
 
-- apply D1 migration `0008_listing_price_events.sql` before deploying the history-reading app code
+- add price-drop or recently-sold labels only where they are useful and restrained
+- consider merging price and availability events into one chronological timeline if event volume
+  grows
 
 ### Discovery Improvements
 
