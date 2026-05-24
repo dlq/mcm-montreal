@@ -1071,6 +1071,59 @@ class AppTests(unittest.TestCase):
         self.assertIn("1 listing", response.text)
         self.assertNotIn("1 listings", response.text)
 
+    def test_listing_grid_lazy_loads_cards_in_pages(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                shop = db.execute("SELECT id FROM shops WHERE slug = 'morceau'").fetchone()
+                assert shop is not None
+                for index in range(60):
+                    db.execute(
+                        """
+                        INSERT INTO listings (
+                            source_shop_id, source_listing_url, source_listing_key, title,
+                            normalized_title, price_raw, price_value, currency,
+                            primary_image_url, additional_image_urls, availability_status,
+                            shipping_scope, ships_to_montreal, shipping_note, last_seen_at,
+                            last_checked_at, first_seen_at, category, subcategory, designer,
+                            maker, era, materials, dimensions_text, width, depth, height,
+                            condition_text, location_text, source_description,
+                            ingest_source_type, parse_confidence, dedupe_group_id, is_active,
+                            is_featured, manual_notes, availability_override, category_override
+                        ) VALUES (
+                            ?, ?, ?, ?, ?, '$250', 250, 'CAD', '', '[]', 'available',
+                            'canada', 1, 'Ships to Montreal',
+                            '2026-05-07T00:00:00+00:00',
+                            '2026-05-07T00:00:00+00:00',
+                            '2026-05-07T00:00:00+00:00',
+                            'lounge chairs', '', '', '', '1960s', 'teak', '',
+                            NULL, NULL, NULL, '', 'Montreal, QC', '', 'test', 1.0,
+                            '', 1, 0, '', '', ''
+                        )
+                        """,
+                        (
+                            shop["id"],
+                            f"https://example.com/lazy-{index}",
+                            f"lazy-{index}",
+                            f"Lazy Chair {index}",
+                            f"lazy chair {index}",
+                        ),
+                    )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.get("/")
+        self.assertIn("61 listings", response.text)
+        self.assertEqual(response.text.count('class="listing-card group'), 48)
+        self.assertIn("Load more listings", response.text)
+        self.assertIn("offset=48", response.text)
+
+        next_response = self.client.get("/?offset=48", headers={"HX-Request": "true"})
+        self.assertNotIn("listing-results-toolbar", next_response.text)
+        self.assertEqual(next_response.text.count('class="listing-card group'), 13)
+        self.assertNotIn("Load more listings", next_response.text)
+
     def test_location_filter_uses_existing_locations(self) -> None:
         response = self.client.get("/")
 

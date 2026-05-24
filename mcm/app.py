@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from functools import wraps
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 from flask import Flask, Response, abort, g, redirect, render_template, request, session, url_for
 
@@ -46,6 +47,7 @@ from .refresh import (
 from .repository import (
     admin_sources,
     build_listing_filters,
+    count_listings,
     favourite_counts,
     find_duplicate_candidates,
     get_listing,
@@ -65,6 +67,7 @@ from .repository import (
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.environ.get("MCM_DATABASE", BASE_DIR / "data" / "mcm.db"))
+LISTING_PAGE_SIZE = 48
 
 
 def static_asset_version(filename: str) -> int:
@@ -137,11 +140,35 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/")
     def listings() -> str:
         filters = build_listing_filters(request.args)
-        rows = query_listings(g.db, filters, include_inactive=False)
-        template = "_listing_grid.html" if request.headers.get("HX-Request") else "listings.html"
+        offset = max(request.args.get("offset", default=0, type=int) or 0, 0)
+        listing_total_count = count_listings(g.db, filters, include_inactive=False)
+        rows = query_listings(
+            g.db,
+            filters,
+            include_inactive=False,
+            limit=LISTING_PAGE_SIZE,
+            offset=offset,
+        )
+        next_offset = offset + len(rows)
+        has_more_listings = next_offset < listing_total_count
+        next_page_url = ""
+        if has_more_listings:
+            next_args = request.args.copy()
+            next_args["offset"] = str(next_offset)
+            next_page_url = f"{url_for('listings')}?{urlencode(next_args, doseq=True)}"
+        template = (
+            "_listing_cards.html"
+            if request.headers.get("HX-Request") and offset
+            else "_listing_grid.html"
+            if request.headers.get("HX-Request")
+            else "listings.html"
+        )
         return render_template(
             template,
             listings=rows,
+            listing_total_count=listing_total_count,
+            has_more_listings=has_more_listings,
+            next_page_url=next_page_url,
             filters=filters,
             shops=list_shops(g.db),
             categories=list_filter_values(g.db, "category"),

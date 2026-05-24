@@ -46,7 +46,64 @@ def query_listings(
     db: sqlite3.Connection,
     filters: dict[str, str],
     include_inactive: bool,
+    *,
+    limit: int | None = None,
+    offset: int = 0,
 ) -> list[dict[str, Any]]:
+    clauses, params = listing_query_parts(filters, include_inactive)
+    order_by = {
+        "curated": "CASE WHEN s.slug = 'mostly-danish' THEN 1 ELSE 0 END ASC, l.first_seen_at DESC",
+        "newest": "l.first_seen_at DESC",
+        "recent_check": "l.last_checked_at DESC",
+        "price_low": "CASE WHEN l.price_value IS NULL THEN 1 ELSE 0 END, l.price_value ASC",
+        "price_high": "CASE WHEN l.price_value IS NULL THEN 1 ELSE 0 END, l.price_value DESC",
+        "recent_source": "l.last_seen_at DESC",
+    }[sanitize_sort(filters.get("sort", "curated"))]
+    page_clause = ""
+    page_params: list[Any] = []
+    if limit is not None:
+        page_clause = "LIMIT ? OFFSET ?"
+        page_params = [limit, max(offset, 0)]
+    rows = db.execute(
+        f"""
+        SELECT
+            l.*,
+            s.slug AS shop_slug,
+            s.name AS shop_name,
+            s.is_montreal_local
+        FROM listings l
+        JOIN shops s ON s.id = l.source_shop_id
+        WHERE {" AND ".join(clauses)}
+        ORDER BY {order_by}
+        {page_clause}
+        """,
+        [*params, *page_params],
+    ).fetchall()
+    return annotate_listing_rows(rows)
+
+
+def count_listings(
+    db: sqlite3.Connection,
+    filters: dict[str, str],
+    include_inactive: bool,
+) -> int:
+    clauses, params = listing_query_parts(filters, include_inactive)
+    row = db.execute(
+        f"""
+        SELECT COUNT(*) AS count
+        FROM listings l
+        JOIN shops s ON s.id = l.source_shop_id
+        WHERE {" AND ".join(clauses)}
+        """,
+        params,
+    ).fetchone()
+    return int(row["count"])
+
+
+def listing_query_parts(
+    filters: dict[str, str],
+    include_inactive: bool,
+) -> tuple[list[str], list[Any]]:
     clauses = ["1=1", "s.active = 1"]
     params: list[Any] = []
     if not include_inactive:
@@ -90,30 +147,7 @@ def query_listings(
     if price_max is not None:
         clauses.append("l.price_value <= ?")
         params.append(price_max)
-
-    order_by = {
-        "curated": "CASE WHEN s.slug = 'mostly-danish' THEN 1 ELSE 0 END ASC, l.first_seen_at DESC",
-        "newest": "l.first_seen_at DESC",
-        "recent_check": "l.last_checked_at DESC",
-        "price_low": "CASE WHEN l.price_value IS NULL THEN 1 ELSE 0 END, l.price_value ASC",
-        "price_high": "CASE WHEN l.price_value IS NULL THEN 1 ELSE 0 END, l.price_value DESC",
-        "recent_source": "l.last_seen_at DESC",
-    }[sanitize_sort(filters.get("sort", "curated"))]
-    rows = db.execute(
-        f"""
-        SELECT
-            l.*,
-            s.slug AS shop_slug,
-            s.name AS shop_name,
-            s.is_montreal_local
-        FROM listings l
-        JOIN shops s ON s.id = l.source_shop_id
-        WHERE {" AND ".join(clauses)}
-        ORDER BY {order_by}
-        """,
-        params,
-    ).fetchall()
-    return annotate_listing_rows(rows)
+    return clauses, params
 
 
 def get_listing(db: sqlite3.Connection, listing_id: int) -> dict[str, Any] | None:

@@ -45,6 +45,7 @@ TRANSLATIONS_FR = {
     "listing.count_other": "{count} annonces",
     "listing.image_pending": "Image en attente de la source",
     "listing.image_unavailable": "Image non disponible",
+    "listing.load_more": "Charger plus d'annonces",
     "listing.badge.shipping": "Livraison à Montréal",
     "listing.badge.local": "Source locale de Montréal",
     "listing.quote_required": "Contactez-nous pour les détails",

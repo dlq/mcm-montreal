@@ -45,6 +45,7 @@ TRANSLATIONS_EN = {
     "listing.count_other": "{count} listings",
     "listing.image_pending": "Image pending from source",
     "listing.image_unavailable": "Image not available",
+    "listing.load_more": "Load more listings",
     "listing.badge.shipping": "Ships to Montreal",
     "listing.badge.local": "Montreal local source",
     "listing.quote_required": "Contact us for details",
