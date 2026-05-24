@@ -24,7 +24,8 @@
                    id="{{ id_prefix }}price_min"
                    name="price_min"
                    value="{{ filters.price_min }}"
-                   placeholder="500">
+                   inputmode="decimal"
+                   placeholder="{{ t('filters.no_min_price') }}">
           </div>
           <div>
             <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
@@ -33,7 +34,8 @@
                    id="{{ id_prefix }}price_max"
                    name="price_max"
                    value="{{ filters.price_max }}"
-                   placeholder="2500">
+                   inputmode="decimal"
+                   placeholder="{{ t('filters.no_max_price') }}">
           </div>
         </div>
       </div>

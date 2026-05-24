@@ -428,8 +428,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         return render_template(
             "_favourite_listing_button.html", listing=get_listing(g.db, listing_id)
         ) + render_template("_favourite_listing_count.html").replace(
-            'id="favourite-listing-count"',
-            'id="favourite-listing-count" hx-swap-oob="true"',
+            'id="favourite-count"',
+            'id="favourite-count" hx-swap-oob="true"',
         )
 
     @app.post("/favourites/shop/<int:shop_id>")
@@ -438,7 +438,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not shop:
             abort(404)
         toggle_favourite_shop(g.db, shop_id)
-        return render_template("_favourite_shop_button.html", shop=get_shop(g.db, shop_id))
+        return render_template(
+            "_favourite_shop_button.html", shop=get_shop(g.db, shop_id)
+        ) + render_template("_favourite_listing_count.html").replace(
+            'id="favourite-count"',
+            'id="favourite-count" hx-swap-oob="true"',
+        )
 
     @app.get("/admin")
     @admin_required(app)

@@ -17,6 +17,8 @@ TRANSLATIONS_FR = {
     "filters.all_shops": "Toutes les boutiques",
     "filters.min_price": "Prix min.",
     "filters.max_price": "Prix max.",
+    "filters.no_min_price": "Aucun min.",
+    "filters.no_max_price": "Aucun max.",
     "filters.category": "Catégorie",
     "filters.all_categories": "Toutes les catégories",
     "filters.material": "Matériau",

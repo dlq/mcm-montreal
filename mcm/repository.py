@@ -408,17 +408,30 @@ def list_favourite_shops(db: sqlite3.Connection) -> list[dict[str, Any]]:
 
 def favourite_counts() -> dict[str, int]:
     if not has_request_context():
-        return {"listings": 0, "shops": 0}
+        return {"listings": 0, "shops": 0, "searches": 0, "total": 0}
     db = getattr(g, "db", None)
     if db is not None and current_owner_key():
-        return {
+        counts = {
             "listings": len(favourite_listing_list(db)),
             "shops": len(favourite_shop_list(db)),
+            "searches": db.execute(
+                """
+                SELECT COUNT(*) AS count
+                FROM anonymous_saved_searches
+                WHERE owner_key = ?
+                """,
+                (current_owner_key(),),
+            ).fetchone()["count"],
         }
-    return {
+        counts["total"] = counts["listings"] + counts["shops"] + counts["searches"]
+        return counts
+    counts = {
         "listings": len(favourite_listing_session_list()),
         "shops": len(favourite_shop_session_list()),
+        "searches": 0,
     }
+    counts["total"] = counts["listings"] + counts["shops"]
+    return counts
 
 
 def save_search(db: sqlite3.Connection, name: str, query_string: str) -> None:

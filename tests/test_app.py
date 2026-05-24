@@ -261,7 +261,24 @@ class AppTests(unittest.TestCase):
         response = self.client.post(f"/favourites/listing/{self.listing_id}")
         self.assertEqual(response.status_code, 200)
         self.assertIn('hx-swap-oob="true"', response.text)
-        self.assertIn('id="favourite-listing-count"', response.text)
+        self.assertIn('id="favourite-count"', response.text)
+        self.assertIn("(1)", response.text)
+
+    def test_shop_favourite_toggle_updates_nav_count(self) -> None:
+        response = self.client.post("/favourites/shop/1")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('hx-swap-oob="true"', response.text)
+        self.assertIn('id="favourite-count"', response.text)
+        self.assertIn("(1)", response.text)
+
+    def test_saved_search_counts_in_favourites_nav_total(self) -> None:
+        response = self.client.post(
+            "/saved-searches",
+            data={"q": "teak", "category": "lounge chairs"},
+            follow_redirects=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="favourite-count"', response.text)
         self.assertIn("(1)", response.text)
 
     def test_favourite_toggle_uses_durable_anonymous_identity(self) -> None:
