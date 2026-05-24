@@ -36,7 +36,7 @@ from .i18n import (
     translator_for,
 )
 from .identity import load_anonymous_identity, persist_anonymous_identity
-from .maps import shop_map_data
+from .locations import shop_address_lines, shop_apple_maps_url, shop_directions_url, shop_has_map
 from .refresh import (
     listing_id_from_item_number,
     public_item_number,
@@ -177,7 +177,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "public_item_number": public_item_number,
             "shipping_note_text": shipping_note_text,
             "shop_text": shop_text,
-            "shop_map_data": shop_map_data,
+            "shop_address_lines": shop_address_lines,
+            "shop_apple_maps_url": shop_apple_maps_url,
+            "shop_directions_url": shop_directions_url,
+            "shop_has_map": shop_has_map,
             "static_asset_version": static_asset_version,
             "lang_url_en": language_url("en"),
             "lang_url_fr": language_url("fr"),

@@ -435,6 +435,8 @@ Nice-to-have fields:
 - Local signal:
   - about page says the studio operates in Montreal
   - pieces can be viewed in person by appointment
+  - public site currently lists the furniture shop, email, and Instagram handle, but no street
+    address
 - Delivery signal:
   - FAQ/about pages say shipping is available across Canada and the United States by quote
   - for this project, local appointment/pickup or local delivery would be enough even without
@@ -444,6 +446,8 @@ Nice-to-have fields:
 - Notes:
   - local ingestion verified 11 current Shop-gallery listings with images and prices on 2026-05-14
   - Archive gallery should remain excluded
+  - keep `street_address` empty unless a public street address is found; use the source note
+    "No public street address found; contact the shop for pickup or appointment details."
 
 ### BOND Vintage
 

@@ -10,13 +10,19 @@
         {% include "_favourite_shop_button.html" %}
       </div>
       <p class="text-sm leading-7 text-ink/75">{{ shop_text(shop, "description") }}</p>
-      {% set shop_map_variant = "detail" %}
-      {% include "_shop_map.html" %}
       <dl class="mt-6 space-y-4 text-sm">
         <div>
           <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.location") }}</dt>
           <dd class="mt-1">
-            {{ shop.city }}, {{ shop.province }}, {{ shop.country }}
+            {% for line in shop_address_lines(shop) %}<span class="block">{{ line }}</span>{% endfor %}
+            {% if shop.street_address %}
+              <a class="shop-directions-inline"
+                 href="{{ shop_directions_url(shop) }}"
+                 target="_blank"
+                 rel="noreferrer">{{ t("shop.get_directions") }}</a>
+            {% elif shop.public_location_note %}
+              <span class="block text-ink/60">{{ shop.public_location_note }}</span>
+            {% endif %}
           </dd>
         </div>
         <div>

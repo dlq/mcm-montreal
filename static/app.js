@@ -50,9 +50,194 @@ class ListingFilters extends HTMLElement {
   }
 }
 
+class ShopCardMap extends HTMLElement {
+  connectedCallback() {
+    if (this.dataset.ready) {
+      return;
+    }
+    this.dataset.ready = "true";
+    this.renderWhenLeafletIsReady();
+    this.addEventListener("click", (event) => {
+      if (event.target.closest("a")) {
+        return;
+      }
+      this.openDirections();
+    });
+    this.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
+      event.preventDefault();
+      this.openDirections();
+    });
+  }
+
+  renderWhenLeafletIsReady() {
+    if (window.L) {
+      window.requestAnimationFrame(() => this.renderMap());
+      return;
+    }
+    window.setTimeout(() => this.renderWhenLeafletIsReady(), 50);
+  }
+
+  renderMap() {
+    const latitude = Number.parseFloat(this.dataset.latitude);
+    const longitude = Number.parseFloat(this.dataset.longitude);
+    const canvas = this.querySelector(".shop-card-map-canvas");
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      !canvas ||
+      canvas.dataset.ready
+    ) {
+      return;
+    }
+    canvas.dataset.ready = "true";
+
+    const point = [latitude, longitude];
+    const map = window.L.map(canvas, {
+      attributionControl: true,
+      boxZoom: false,
+      doubleClickZoom: false,
+      dragging: false,
+      keyboard: false,
+      scrollWheelZoom: false,
+      touchZoom: false,
+      zoomControl: false,
+    }).setView(point, 15);
+
+    window.L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      maxZoom: 20,
+      subdomains: "abcd",
+    }).addTo(map);
+
+    window.L.marker(point, {
+      icon: window.L.divIcon({
+        className: "shop-card-map-marker",
+        html: "<span></span>",
+        iconAnchor: [9, 9],
+        iconSize: [18, 18],
+      }),
+      keyboard: false,
+    })
+      .bindTooltip(this.dataset.label || "", {
+        direction: "top",
+        offset: [0, -10],
+        opacity: 0.95,
+      })
+      .addTo(map);
+
+    const resizeMap = () => {
+      map.invalidateSize({ animate: false });
+      map.setView(point, 15, { animate: false });
+    };
+    window.requestAnimationFrame(resizeMap);
+    window.setTimeout(resizeMap, 150);
+    window.setTimeout(resizeMap, 500);
+    new ResizeObserver(resizeMap).observe(this);
+  }
+
+  openDirections() {
+    const url = this.dataset.googleUrl;
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    }
+  }
+}
+
 customElements.define("favorite-toggle", FavoriteToggle);
 customElements.define("availability-pill", AvailabilityPill);
 customElements.define("listing-filters", ListingFilters);
+customElements.define("shop-card-map", ShopCardMap);
+
+function shopGridColumnCount(cards) {
+  const grid = cards[0]?.parentElement;
+  if (!grid) {
+    return 1;
+  }
+  return getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length || 1;
+}
+
+function groupedCardRows(cards) {
+  const columnCount = shopGridColumnCount(cards);
+  const rows = [];
+  for (let index = 0; index < cards.length; index += columnCount) {
+    rows.push({ cards: cards.slice(index, index + columnCount) });
+  }
+  return rows;
+}
+
+function resetShopCardAlignment(cards) {
+  cards.forEach((card) => {
+    card.style.removeProperty("--shop-card-intro-min");
+    card.style.removeProperty("--shop-card-primary-min");
+    card.style.removeProperty("--shop-card-secondary-min");
+  });
+}
+
+function maxHeight(cards, selector) {
+  return Math.ceil(
+    cards.reduce((height, card) => {
+      const items = [...card.querySelectorAll(selector)];
+      const cardMax = items.reduce(
+        (itemHeight, item) => Math.max(itemHeight, item.getBoundingClientRect().height),
+        0,
+      );
+      return Math.max(height, cardMax);
+    }, 0),
+  );
+}
+
+function applyShopCardAlignment(cards) {
+  groupedCardRows(cards).forEach(({ cards: rowCards }) => {
+    const introHeight = maxHeight(rowCards, ".shop-card-intro");
+    const primaryHeight = maxHeight(rowCards, ".shop-card-meta-primary");
+    const secondaryHeight = maxHeight(rowCards, ".shop-card-meta-secondary");
+    rowCards.forEach((card) => {
+      card.style.setProperty("--shop-card-intro-min", `${introHeight}px`);
+      card.style.setProperty("--shop-card-primary-min", `${primaryHeight}px`);
+      card.style.setProperty("--shop-card-secondary-min", `${secondaryHeight}px`);
+    });
+  });
+}
+
+function refineShopCardAlignment(cards) {
+  if (window.matchMedia("(max-width: 767px)").matches) {
+    return;
+  }
+  applyShopCardAlignment(cards);
+}
+
+function alignShopCards() {
+  const cards = [...document.querySelectorAll("article.shop-card")];
+  resetShopCardAlignment(cards);
+  if (window.matchMedia("(max-width: 767px)").matches) {
+    return;
+  }
+
+  document.body.offsetHeight;
+  applyShopCardAlignment(cards);
+  window.requestAnimationFrame(() => {
+    refineShopCardAlignment(cards);
+  });
+  window.setTimeout(() => refineShopCardAlignment(cards), 80);
+}
+
+let shopCardAlignmentFrame = 0;
+function scheduleShopCardAlignment() {
+  window.cancelAnimationFrame(shopCardAlignmentFrame);
+  shopCardAlignmentFrame = window.requestAnimationFrame(alignShopCards);
+}
+
+function refreshShopCardAlignment() {
+  scheduleShopCardAlignment();
+  window.setTimeout(scheduleShopCardAlignment, 100);
+  window.setTimeout(scheduleShopCardAlignment, 350);
+  window.setTimeout(scheduleShopCardAlignment, 900);
+  document.fonts?.ready.then(scheduleShopCardAlignment);
+}
 
 function showImageFallback(image) {
   if (!(image instanceof HTMLImageElement) || !image.dataset.imageFallback) {
@@ -85,8 +270,13 @@ document.addEventListener(
 
 document.addEventListener("DOMContentLoaded", () => {
   showFailedImageFallbacks();
+  refreshShopCardAlignment();
 });
 
 document.body.addEventListener("htmx:afterSwap", (event) => {
   showFailedImageFallbacks(event.target);
+  refreshShopCardAlignment();
 });
+
+window.addEventListener("load", refreshShopCardAlignment);
+window.addEventListener("resize", refreshShopCardAlignment);

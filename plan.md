@@ -545,7 +545,6 @@ Likely work:
 - better text search
 - designer/maker cleanup
 - richer shop pages
-- simple black-and-white location maps on shop index cards and shop detail pages
 - collection-style browse pages such as teak storage, lounge chairs, dining sets, lighting
 - compare mode for multiple saved items
 - review and simplify i18n/l10n boundaries before translated strings and formatting rules spread
@@ -565,6 +564,8 @@ Completed in `0.2.x`:
 - add broken-image fallbacks so upstream `403` / missing source images render as "Image not
   available" instead of browser broken-image icons
 - make the shops index responsive at one, two, and three columns as viewport width allows
+- add explicit shop addresses, direction links, and compact Leaflet location maps to the shops index
+  and shop detail pages; Yardsale Vintage remains addressless until a public street address is found
 - make the public listing grid lazy-load cards in 48-card batches. On 2026-05-24, the live initial
   HTML dropped from about 3.25 MB / 1,311 cards to about 145 KB / 48 cards, with a warmed response
   around 1.2 seconds and subsequent HTMX batches around 115 KB.

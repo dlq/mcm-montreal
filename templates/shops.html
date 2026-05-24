@@ -2,50 +2,70 @@
 {% block title %}{{ t("nav.shops") }} | Montreal MCM{% endblock %}
 {% block content %}
   <section class="space-y-5">
-    <div class="grid gap-x-8 gap-y-6 md:grid-cols-2 xl:grid-cols-3">
+    <div class="shop-card-grid grid gap-x-8 gap-y-6 md:grid-cols-2 xl:grid-cols-3">
       {% for shop in shops %}
-        <article class="border-t border-ink/10 py-6">
-          <div class="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <a class="block text-2xl font-semibold tracking-tight hover:text-moss"
-                 href="{{ url_for('shop_detail', slug=shop.slug) }}">{{ shop.name }}</a>
+        <article class="shop-card border-t border-ink/10 py-6">
+          <div class="shop-card-intro">
+            <div class="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <a class="block text-2xl font-semibold tracking-tight hover:text-moss"
+                   href="{{ url_for('shop_detail', slug=shop.slug) }}">{{ shop.name }}</a>
+              </div>
+              {% include "_favourite_shop_button.html" %}
             </div>
-            {% include "_favourite_shop_button.html" %}
+            <div class="shop-card-summary">
+              <p class="text-sm leading-6 text-ink/65">{{ shop_text(shop, "description") }}</p>
+              <p class="mt-2 text-sm leading-6 text-ink/55">{{ shop_text(shop, "style_focus") }}</p>
+            </div>
           </div>
-          <div class="shop-card-summary">
-            <p class="text-sm leading-6 text-ink/65">{{ shop_text(shop, "description") }}</p>
-            <p class="mt-2 text-sm leading-6 text-ink/55">{{ shop_text(shop, "style_focus") }}</p>
-          </div>
-          {% set shop_map_variant = "card" %}
-          {% include "_shop_map.html" %}
-          <dl class="shop-card-metadata mt-5 grid gap-4 text-sm sm:grid-cols-2">
-            <div>
+          <dl class="shop-card-metadata text-sm">
+            <div class="shop-card-meta-primary">
               <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("listing.location") }}</dt>
               <dd class="mt-1">
                 {{ shop.city }}, {{ shop.province }}
               </dd>
             </div>
-            <div>
+            <div class="shop-card-meta-primary">
               <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("shops.active_listings") }}</dt>
               <dd class="mt-1">
                 {{ shop.active_listing_count }}
               </dd>
             </div>
-            <div>
+            <div class="shop-card-meta-secondary">
               <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("shops.shipping") }}</dt>
               <dd class="mt-1">
                 {{ shop_text(shop, "shipping_summary") }}
               </dd>
             </div>
-            <div>
+            <div class="shop-card-meta-secondary">
               <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("shops.categories") }}</dt>
               <dd class="mt-1">
                 {{ category_list_text(shop.categories_carried) or t("shops.categories_fallback") }}
               </dd>
             </div>
           </dl>
+          {% if shop_has_map(shop) %}
+            <shop-card-map class="shop-card-map shop-card-map-slot" data-latitude="{{ shop.latitude }}" data-longitude="{{ shop.longitude }}" data-google-url="{{ shop_directions_url(shop) }}" data-apple-url="{{ shop_apple_maps_url(shop) }}" data-label="{{ shop.name }} · {{ shop.street_address }}, {{ shop.city }}" tabindex="0" role="link" aria-label="{{ t('shop.open_map', name=shop.name) }}">
+            <div class="shop-card-map-canvas"></div>
+            <div class="shop-card-map-actions">
+              <a href="{{ shop_directions_url(shop) }}"
+                 target="_blank"
+                 rel="noreferrer">{{ t("shop.google_maps") }}</a>
+              <a href="{{ shop_apple_maps_url(shop) }}"
+                 target="_blank"
+                 rel="noreferrer">{{ t("shop.apple_maps") }}</a>
+            </div>
+            </shop-card-map>
+          {% elif shop.public_location_note %}
+            <p class="shop-card-map-slot text-sm leading-6 text-ink/60">{{ shop.public_location_note }}</p>
+          {% endif %}
         </article>
       {% endfor %}
     </div>
   </section>
+{% endblock %}
+{% block extra_scripts %}
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
 {% endblock %}

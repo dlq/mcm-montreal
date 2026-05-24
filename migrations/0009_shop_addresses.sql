@@ -1,0 +1,5 @@
+ALTER TABLE shops ADD COLUMN street_address TEXT NOT NULL DEFAULT '';
+ALTER TABLE shops ADD COLUMN postal_code TEXT NOT NULL DEFAULT '';
+ALTER TABLE shops ADD COLUMN latitude REAL;
+ALTER TABLE shops ADD COLUMN longitude REAL;
+ALTER TABLE shops ADD COLUMN public_location_note TEXT NOT NULL DEFAULT '';

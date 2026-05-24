@@ -36,9 +36,14 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             slug TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
             website TEXT NOT NULL,
+            street_address TEXT NOT NULL DEFAULT '',
             city TEXT NOT NULL,
             province TEXT NOT NULL,
+            postal_code TEXT NOT NULL DEFAULT '',
             country TEXT NOT NULL,
+            latitude REAL,
+            longitude REAL,
+            public_location_note TEXT NOT NULL DEFAULT '',
             is_montreal_local INTEGER NOT NULL DEFAULT 0,
             shipping_summary TEXT NOT NULL,
             source_type TEXT NOT NULL,
@@ -195,8 +200,23 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             ON anonymous_saved_searches(owner_key, updated_at);
         """
     )
+    ensure_shop_address_columns(db)
     ensure_refresh_job_columns(db)
     db.commit()
+
+
+def ensure_shop_address_columns(db: sqlite3.Connection) -> None:
+    existing_columns = {row["name"] for row in db.execute("PRAGMA table_info(shops)").fetchall()}
+    if "street_address" not in existing_columns:
+        db.execute("ALTER TABLE shops ADD COLUMN street_address TEXT NOT NULL DEFAULT ''")
+    if "postal_code" not in existing_columns:
+        db.execute("ALTER TABLE shops ADD COLUMN postal_code TEXT NOT NULL DEFAULT ''")
+    if "public_location_note" not in existing_columns:
+        db.execute("ALTER TABLE shops ADD COLUMN public_location_note TEXT NOT NULL DEFAULT ''")
+    if "latitude" not in existing_columns:
+        db.execute("ALTER TABLE shops ADD COLUMN latitude REAL")
+    if "longitude" not in existing_columns:
+        db.execute("ALTER TABLE shops ADD COLUMN longitude REAL")
 
 
 def ensure_refresh_job_columns(db: sqlite3.Connection) -> None:
@@ -233,16 +253,22 @@ def ensure_source_shop_seeded(db: sqlite3.Connection, source: SourceDefinition) 
     db.execute(
         """
         INSERT INTO shops (
-            slug, name, website, city, province, country, is_montreal_local,
+            slug, name, website, street_address, city, province, postal_code,
+            country, latitude, longitude, public_location_note, is_montreal_local,
             shipping_summary, source_type, crawl_priority, notes, description,
             style_focus, listing_url, active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         ON CONFLICT(slug) DO UPDATE SET
             name = excluded.name,
             website = excluded.website,
+            street_address = excluded.street_address,
             city = excluded.city,
             province = excluded.province,
+            postal_code = excluded.postal_code,
             country = excluded.country,
+            latitude = excluded.latitude,
+            longitude = excluded.longitude,
+            public_location_note = excluded.public_location_note,
             is_montreal_local = excluded.is_montreal_local,
             shipping_summary = excluded.shipping_summary,
             source_type = excluded.source_type,
@@ -257,9 +283,14 @@ def ensure_source_shop_seeded(db: sqlite3.Connection, source: SourceDefinition) 
             source.slug,
             source.name,
             source.website,
+            source.street_address,
             source.city,
             source.province,
+            source.postal_code,
             source.country,
+            source.latitude,
+            source.longitude,
+            source.public_location_note,
             1 if source.is_montreal_local else 0,
             source.shipping_summary,
             source.source_type,
