@@ -10,7 +10,7 @@ from flask import has_request_context, session
 
 ALLOWED_FILTER_FIELDS = {"category", "materials", "designer"}
 ALLOWED_AVAILABILITY = {"available", "sold_out", "all"}
-ALLOWED_SORT = {"newest", "recent_check", "price_low", "price_high", "recent_source"}
+ALLOWED_SORT = {"curated", "newest", "recent_check", "price_low", "price_high", "recent_source"}
 EFFECTIVE_AVAILABILITY_SQL = "COALESCE(NULLIF(l.availability_override, ''), l.availability_status)"
 PROVEN_SOLD_OUT_SQL = """
 (
@@ -38,7 +38,7 @@ def build_listing_filters(args: Any) -> dict[str, str]:
         "availability": sanitize_availability(args.get("availability", "available")),
         "price_min": args.get("price_min", "").strip(),
         "price_max": args.get("price_max", "").strip(),
-        "sort": sanitize_sort(args.get("sort", "newest")),
+        "sort": sanitize_sort(args.get("sort", "curated")),
     }
 
 
@@ -92,12 +92,13 @@ def query_listings(
         params.append(price_max)
 
     order_by = {
+        "curated": "CASE WHEN s.slug = 'mostly-danish' THEN 1 ELSE 0 END ASC, l.first_seen_at DESC",
         "newest": "l.first_seen_at DESC",
         "recent_check": "l.last_checked_at DESC",
         "price_low": "CASE WHEN l.price_value IS NULL THEN 1 ELSE 0 END, l.price_value ASC",
         "price_high": "CASE WHEN l.price_value IS NULL THEN 1 ELSE 0 END, l.price_value DESC",
         "recent_source": "l.last_seen_at DESC",
-    }[sanitize_sort(filters.get("sort", "newest"))]
+    }[sanitize_sort(filters.get("sort", "curated"))]
     rows = db.execute(
         f"""
         SELECT
@@ -490,7 +491,7 @@ def sanitize_availability(value: str) -> str:
 
 
 def sanitize_sort(value: str) -> str:
-    return value if value in ALLOWED_SORT else "newest"
+    return value if value in ALLOWED_SORT else "curated"
 
 
 def favourite_listing_session_list() -> list[int]:

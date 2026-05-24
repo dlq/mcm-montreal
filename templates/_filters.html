@@ -141,6 +141,9 @@
             <select class="w-full bg-transparent px-0 py-2 text-sm"
                     id="{{ id_prefix }}sort"
                     name="sort">
+              <option value="curated" {% if filters.sort == "curated" %}selected{% endif %}>
+                {{ t("filters.curated") }}
+              </option>
               <option value="newest" {% if filters.sort == "newest" %}selected{% endif %}>
                 {{ t("filters.newest") }}
               </option>

@@ -122,6 +122,9 @@ Implementation stance:
   shop weighting, or source notes if it starts diluting the catalogue.
 - Mostly Danish is intentionally ingested gradually: production refreshes enqueue 5 of 30 bounded
   Shopify collection-page chunks per run so the large catalogue does not monopolize the queue.
+- The default browse feed should not let Mostly Danish dominate new items while its initial bulk
+  ingest is recent. Keep explicit newest sorting available, but use curated default ordering to
+  surface other sources first.
 - Local pickup or local delivery is enough for Montreal and agglomeration-area shops right now;
   Canada-wide shipping is not required for local sources.
 - If the product expands beyond the Montreal agglomeration, or traffic materially shifts toward

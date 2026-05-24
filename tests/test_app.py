@@ -18,7 +18,7 @@ from mcm.refresh import (
     refresh_all_sources,
     refresh_source_by_slug,
 )
-from mcm.repository import sanitize_availability
+from mcm.repository import query_listings, sanitize_availability
 from mcm.seed_data import SEED_LISTINGS
 from mcm.sources import (
     SOURCE_DEFINITIONS,
@@ -1167,6 +1167,53 @@ class AppTests(unittest.TestCase):
 
         self.assertTrue(seed_materials)
         self.assertEqual(set(), seed_materials - set(MATERIAL_LABELS))
+
+    def test_default_feed_demotes_mostly_danish_bulk_ingest(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                mostly_danish = db.execute(
+                    "SELECT id FROM shops WHERE slug = 'mostly-danish'"
+                ).fetchone()
+                self.assertIsNotNone(mostly_danish)
+                db.execute(
+                    """
+                    INSERT INTO listings (
+                        source_shop_id, source_listing_url, source_listing_key, title,
+                        normalized_title, price_raw, price_value, currency, primary_image_url,
+                        additional_image_urls, availability_status, shipping_scope,
+                        ships_to_montreal, shipping_note, last_seen_at, last_checked_at,
+                        first_seen_at, category, subcategory, designer, maker, era,
+                        materials, dimensions_text, width, depth, height, condition_text,
+                        location_text, source_description, ingest_source_type, parse_confidence,
+                        dedupe_group_id, is_active, is_featured, manual_notes,
+                        availability_override, category_override
+                    ) VALUES (
+                        ?, 'https://mostlydanish.com/products/new-chair', 'mostly-danish:new-chair',
+                        'Mostly Danish New Chair', 'mostly danish new chair', '$950', 950, 'CAD',
+                        'https://example.com/mostly.jpg', '[]', 'available', 'regional_quote',
+                        1, 'Regional source', '2026-05-24T09:00:00+00:00',
+                        '2026-05-24T09:00:00+00:00', '2026-05-24T09:00:00+00:00',
+                        'lounge chairs', '', '', '', '', 'teak', '', NULL, NULL, NULL, 'Good',
+                        'Ingleside, ON', 'Mostly Danish new chair', 'test', 1.0,
+                        '', 1, 0, '', '', ''
+                    )
+                    """,
+                    (mostly_danish["id"],),
+                )
+                db.commit()
+
+                curated_rows = query_listings(
+                    db, {"sort": "curated", "availability": "available"}, include_inactive=False
+                )
+                newest_rows = query_listings(
+                    db, {"sort": "newest", "availability": "available"}, include_inactive=False
+                )
+
+                self.assertEqual(curated_rows[0]["source_listing_key"], "sample-key")
+                self.assertEqual(newest_rows[0]["source_listing_key"], "mostly-danish:new-chair")
+            finally:
+                db.close()
 
     def test_showroom_detail_uses_source_page_label(self) -> None:
         with self.app.app_context():

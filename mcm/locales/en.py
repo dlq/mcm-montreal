@@ -31,6 +31,7 @@ TRANSLATIONS_EN = {
     "filters.unknown": "Unknown",
     "filters.sold_out": "Sold out",
     "filters.all_statuses": "All statuses",
+    "filters.curated": "Curated newest",
     "filters.newest": "Newest found",
     "filters.recent_check": "Most recently checked",
     "filters.price_low": "Price low to high",

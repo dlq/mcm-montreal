@@ -298,9 +298,11 @@ def filter_summary_parts(filters: dict[str, str]) -> list[str]:
     availability = filters.get("availability", "available")
     if availability != "available":
         parts.append(f"{t('filters.availability')}: {status_label(availability).lower()}")
-    sort = filters.get("sort", "newest")
-    if sort != "newest":
+    sort = filters.get("sort", "curated")
+    if sort != "curated":
         sort_labels = {
+            "curated": "filters.curated",
+            "newest": "filters.newest",
             "recent_check": "filters.recent_check",
             "price_low": "filters.price_low",
             "price_high": "filters.price_high",

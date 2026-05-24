@@ -31,6 +31,7 @@ TRANSLATIONS_FR = {
     "filters.unknown": "Inconnue",
     "filters.sold_out": "Vendu",
     "filters.all_statuses": "Tous les statuts",
+    "filters.curated": "Ajouts sélectionnés",
     "filters.newest": "Ajouts récents",
     "filters.recent_check": "Vérifiés récemment",
     "filters.price_low": "Prix croissant",
