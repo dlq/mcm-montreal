@@ -322,8 +322,7 @@ class AppTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 302)
-        self.assertIn("q=teak", response.headers["Location"])
-        self.assertIn("category=lounge+chairs", response.headers["Location"])
+        self.assertEqual(response.headers["Location"], "/favourites")
         searches_response = self.client.get("/favourites")
         self.assertIn("teak / lounge chairs", searches_response.text)
         self.assertIn("Saved searches", searches_response.text)

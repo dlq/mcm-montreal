@@ -160,6 +160,17 @@ textarea:focus {
   color: #7f3f37;
 }
 
+.saved-search-button {
+  color: #6f8a5c;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.saved-search-button:hover {
+  color: #587449;
+}
+
 .listing-sold-out-label {
   color: #9a5a52;
 }

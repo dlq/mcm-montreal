@@ -231,9 +231,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         query_string = saved_search_query_string(filters)
         if query_string:
             save_search(g.db, saved_search_name(filters), query_string)
-        return redirect(
-            f"{url_for('listings')}?{query_string}" if query_string else url_for("listings")
-        )
+        return redirect(url_for("favourites"))
 
     @app.get("/saved-searches")
     def saved_searches() -> Any:
