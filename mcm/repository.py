@@ -4,9 +4,12 @@ import html
 import re
 import sqlite3
 import unicodedata
+from datetime import UTC, datetime
 from typing import Any
 
-from flask import has_request_context, session
+from flask import g, has_request_context, session
+
+from .identity import current_owner_key
 
 ALLOWED_FILTER_FIELDS = {"category", "materials", "designer"}
 ALLOWED_AVAILABILITY = {"available", "sold_out", "all"}
@@ -310,28 +313,62 @@ def normalized_filter_key(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", ascii_text.lower()).strip()
 
 
-def toggle_favourite_listing(listing_id: int) -> None:
-    listing_ids = favourite_listing_ids()
-    if listing_id in listing_ids:
-        listing_ids.remove(listing_id)
+def toggle_favourite_listing(db: sqlite3.Connection, listing_id: int) -> None:
+    owner_key = current_owner_key()
+    if not owner_key:
+        listing_ids = favourite_listing_ids()
+        if listing_id in listing_ids:
+            listing_ids.remove(listing_id)
+        else:
+            listing_ids.add(listing_id)
+        session["favourite_listing_ids"] = sorted(listing_ids)
+        session.modified = True
+        return
+    if favourite_listing_exists(db, owner_key, listing_id):
+        db.execute(
+            "DELETE FROM anonymous_favourite_listings WHERE owner_key = ? AND listing_id = ?",
+            (owner_key, listing_id),
+        )
     else:
-        listing_ids.add(listing_id)
-    session["favourite_listing_ids"] = sorted(listing_ids)
-    session.modified = True
+        db.execute(
+            """
+            INSERT OR IGNORE INTO anonymous_favourite_listings (owner_key, listing_id, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (owner_key, listing_id, datetime.now(UTC).isoformat()),
+        )
+    db.commit()
 
 
-def toggle_favourite_shop(shop_id: int) -> None:
-    shop_ids = favourite_shop_ids()
-    if shop_id in shop_ids:
-        shop_ids.remove(shop_id)
+def toggle_favourite_shop(db: sqlite3.Connection, shop_id: int) -> None:
+    owner_key = current_owner_key()
+    if not owner_key:
+        shop_ids = favourite_shop_ids()
+        if shop_id in shop_ids:
+            shop_ids.remove(shop_id)
+        else:
+            shop_ids.add(shop_id)
+        session["favourite_shop_ids"] = sorted(shop_ids)
+        session.modified = True
+        return
+    if favourite_shop_exists(db, owner_key, shop_id):
+        db.execute(
+            "DELETE FROM anonymous_favourite_shops WHERE owner_key = ? AND shop_id = ?",
+            (owner_key, shop_id),
+        )
     else:
-        shop_ids.add(shop_id)
-    session["favourite_shop_ids"] = sorted(shop_ids)
-    session.modified = True
+        db.execute(
+            """
+            INSERT OR IGNORE INTO anonymous_favourite_shops (owner_key, shop_id, created_at)
+            VALUES (?, ?, ?)
+            """,
+            (owner_key, shop_id, datetime.now(UTC).isoformat()),
+        )
+    db.commit()
 
 
 def list_favourite_listings(db: sqlite3.Connection) -> list[dict[str, Any]]:
-    listing_ids = favourite_listing_session_list()
+    listing_ids = favourite_listing_list(db)
     if not listing_ids:
         return []
     placeholders = ",".join("?" for _ in listing_ids)
@@ -351,7 +388,7 @@ def list_favourite_listings(db: sqlite3.Connection) -> list[dict[str, Any]]:
 
 
 def list_favourite_shops(db: sqlite3.Connection) -> list[dict[str, Any]]:
-    shop_ids = favourite_shop_session_list()
+    shop_ids = favourite_shop_list(db)
     if not shop_ids:
         return []
     placeholders = ",".join("?" for _ in shop_ids)
@@ -372,6 +409,12 @@ def list_favourite_shops(db: sqlite3.Connection) -> list[dict[str, Any]]:
 def favourite_counts() -> dict[str, int]:
     if not has_request_context():
         return {"listings": 0, "shops": 0}
+    db = getattr(g, "db", None)
+    if db is not None and current_owner_key():
+        return {
+            "listings": len(favourite_listing_list(db)),
+            "shops": len(favourite_shop_list(db)),
+        }
     return {
         "listings": len(favourite_listing_session_list()),
         "shops": len(favourite_shop_session_list()),
@@ -548,11 +591,73 @@ def favourite_shop_session_list() -> list[int]:
 
 
 def favourite_listing_ids() -> set[int]:
+    db = getattr(g, "db", None) if has_request_context() else None
+    if db is not None and current_owner_key():
+        return set(favourite_listing_list(db))
     return set(favourite_listing_session_list())
 
 
 def favourite_shop_ids() -> set[int]:
+    db = getattr(g, "db", None) if has_request_context() else None
+    if db is not None and current_owner_key():
+        return set(favourite_shop_list(db))
     return set(favourite_shop_session_list())
+
+
+def favourite_listing_list(db: sqlite3.Connection) -> list[int]:
+    owner_key = current_owner_key()
+    if not owner_key:
+        return favourite_listing_session_list()
+    rows = db.execute(
+        """
+        SELECT listing_id
+        FROM anonymous_favourite_listings
+        WHERE owner_key = ?
+        ORDER BY created_at ASC, listing_id ASC
+        """,
+        (owner_key,),
+    ).fetchall()
+    return [int(row["listing_id"]) for row in rows]
+
+
+def favourite_shop_list(db: sqlite3.Connection) -> list[int]:
+    owner_key = current_owner_key()
+    if not owner_key:
+        return favourite_shop_session_list()
+    rows = db.execute(
+        """
+        SELECT shop_id
+        FROM anonymous_favourite_shops
+        WHERE owner_key = ?
+        ORDER BY created_at ASC, shop_id ASC
+        """,
+        (owner_key,),
+    ).fetchall()
+    return [int(row["shop_id"]) for row in rows]
+
+
+def favourite_listing_exists(db: sqlite3.Connection, owner_key: str, listing_id: int) -> bool:
+    row = db.execute(
+        """
+        SELECT 1
+        FROM anonymous_favourite_listings
+        WHERE owner_key = ? AND listing_id = ?
+        """,
+        (owner_key, listing_id),
+    ).fetchone()
+    return row is not None
+
+
+def favourite_shop_exists(db: sqlite3.Connection, owner_key: str, shop_id: int) -> bool:
+    row = db.execute(
+        """
+        SELECT 1
+        FROM anonymous_favourite_shops
+        WHERE owner_key = ? AND shop_id = ?
+        """,
+        (owner_key, shop_id),
+    ).fetchone()
+    return row is not None
 
 
 def annotate_listing_row(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:

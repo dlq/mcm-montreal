@@ -98,7 +98,7 @@ TRANSLATIONS_FR = {
     "shop.current_listings": "Annonces actuelles",
     "favourites.saved": "Favoris",
     "favourites.title": "Votre sélection",
-    "favourites.subtitle": "Les annonces et boutiques sauvegardées restent dans ce navigateur grâce au stockage de session local.",
+    "favourites.subtitle": "Les annonces et boutiques sauvegardées restent avec ce navigateur grâce à un jeton privé du site.",
     "favourites.saved_listings": "Annonces sauvegardées",
     "favourites.saved_shops": "Boutiques sauvegardées",
     "favourites.shop_count_one": "1 boutique",

@@ -98,7 +98,7 @@ TRANSLATIONS_EN = {
     "shop.current_listings": "Current listings",
     "favourites.saved": "Saved",
     "favourites.title": "Your shortlist",
-    "favourites.subtitle": "Saved listings and shops stay in this browser using local session storage.",
+    "favourites.subtitle": "Saved listings and shops stay with this browser using a private first-party token.",
     "favourites.saved_listings": "Saved listings",
     "favourites.saved_shops": "Saved shops",
     "favourites.shop_count_one": "1 shop",

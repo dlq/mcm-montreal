@@ -34,6 +34,7 @@ from .i18n import (
     status_label,
     translator_for,
 )
+from .identity import load_anonymous_identity, persist_anonymous_identity
 from .refresh import (
     listing_id_from_item_number,
     public_item_number,
@@ -103,7 +104,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if request.endpoint == "static":
             return
         g.db = get_db(app)
+        load_anonymous_identity(app, g.db)
         g.lang = resolved_language()
+
+    @app.after_request
+    def persist_request_resources(response: Response) -> Response:
+        if request.endpoint == "static":
+            return response
+        return persist_anonymous_identity(response)
 
     @app.teardown_appcontext
     def close_db(exc: BaseException | None) -> None:  # noqa: ARG001
@@ -358,7 +366,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         listing = get_listing(g.db, listing_id)
         if not listing:
             abort(404)
-        toggle_favourite_listing(listing_id)
+        toggle_favourite_listing(g.db, listing_id)
         return render_template(
             "_favourite_listing_button.html", listing=get_listing(g.db, listing_id)
         ) + render_template("_favourite_listing_count.html").replace(
@@ -371,7 +379,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         shop = get_shop(g.db, shop_id)
         if not shop:
             abort(404)
-        toggle_favourite_shop(shop_id)
+        toggle_favourite_shop(g.db, shop_id)
         return render_template("_favourite_shop_button.html", shop=get_shop(g.db, shop_id))
 
     @app.get("/admin")

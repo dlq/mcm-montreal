@@ -264,6 +264,56 @@ class AppTests(unittest.TestCase):
         self.assertIn('id="favourite-listing-count"', response.text)
         self.assertIn("(1)", response.text)
 
+    def test_favourite_toggle_uses_durable_anonymous_identity(self) -> None:
+        response = self.client.post(f"/favourites/listing/{self.listing_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("mcm_anonymous_id=", response.headers.get("Set-Cookie", ""))
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                identity_count = db.execute(
+                    "SELECT COUNT(*) AS count FROM anonymous_identities"
+                ).fetchone()["count"]
+                favourite = db.execute(
+                    """
+                    SELECT listing_id
+                    FROM anonymous_favourite_listings
+                    WHERE listing_id = ?
+                    """,
+                    (self.listing_id,),
+                ).fetchone()
+                self.assertEqual(identity_count, 1)
+                self.assertIsNotNone(favourite)
+            finally:
+                db.close()
+
+    def test_session_favourites_migrate_to_anonymous_identity(self) -> None:
+        with self.client.session_transaction() as client_session:
+            client_session["favourite_listing_ids"] = [self.listing_id]
+            client_session["favourite_shop_ids"] = [1]
+
+        response = self.client.get("/favourites")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Sample Chair", response.text)
+        with self.client.session_transaction() as client_session:
+            self.assertNotIn("favourite_listing_ids", client_session)
+            self.assertNotIn("favourite_shop_ids", client_session)
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                listing_count = db.execute(
+                    "SELECT COUNT(*) AS count FROM anonymous_favourite_listings"
+                ).fetchone()["count"]
+                shop_count = db.execute(
+                    "SELECT COUNT(*) AS count FROM anonymous_favourite_shops"
+                ).fetchone()["count"]
+                self.assertEqual(listing_count, 1)
+                self.assertEqual(shop_count, 1)
+            finally:
+                db.close()
+
     def test_refresh_runs_without_request_context(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)
