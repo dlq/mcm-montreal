@@ -1457,6 +1457,79 @@ class AppTests(unittest.TestCase):
         response = self.client.get("/?lang=fr&material=teak")
         self.assertIn("Matériau: teck", response.text)
 
+    def test_search_expands_english_material_to_french_source_text(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET title = 'Buffet en teck',
+                        normalized_title = 'buffet en teck',
+                        materials = '',
+                        source_description = ''
+                    WHERE id = ?
+                    """,
+                    (self.listing_id,),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.get("/?q=teak")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Buffet en teck", response.text)
+
+    def test_search_expands_french_material_to_english_source_text(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET title = 'Danish teak sideboard',
+                        normalized_title = 'danish teak sideboard',
+                        materials = '',
+                        source_description = ''
+                    WHERE id = ?
+                    """,
+                    (self.listing_id,),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.get("/?q=teck")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Danish teak sideboard", response.text)
+
+    def test_search_requires_each_expanded_token_group(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    UPDATE listings
+                    SET title = 'Buffet en teck',
+                        normalized_title = 'buffet en teck',
+                        materials = '',
+                        source_description = ''
+                    WHERE id = ?
+                    """,
+                    (self.listing_id,),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        match_response = self.client.get("/?q=teak sideboard")
+        miss_response = self.client.get("/?q=teak lamp")
+
+        self.assertIn("Buffet en teck", match_response.text)
+        self.assertIn("0 listings", miss_response.text)
+
     def test_material_dropdown_localizes_canonical_materials(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)

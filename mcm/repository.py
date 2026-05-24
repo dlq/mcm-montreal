@@ -15,6 +15,47 @@ ALLOWED_FILTER_FIELDS = {"category", "materials", "designer"}
 ALLOWED_AVAILABILITY = {"available", "sold_out", "all"}
 ALLOWED_SORT = {"curated", "newest", "recent_check", "price_low", "price_high", "recent_source"}
 EFFECTIVE_AVAILABILITY_SQL = "COALESCE(NULLIF(l.availability_override, ''), l.availability_status)"
+SEARCH_FIELDS = (
+    "l.title",
+    "l.designer",
+    "l.maker",
+    "l.materials",
+    "COALESCE(NULLIF(l.category_override, ''), l.category)",
+    "l.source_description",
+)
+SEARCH_SYNONYM_GROUPS = (
+    ("teak", "teck"),
+    ("rosewood", "palissandre"),
+    ("walnut", "noyer"),
+    ("sideboard", "sideboards", "buffet", "buffets", "credenza", "credenzas", "enfilade"),
+    ("dresser", "dressers", "commode", "commodes"),
+    ("chair", "chairs", "chaise", "chaises", "fauteuil", "fauteuils"),
+    ("lamp", "lamps", "lampe", "lampes"),
+    ("table", "tables"),
+    ("dining", "diner", "manger"),
+    ("storage", "rangement"),
+    ("shelf", "shelves", "etagere", "etageres", "étagère", "étagères"),
+)
+
+
+def normalize_search_token(value: str) -> str:
+    stripped = "".join(
+        char
+        for char in unicodedata.normalize("NFKD", value.lower().strip())
+        if not unicodedata.combining(char)
+    )
+    return stripped.replace("'", "")
+
+
+SEARCH_SYNONYMS = {
+    normalize_search_token(alias): {
+        normalize_search_token(candidate)
+        for candidate in group
+        if normalize_search_token(candidate)
+    }
+    for group in SEARCH_SYNONYM_GROUPS
+    for alias in group
+}
 PROVEN_SOLD_OUT_SQL = """
 (
     NULLIF(l.availability_override, '') = 'sold_out'
@@ -114,11 +155,10 @@ def listing_query_parts(
         clauses.append(f"{EFFECTIVE_AVAILABILITY_SQL} != 'removed'")
         clauses.append(f"({EFFECTIVE_AVAILABILITY_SQL} != 'sold_out' OR {PROVEN_SOLD_OUT_SQL})")
     if filters.get("q"):
-        clauses.append(
-            "(l.title LIKE ? OR l.designer LIKE ? OR l.maker LIKE ? OR l.materials LIKE ?)"
-        )
-        q = f"%{filters['q']}%"
-        params.extend([q, q, q, q])
+        search_clause, search_params = search_query_clause(filters["q"])
+        if search_clause:
+            clauses.append(search_clause)
+            params.extend(search_params)
     if filters.get("shop"):
         clauses.append("s.slug = ?")
         params.append(filters["shop"])
@@ -151,6 +191,35 @@ def listing_query_parts(
         clauses.append("l.price_value <= ?")
         params.append(price_max)
     return clauses, params
+
+
+def search_query_clause(query: str) -> tuple[str, list[str]]:
+    groups = search_term_groups(query)
+    if not groups:
+        return "", []
+    clauses = []
+    params: list[str] = []
+    for group in groups:
+        term_clauses = []
+        for term in group:
+            for field in SEARCH_FIELDS:
+                term_clauses.append(f"{field} LIKE ?")
+                params.append(f"%{term}%")
+        clauses.append(f"({' OR '.join(term_clauses)})")
+    return f"({' AND '.join(clauses)})", params
+
+
+def search_term_groups(query: str) -> list[list[str]]:
+    groups = []
+    seen_tokens: set[str] = set()
+    for raw_token in re.findall(r"[\wÀ-ÿ']+", query):
+        token = normalize_search_token(raw_token)
+        if not token or token in seen_tokens:
+            continue
+        seen_tokens.add(token)
+        terms = sorted(SEARCH_SYNONYMS.get(token, {token}))
+        groups.append(terms)
+    return groups
 
 
 def get_listing(db: sqlite3.Connection, listing_id: int) -> dict[str, Any] | None:
