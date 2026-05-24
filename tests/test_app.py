@@ -402,6 +402,17 @@ class AppTests(unittest.TestCase):
         self.assertIn('href="/?price_max=1000"', response.text)
         self.assertIn("(1)", response.text)
 
+    def test_saved_searches_fall_back_to_apex_referrer_query(self) -> None:
+        response = self.client.post(
+            "/saved-searches",
+            headers={"Referer": "https://montrealmcm.ca/?price_max=1000"},
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('href="/?price_max=1000"', response.text)
+        self.assertIn("(1)", response.text)
+
     def test_saved_searches_ignore_cross_host_referrer_query(self) -> None:
         response = self.client.post(
             "/saved-searches",
