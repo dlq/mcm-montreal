@@ -65,6 +65,8 @@ data.
   Vintage, and gradual Mostly Danish ingestion
 - Release tag `0.2.2`: public browse performance release with 48-card lazy loading and a rotated
   Cloudflare container instance so the deployed container serves the current image
+- Release tag `0.2.3`: shop address and compact map release with production D1 address metadata
+  populated
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
