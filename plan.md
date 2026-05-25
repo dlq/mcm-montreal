@@ -465,6 +465,34 @@ Completed in `0.2.x`:
 - saved search alerts and email capture remain deferred until matching and notification semantics
   are clearer
 
+### Audience Analytics
+
+Current facts:
+
+- Cloudflare zone analytics can report daily unique IPs, page views, requests, bytes, and related
+  request dimensions.
+- The app does not currently store first-party visitor analytics.
+- Cloudflare zone `uniques` are daily unique IP counts, not verified human visitors or all-time
+  distinct people.
+- Dwell time is not available from the current HTTP analytics view because Cloudflare only sees
+  requests, not how long a browser tab remains open.
+
+Questions to settle:
+
+- Should Cloudflare Web Analytics / RUM be enabled for privacy-friendly page-level analytics and
+  dwell-time-style engagement metrics?
+- Does enabling Cloudflare Web Analytics require changing the `montrealmcm.ca` zone plan, or can it
+  be enabled through the existing paid Cloudflare account setup?
+- Should we avoid third-party analytics entirely and add a tiny first-party event endpoint only if
+  audience signals become product-critical?
+
+Likely work:
+
+- check the Cloudflare dashboard for Web Analytics availability on `montrealmcm.ca`
+- document whether Web Analytics has any plan gate or incremental cost for this account
+- if enabled, verify what engagement metrics are actually exposed before making product decisions
+  from them
+
 ### Durable Anonymous Identity
 
 Browser-session favourites are enough for the MVP, but they are fragile across devices.
