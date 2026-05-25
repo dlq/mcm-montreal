@@ -540,6 +540,10 @@ Questions to settle:
   fragments be split further?
 - Is the Python application structure still contributor-friendly, especially around repository
   queries, source parsers, refresh orchestration, and presentation helpers?
+- The `Recently added by source` sort label is misleading because it currently sorts by
+  `last_seen_at`, which behaves more like "most recently seen on source" than a true source-side
+  added date. Revisit the label and decide whether to rename it, remove it, or add a real
+  source-order/source-added signal.
 
 Likely work:
 
@@ -708,6 +712,9 @@ Live design audit notes from 2026-05-20:
   missing source images do not create large blank wells.
 - Shop index cards are becoming text-heavy at three columns; simplify card metadata before adding
   black-and-white shop maps.
+- Shop detail pages currently expose `Get directions` as a Google Maps-only link. Revisit this so
+  the detail page mirrors the shop listing card direction options and does not force one map
+  provider.
 - Add a branded 404 page with recovery paths back to listings/search instead of Flask's default
   unstyled 404.
 - Strengthen interactive hierarchy for primary filter actions and favourite saved states without
