@@ -1,7 +1,7 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-05-24
+Updated: 2026-05-27
 Current line: `0.2.x`
 
 ## Purpose
@@ -27,6 +27,10 @@ It should win by being:
 
 The user promise is simple: browse a focused, live-looking catalogue of Montreal-relevant MCM
 inventory without visiting each shop one by one.
+
+The app should stay web-first but be comfortable as a pinned home-screen app on iOS and Android:
+installable/pinnable, fast to reopen, visually coherent in standalone mode, and useful without
+requiring a native app.
 
 ## Current State
 
@@ -736,6 +740,9 @@ Live design audit notes from 2026-05-20:
   thumbnails push title, price, favourite action, and metadata below the first viewport.
 - The mobile filter drawer is long enough that apply/reset controls are not immediately visible,
   making filtering feel heavier than it is.
+- Add PWA/home-screen support so Montreal MCM can be pinned on iOS and Android: web app manifest,
+  appropriate icons, theme/background colors, standalone display behavior, touch targets, and
+  browser-chrome-safe spacing.
 - Listing image frames need a more intentional loading/unavailable state so slow, blocked, or
   missing source images do not create large blank wells.
 - Shop index cards are becoming text-heavy at three columns; simplify card metadata before adding
