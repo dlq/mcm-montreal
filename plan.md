@@ -28,9 +28,9 @@ It should win by being:
 The user promise is simple: browse a focused, live-looking catalogue of Montreal-relevant MCM
 inventory without visiting each shop one by one.
 
-The app should stay web-first but be comfortable as a pinned home-screen app on iOS and Android:
-installable/pinnable, fast to reopen, visually coherent in standalone mode, and useful without
-requiring a native app.
+The app should stay web-first but become a complete installable web app on iOS and Android:
+installable/pinnable, fast to reopen, visually coherent in standalone mode, notification-capable
+where users explicitly opt in, and useful without requiring a native app.
 
 ## Current State
 
@@ -357,7 +357,9 @@ The `0.1.x` line is successful as of `0.1.2`:
 ## 0.2.x Development: Retention And Better Discovery
 
 The `0.2.x` line should make the product useful after the first visit. This is where saved searches,
-alerts, history, richer browsing, and production-grade refresh orchestration should land.
+history, richer browsing, and production-grade refresh orchestration should land. Saved-search push
+alerts are deferred into the broader installable web-app/PWA effort, because notification behavior
+is device-specific and most useful once the site can be pinned on iOS and Android.
 
 ### Queued Refresh And Monitoring
 
@@ -445,18 +447,16 @@ Decision:
 
 Questions to settle:
 
-- Are anonymous saved searches enough, or do alerts require optional email capture?
-- Should alerts be email-only, RSS-like feeds, or browser/session notifications first?
+- Are anonymous saved searches enough for non-alert retention?
+- Should post-PWA alerts use Web Push first, with optional email left out until there is a clear need?
 - What matching rules are useful without becoming noisy?
 
 Likely work:
 
 - saved search creation from current filters
 - saved search management page
-- alert preferences
-- notification queue
-- email when a saved search gets a new match
-- email when a saved item changes status or appears removed
+- defer alert preferences, notification queue, Web Push subscriptions, and any email capture until
+  the broader installable web-app/PWA work begins
 
 Completed in `0.2.x`:
 
@@ -466,8 +466,9 @@ Completed in `0.2.x`:
 - saving a search after HTMX filter updates now captures the current visible filter form, with a
   same-origin referrer fallback for empty posts
 - the Favourites nav count reflects saved listings, saved shops, and saved searches together
-- saved search alerts and email capture remain deferred until matching and notification semantics
-  are clearer
+- saved search alerts and email capture remain deferred until the broader installable web-app/PWA
+  work; the likely first alert path is anonymous Web Push tied to the existing durable owner key,
+  with in-app saved search state as the reliable fallback
 
 ### Audience Analytics
 
@@ -740,9 +741,12 @@ Live design audit notes from 2026-05-20:
   thumbnails push title, price, favourite action, and metadata below the first viewport.
 - The mobile filter drawer is long enough that apply/reset controls are not immediately visible,
   making filtering feel heavier than it is.
-- Add PWA/home-screen support so Montreal MCM can be pinned on iOS and Android: web app manifest,
-  appropriate icons, theme/background colors, standalone display behavior, touch targets, and
-  browser-chrome-safe spacing.
+- Complete the installable web-app/PWA work so Montreal MCM can be pinned on iOS and Android: web
+  app manifest, appropriate icons, theme/background colors, standalone display behavior, service
+  worker strategy, offline/fallback behavior, touch targets, browser-chrome-safe spacing, and
+  notification readiness.
+- Revisit saved-search alerts as part of the installable web-app/PWA work. Prefer anonymous Web
+  Push tied to the existing durable owner key before adding email capture or real accounts.
 - Listing image frames need a more intentional loading/unavailable state so slow, blocked, or
   missing source images do not create large blank wells.
 - Shop index cards are becoming text-heavy at three columns; simplify card metadata before adding
