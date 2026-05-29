@@ -40,6 +40,7 @@ from .locations import shop_address_lines, shop_apple_maps_url, shop_directions_
 from .refresh import (
     listing_id_from_item_number,
     public_item_number,
+    reconcile_chunked_source,
     refresh_all_sources,
     refresh_chez_lamothe_chunk,
     refresh_le_centerpiece_chunk,
@@ -371,6 +372,27 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "refreshed_at": datetime.now(UTC).isoformat(),
         }
         return payload, 502 if chunk.result.error else 200
+
+    @app.post("/cron/reconcile/<source_slug>")
+    def cron_reconcile_chunked_source(source_slug: str) -> Any:
+        if request.headers.get("X-Cloudflare-Scheduled") != "1":
+            abort(404)
+        try:
+            result = reconcile_chunked_source(
+                g.db,
+                source_slug,
+                since=request.args.get("since", ""),
+            )
+        except ValueError:
+            abort(404)
+        return {
+            "status": "warning" if result.error else "ok",
+            "source": result.source_slug,
+            "listings": result.listings_found,
+            "hidden": result.hidden_count,
+            "warning": result.error,
+            "reconciled_at": datetime.now(UTC).isoformat(),
+        }, 409 if result.error else 200
 
     @app.post("/cron/refresh/<source_slug>")
     def cron_refresh_source(source_slug: str) -> Any:

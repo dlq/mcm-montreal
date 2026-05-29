@@ -15,6 +15,7 @@ from mcm.locales import TRANSLATIONS_EN, TRANSLATIONS_FR
 from mcm.refresh import (
     listing_id_from_item_number,
     public_item_number,
+    reconcile_chunked_source,
     refresh_all_sources,
     refresh_source_by_slug,
 )
@@ -1031,6 +1032,178 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.json["source"], "chez-lamothe")
         self.assertEqual(response.json["chunk"], 0)
         self.assertEqual(response.json["hidden"], 0)
+
+    def test_chunked_source_reconciliation_requires_all_recent_chunks(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                shop = db.execute(
+                    "SELECT id FROM shops WHERE slug = 'showroom-montreal'"
+                ).fetchone()
+                self.assertIsNotNone(shop)
+                db.execute(
+                    """
+                    INSERT INTO listings (
+                        source_shop_id, source_listing_url, source_listing_key, title,
+                        normalized_title, price_raw, price_value, currency, primary_image_url,
+                        additional_image_urls, availability_status, shipping_scope,
+                        ships_to_montreal, shipping_note, last_seen_at, last_checked_at,
+                        first_seen_at, category, subcategory, designer, maker, era,
+                        materials, dimensions_text, width, depth, height, condition_text,
+                        location_text, source_description, ingest_source_type, parse_confidence,
+                        dedupe_group_id, is_active, is_featured, manual_notes,
+                        availability_override, category_override
+                    ) VALUES (
+                        ?, 'https://www.showroommtl.com/nouveaute', 'showroom:stale',
+                        'Stale Showroom Chair', 'stale showroom chair', '$500', 500, 'CAD',
+                        '', '[]', 'available', 'local_quote', 1, 'Local quote',
+                        '2026-05-01T00:00:00+00:00', '2026-05-01T00:00:00+00:00',
+                        '2026-05-01T00:00:00+00:00', 'lounge chairs', '', '', '', '',
+                        'teak', '', NULL, NULL, NULL, '', 'Montreal, QC', '', 'test', 1.0,
+                        '', 1, 0, '', '', ''
+                    )
+                    """,
+                    (shop["id"],),
+                )
+                for chunk_index in range(11):
+                    db.execute(
+                        """
+                        INSERT INTO refresh_jobs (
+                            shop_id, source_slug, chunk_index, entry_url, started_at,
+                            finished_at, status, listings_found
+                        ) VALUES (?, 'showroom-montreal', ?, ?, ?, ?, 'success', 10)
+                        """,
+                        (
+                            shop["id"],
+                            chunk_index,
+                            f"https://www.showroommtl.com/chunk-{chunk_index}",
+                            f"2026-05-29T10:{chunk_index:02d}:00+00:00",
+                            f"2026-05-29T10:{chunk_index:02d}:10+00:00",
+                        ),
+                    )
+
+                result = reconcile_chunked_source(
+                    db,
+                    "showroom-montreal",
+                    since="2026-05-29T09:00:00+00:00",
+                )
+                listing = db.execute(
+                    "SELECT is_active FROM listings WHERE source_listing_key = 'showroom:stale'"
+                ).fetchone()
+
+                self.assertIn("Missing successful chunk jobs", result.error)
+                self.assertEqual(result.hidden_count, 0)
+                self.assertEqual(listing["is_active"], 1)
+            finally:
+                db.close()
+
+    def test_chunked_source_reconciliation_hides_missing_after_all_chunks(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                shop = db.execute(
+                    "SELECT id FROM shops WHERE slug = 'showroom-montreal'"
+                ).fetchone()
+                self.assertIsNotNone(shop)
+                db.execute(
+                    """
+                    INSERT INTO listings (
+                        source_shop_id, source_listing_url, source_listing_key, title,
+                        normalized_title, price_raw, price_value, currency, primary_image_url,
+                        additional_image_urls, availability_status, shipping_scope,
+                        ships_to_montreal, shipping_note, last_seen_at, last_checked_at,
+                        first_seen_at, category, subcategory, designer, maker, era,
+                        materials, dimensions_text, width, depth, height, condition_text,
+                        location_text, source_description, ingest_source_type, parse_confidence,
+                        dedupe_group_id, is_active, is_featured, manual_notes,
+                        availability_override, category_override
+                    ) VALUES (
+                        ?, 'https://www.showroommtl.com/nouveaute', 'showroom:stale',
+                        'Stale Showroom Chair', 'stale showroom chair', '$500', 500, 'CAD',
+                        '', '[]', 'available', 'local_quote', 1, 'Local quote',
+                        '2026-05-01T00:00:00+00:00', '2026-05-01T00:00:00+00:00',
+                        '2026-05-01T00:00:00+00:00', 'lounge chairs', '', '', '', '',
+                        'teak', '', NULL, NULL, NULL, '', 'Montreal, QC', '', 'test', 1.0,
+                        '', 1, 0, '', '', ''
+                    )
+                    """,
+                    (shop["id"],),
+                )
+                db.execute(
+                    """
+                    INSERT INTO listings (
+                        source_shop_id, source_listing_url, source_listing_key, title,
+                        normalized_title, price_raw, price_value, currency, primary_image_url,
+                        additional_image_urls, availability_status, shipping_scope,
+                        ships_to_montreal, shipping_note, last_seen_at, last_checked_at,
+                        first_seen_at, category, subcategory, designer, maker, era,
+                        materials, dimensions_text, width, depth, height, condition_text,
+                        location_text, source_description, ingest_source_type, parse_confidence,
+                        dedupe_group_id, is_active, is_featured, manual_notes,
+                        availability_override, category_override
+                    ) VALUES (
+                        ?, 'https://www.showroommtl.com/nouveaute', 'showroom:fresh',
+                        'Fresh Showroom Chair', 'fresh showroom chair', '$700', 700, 'CAD',
+                        '', '[]', 'available', 'local_quote', 1, 'Local quote',
+                        '2026-05-29T10:06:00+00:00', '2026-05-29T10:06:00+00:00',
+                        '2026-05-29T10:06:00+00:00', 'lounge chairs', '', '', '', '',
+                        'teak', '', NULL, NULL, NULL, '', 'Montreal, QC', '', 'test', 1.0,
+                        '', 1, 0, '', '', ''
+                    )
+                    """,
+                    (shop["id"],),
+                )
+                for chunk_index in range(12):
+                    db.execute(
+                        """
+                        INSERT INTO refresh_jobs (
+                            shop_id, source_slug, chunk_index, entry_url, started_at,
+                            finished_at, status, listings_found
+                        ) VALUES (?, 'showroom-montreal', ?, ?, ?, ?, 'success', 10)
+                        """,
+                        (
+                            shop["id"],
+                            chunk_index,
+                            f"https://www.showroommtl.com/chunk-{chunk_index}",
+                            f"2026-05-29T10:{chunk_index:02d}:00+00:00",
+                            f"2026-05-29T10:{chunk_index:02d}:10+00:00",
+                        ),
+                    )
+
+                result = reconcile_chunked_source(
+                    db,
+                    "showroom-montreal",
+                    since="2026-05-29T09:00:00+00:00",
+                )
+                stale = db.execute(
+                    """
+                    SELECT is_active, availability_status
+                    FROM listings
+                    WHERE source_listing_key = 'showroom:stale'
+                    """
+                ).fetchone()
+                fresh = db.execute(
+                    "SELECT is_active FROM listings WHERE source_listing_key = 'showroom:fresh'"
+                ).fetchone()
+                event = db.execute(
+                    """
+                    SELECT event_type, to_status
+                    FROM listing_availability_events
+                    WHERE source_listing_key = 'showroom:stale'
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """
+                ).fetchone()
+
+                self.assertEqual(result.error, "")
+                self.assertEqual(result.hidden_count, 1)
+                self.assertEqual(stale["is_active"], 0)
+                self.assertEqual(stale["availability_status"], "removed")
+                self.assertEqual(fresh["is_active"], 1)
+                self.assertEqual(event["event_type"], "source_reconciliation")
+                self.assertEqual(event["to_status"], "removed")
+            finally:
+                db.close()
 
     def test_refresh_error_does_not_deactivate_existing_inventory(self) -> None:
         fallback_item = {

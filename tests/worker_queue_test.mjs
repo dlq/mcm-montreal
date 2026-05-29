@@ -234,7 +234,7 @@ const worker = await loadWorker();
     monitorWarning.warnings.some(
       (warning) =>
         warning.source_slug === "showroom-montreal" &&
-        warning.expected_jobs === 12 &&
+        warning.expected_jobs === 13 &&
         warning.observed_jobs === 1,
     ),
   );
@@ -244,13 +244,13 @@ const worker = await loadWorker();
   const db = makeDb(
     [
       ...refreshJobs("morceau", 1),
-      ...refreshJobs("showroom-montreal", 12),
+      ...refreshJobs("showroom-montreal", 13),
       ...refreshJobs("montreal-moderne", 1),
-      ...refreshJobs("le-centerpiece", 7),
+      ...refreshJobs("le-centerpiece", 8),
       ...refreshJobs("maison-singulier", 1),
       ...refreshJobs("yardsale-vintage", 1),
       ...refreshJobs("bond-vintage", 1),
-      ...refreshJobs("chez-lamothe", 20),
+      ...refreshJobs("chez-lamothe", 21),
       ...refreshJobs("habitat-mobilier", 1),
       ...refreshJobs("green-wall-vintage", 1),
       ...refreshJobs("mostly-danish", 5),
@@ -279,12 +279,13 @@ const worker = await loadWorker();
         "showroom-montreal",
         Array.from({ length: 12 }, (_value, index) => index).filter((index) => index !== 7),
       ),
+      refreshJob("showroom-montreal"),
       ...refreshJobs("montreal-moderne", 1),
-      ...refreshJobs("le-centerpiece", 7),
+      ...refreshJobs("le-centerpiece", 8),
       ...refreshJobs("maison-singulier", 1),
       ...refreshJobs("yardsale-vintage", 1),
       ...refreshJobs("bond-vintage", 1),
-      ...refreshJobs("chez-lamothe", 20),
+      ...refreshJobs("chez-lamothe", 21),
       ...refreshJobs("habitat-mobilier", 1),
       ...refreshJobs("green-wall-vintage", 1),
       ...refreshJobs("mostly-danish", 5),
@@ -311,13 +312,13 @@ const worker = await loadWorker();
   const db = makeDb(
     [
       ...refreshJobs("morceau", 1, { listings_found: 100, hidden_count: 50 }),
-      ...refreshJobs("showroom-montreal", 12),
+      ...refreshJobs("showroom-montreal", 13),
       ...refreshJobs("montreal-moderne", 1),
-      ...refreshJobs("le-centerpiece", 7),
+      ...refreshJobs("le-centerpiece", 8),
       ...refreshJobs("maison-singulier", 1),
       ...refreshJobs("yardsale-vintage", 1),
       ...refreshJobs("bond-vintage", 1),
-      ...refreshJobs("chez-lamothe", 20),
+      ...refreshJobs("chez-lamothe", 21),
       ...refreshJobs("habitat-mobilier", 1),
       ...refreshJobs("green-wall-vintage", 1),
       ...refreshJobs("mostly-danish", 5),
@@ -352,18 +353,21 @@ const worker = await loadWorker();
 
   assert.equal(queue.sentBatches.length, 1);
   const messages = queue.sentBatches[0];
-  assert.equal(messages.length, 51);
+  assert.equal(messages.length, 54);
   assert.deepEqual(
     messages.map((message) => message.body.source_slug),
     [
       "morceau",
       ...Array.from({ length: 12 }, () => "showroom-montreal"),
+      "showroom-montreal",
       "montreal-moderne",
       ...Array.from({ length: 7 }, () => "le-centerpiece"),
+      "le-centerpiece",
       "maison-singulier",
       "yardsale-vintage",
       "bond-vintage",
       ...Array.from({ length: 20 }, () => "chez-lamothe"),
+      "chez-lamothe",
       "habitat-mobilier",
       "green-wall-vintage",
       ...Array.from({ length: 5 }, () => "mostly-danish"),
@@ -372,18 +376,21 @@ const worker = await loadWorker();
   assert.deepEqual(
     messages
       .filter((message) => message.body.source_slug === "showroom-montreal")
+      .filter((message) => message.body.action === "refresh")
       .map((message) => message.body.chunk_index),
     Array.from({ length: 12 }, (_value, index) => index),
   );
   assert.deepEqual(
     messages
       .filter((message) => message.body.source_slug === "le-centerpiece")
+      .filter((message) => message.body.action === "refresh")
       .map((message) => message.body.chunk_index),
     Array.from({ length: 7 }, (_value, index) => index),
   );
   assert.deepEqual(
     messages
       .filter((message) => message.body.source_slug === "chez-lamothe")
+      .filter((message) => message.body.action === "refresh")
       .map((message) => message.body.chunk_index),
     Array.from({ length: 20 }, (_value, index) => index),
   );
@@ -396,6 +403,7 @@ const worker = await loadWorker();
   assert(messages.every((message) => message.body.trigger === "scheduled_refresh"));
   assert(messages.every((message) => message.body.message_id));
   assert(messages.every((message) => message.body.enqueued_at));
+  assert.equal(messages.filter((message) => message.body.action === "reconcile").length, 3);
 }
 
 {
@@ -410,15 +418,18 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 7);
+  assert.equal(queue.sentBatches[0].length, 8);
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.source_slug),
-    Array.from({ length: 7 }, () => "le-centerpiece"),
+    Array.from({ length: 8 }, () => "le-centerpiece"),
   );
   assert.deepEqual(
-    queue.sentBatches[0].map((message) => message.body.chunk_index),
+    queue.sentBatches[0]
+      .filter((message) => message.body.action === "refresh")
+      .map((message) => message.body.chunk_index),
     Array.from({ length: 7 }, (_value, index) => index),
   );
+  assert.equal(queue.sentBatches[0].at(-1).body.action, "reconcile");
   assert.equal(queue.sentBatches[0][0].body.trigger, "manual_refresh_now");
 }
 
@@ -451,15 +462,18 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 12);
+  assert.equal(queue.sentBatches[0].length, 13);
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.source_slug),
-    Array.from({ length: 12 }, () => "showroom-montreal"),
+    Array.from({ length: 13 }, () => "showroom-montreal"),
   );
   assert.deepEqual(
-    queue.sentBatches[0].map((message) => message.body.chunk_index),
+    queue.sentBatches[0]
+      .filter((message) => message.body.action === "refresh")
+      .map((message) => message.body.chunk_index),
     Array.from({ length: 12 }, (_value, index) => index),
   );
+  assert.equal(queue.sentBatches[0].at(-1).body.action, "reconcile");
   assert.equal(queue.sentBatches[0][0].body.trigger, "manual_refresh_now");
 }
 
@@ -475,15 +489,18 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 20);
+  assert.equal(queue.sentBatches[0].length, 21);
   assert.deepEqual(
     queue.sentBatches[0].map((message) => message.body.source_slug),
-    Array.from({ length: 20 }, () => "chez-lamothe"),
+    Array.from({ length: 21 }, () => "chez-lamothe"),
   );
   assert.deepEqual(
-    queue.sentBatches[0].map((message) => message.body.chunk_index),
+    queue.sentBatches[0]
+      .filter((message) => message.body.action === "refresh")
+      .map((message) => message.body.chunk_index),
     Array.from({ length: 20 }, (_value, index) => index),
   );
+  assert.equal(queue.sentBatches[0].at(-1).body.action, "reconcile");
   assert.equal(queue.sentBatches[0][0].body.trigger, "manual_refresh_now");
 }
 
@@ -499,7 +516,7 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 51);
+  assert.equal(queue.sentBatches[0].length, 54);
 }
 
 {
@@ -584,6 +601,26 @@ const worker = await loadWorker();
     new URL(containerRequests[0].url).pathname,
     "/cron/refresh/showroom-montreal/chunk/1",
   );
+}
+
+{
+  const { env, containerRequests } = makeEnv();
+  const message = makeMessage({
+    action: "reconcile",
+    source_slug: "showroom-montreal",
+    trigger: "test",
+    enqueued_at: "2026-05-29T09:23:00.000Z",
+    message_id: "message-3b",
+  });
+
+  await worker.queue({ messages: [message] }, env);
+
+  assert.equal(message.acked, true);
+  assert.equal(message.retried, null);
+  assert.equal(containerRequests.length, 1);
+  const requestUrl = new URL(containerRequests[0].url);
+  assert.equal(requestUrl.pathname, "/cron/reconcile/showroom-montreal");
+  assert.equal(requestUrl.searchParams.get("since"), "2026-05-29T09:23:00.000Z");
 }
 
 {

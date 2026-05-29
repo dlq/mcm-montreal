@@ -29,6 +29,11 @@ const CHEZ_LAMOTHE_CHUNK_COUNT = 20;
 const MOSTLY_DANISH_SOURCE_SLUG = "mostly-danish";
 const MOSTLY_DANISH_CHUNK_COUNT = 30;
 const MOSTLY_DANISH_CHUNKS_PER_REFRESH = 5;
+const RECONCILABLE_CHUNKED_SOURCE_SLUGS = new Set([
+  SHOWROOM_SOURCE_SLUG,
+  LE_CENTERPIECE_SOURCE_SLUG,
+  CHEZ_LAMOTHE_SOURCE_SLUG,
+]);
 const RETRY_DELAY_SECONDS = 300;
 const STALE_REFRESH_JOB_AGE_MS = 90 * 60 * 1000;
 const HIDDEN_SPIKE_MIN_COUNT = 50;
@@ -199,27 +204,50 @@ async function enqueueRefreshSources(env, sourceSlugs, trigger) {
 }
 
 function refreshMessagesForSource(sourceSlug, trigger) {
+  const enqueuedAt = new Date().toISOString();
   if (sourceSlug === SHOWROOM_SOURCE_SLUG) {
-    return Array.from({ length: SHOWROOM_CHUNK_COUNT }, (_value, chunkIndex) =>
-      refreshMessageBody(sourceSlug, trigger, chunkIndex),
+    return withReconcileMessage(
+      sourceSlug,
+      trigger,
+      enqueuedAt,
+      Array.from({ length: SHOWROOM_CHUNK_COUNT }, (_value, chunkIndex) =>
+        refreshMessageBody(sourceSlug, trigger, enqueuedAt, chunkIndex),
+      ),
     );
   }
   if (sourceSlug === LE_CENTERPIECE_SOURCE_SLUG) {
-    return Array.from({ length: LE_CENTERPIECE_CHUNK_COUNT }, (_value, chunkIndex) =>
-      refreshMessageBody(sourceSlug, trigger, chunkIndex),
+    return withReconcileMessage(
+      sourceSlug,
+      trigger,
+      enqueuedAt,
+      Array.from({ length: LE_CENTERPIECE_CHUNK_COUNT }, (_value, chunkIndex) =>
+        refreshMessageBody(sourceSlug, trigger, enqueuedAt, chunkIndex),
+      ),
     );
   }
   if (sourceSlug === CHEZ_LAMOTHE_SOURCE_SLUG) {
-    return Array.from({ length: CHEZ_LAMOTHE_CHUNK_COUNT }, (_value, chunkIndex) =>
-      refreshMessageBody(sourceSlug, trigger, chunkIndex),
+    return withReconcileMessage(
+      sourceSlug,
+      trigger,
+      enqueuedAt,
+      Array.from({ length: CHEZ_LAMOTHE_CHUNK_COUNT }, (_value, chunkIndex) =>
+        refreshMessageBody(sourceSlug, trigger, enqueuedAt, chunkIndex),
+      ),
     );
   }
   if (sourceSlug === MOSTLY_DANISH_SOURCE_SLUG) {
     return mostlyDanishChunkIndexes().map((chunkIndex) =>
-      refreshMessageBody(sourceSlug, trigger, chunkIndex),
+      refreshMessageBody(sourceSlug, trigger, enqueuedAt, chunkIndex),
     );
   }
-  return [refreshMessageBody(sourceSlug, trigger)];
+  return [refreshMessageBody(sourceSlug, trigger, enqueuedAt)];
+}
+
+function withReconcileMessage(sourceSlug, trigger, enqueuedAt, chunkMessages) {
+  if (!RECONCILABLE_CHUNKED_SOURCE_SLUGS.has(sourceSlug)) {
+    return chunkMessages;
+  }
+  return [...chunkMessages, reconcileMessageBody(sourceSlug, trigger, enqueuedAt)];
 }
 
 function mostlyDanishChunkIndexes(now = new Date()) {
@@ -231,17 +259,30 @@ function mostlyDanishChunkIndexes(now = new Date()) {
   );
 }
 
-function refreshMessageBody(sourceSlug, trigger, chunkIndex = null) {
+function refreshMessageBody(sourceSlug, trigger, enqueuedAt, chunkIndex = null) {
   const body = {
+    action: "refresh",
     source_slug: sourceSlug,
     trigger,
-    enqueued_at: new Date().toISOString(),
+    enqueued_at: enqueuedAt,
     message_id: crypto.randomUUID(),
   };
   if (chunkIndex !== null) {
     body.chunk_index = chunkIndex;
   }
   return { body };
+}
+
+function reconcileMessageBody(sourceSlug, trigger, enqueuedAt) {
+  return {
+    body: {
+      action: "reconcile",
+      source_slug: sourceSlug,
+      trigger,
+      enqueued_at: enqueuedAt,
+      message_id: crypto.randomUUID(),
+    },
+  };
 }
 
 async function consumeRefreshMessage(message, env) {
@@ -259,11 +300,15 @@ async function consumeRefreshMessage(message, env) {
   }
 
   try {
-    const cronPath = refreshCronPath(sourceSlug, body.chunk_index);
+    const cronPath =
+      body.action === "reconcile"
+        ? reconcileCronPath(sourceSlug, body.enqueued_at)
+        : refreshCronPath(sourceSlug, body.chunk_index);
     const result = await callContainerCron(env, cronPath);
     console.log(
       JSON.stringify({
         event: "refresh_queue_completed",
+        action: body.action || "refresh",
         source_slug: sourceSlug,
         chunk_index: body.chunk_index ?? null,
         trigger: body.trigger || "unknown",
@@ -278,6 +323,7 @@ async function consumeRefreshMessage(message, env) {
     console.error(
       JSON.stringify({
         event: "refresh_queue_failed",
+        action: body.action || "refresh",
         source_slug: sourceSlug,
         chunk_index: body.chunk_index ?? null,
         trigger: body.trigger || "unknown",
@@ -324,6 +370,18 @@ function refreshCronPath(sourceSlug, chunkIndex) {
     return `/cron/refresh/mostly-danish/chunk/${chunkIndex}`;
   }
   return `/cron/refresh/${sourceSlug}`;
+}
+
+function reconcileCronPath(sourceSlug, enqueuedAt) {
+  if (!RECONCILABLE_CHUNKED_SOURCE_SLUGS.has(sourceSlug)) {
+    throw new Error(`Source is not chunk-reconcilable: ${sourceSlug}`);
+  }
+  const params = new URLSearchParams();
+  if (typeof enqueuedAt === "string" && enqueuedAt) {
+    params.set("since", enqueuedAt);
+  }
+  const query = params.toString();
+  return `/cron/reconcile/${sourceSlug}${query ? `?${query}` : ""}`;
 }
 
 async function callContainerCron(env, path) {
@@ -460,13 +518,13 @@ async function checkRefreshJobs(env) {
 
 function expectedRefreshJobCount(sourceSlug) {
   if (sourceSlug === SHOWROOM_SOURCE_SLUG) {
-    return SHOWROOM_CHUNK_COUNT;
+    return SHOWROOM_CHUNK_COUNT + 1;
   }
   if (sourceSlug === LE_CENTERPIECE_SOURCE_SLUG) {
-    return LE_CENTERPIECE_CHUNK_COUNT;
+    return LE_CENTERPIECE_CHUNK_COUNT + 1;
   }
   if (sourceSlug === CHEZ_LAMOTHE_SOURCE_SLUG) {
-    return CHEZ_LAMOTHE_CHUNK_COUNT;
+    return CHEZ_LAMOTHE_CHUNK_COUNT + 1;
   }
   if (sourceSlug === MOSTLY_DANISH_SOURCE_SLUG) {
     return MOSTLY_DANISH_CHUNKS_PER_REFRESH;

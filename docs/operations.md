@@ -219,6 +219,13 @@ Each completed source refresh records a row in `refresh_jobs`, plus the existing
 `crawl_failures` records. Chunked sources also record `chunk_index` and `entry_url` so monitor logs
 and admin status can identify the specific chunk involved.
 
+Showroom Montreal, Le Centerpiece, and Chez Lamothe enqueue one guarded source-wide reconciliation
+message after their chunk messages. Reconciliation only deactivates missing inventory when every
+expected chunk for that source has a successful job newer than the queue batch timestamp. If any
+chunk is missing or failed, reconciliation returns a warning and hides nothing. Mostly Danish is not
+source-wide reconciled yet because production intentionally refreshes only 5 of its 30 bounded
+chunks per run.
+
 Conservative source failure behavior is intentional: if a source fetch or parser fails and the shop
 already has records, fallback data is not treated as authoritative and existing listings are not
 deactivated.
@@ -234,7 +241,9 @@ It checks D1 for:
 
 This is log-only monitoring; external alerting can be added later if needed.
 
-As of 2026-05-29, the recent production refresh audit shows no currently running jobs. Daily runs
-from 2026-05-22 through 2026-05-29 reached the expected 51 successful jobs. Recent warnings were
-transient source/network issues: Showroom Montreal DNS failures on 2026-05-25 and 2026-05-26 later
-retried successfully, and Montreal Moderne had one `IncompleteRead` warning on 2026-05-27.
+As of 2026-05-29 before source-wide reconciliation was added, the recent production refresh audit
+showed no currently running jobs. Daily runs from 2026-05-22 through 2026-05-29 reached the then
+expected 51 successful jobs. Recent warnings were transient source/network issues: Showroom Montreal
+DNS failures on 2026-05-25 and 2026-05-26 later retried successfully, and Montreal Moderne had one
+`IncompleteRead` warning on 2026-05-27. After source-wide reconciliation is deployed, a normal full
+daily refresh enqueues 54 messages: 51 refresh messages plus 3 reconciliation messages.

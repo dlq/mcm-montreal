@@ -412,8 +412,6 @@ Completed on 2026-05-14:
 Likely `0.2.x` reliability work:
 
 - add external uptime checks or alert delivery if log-only/admin-dashboard monitoring is not enough
-- consider a source-wide reconciliation job for chunked sources so missing inventory can be
-  deactivated safely after all chunks succeed
 
 Cloudflare resources created:
 
@@ -437,6 +435,10 @@ Completed in `0.2.x`:
 - document production secret purposes, owner storage expectations, and rotation checks; keep
   `MCM_ADMIN_TOKEN` and `MCM_MANUAL_REFRESH_TOKEN` separate so admin credentials cannot force
   manual refreshes
+- add guarded source-wide reconciliation for fully refreshed chunked sources: Showroom Montreal,
+  Le Centerpiece, and Chez Lamothe now enqueue a reconciliation message after their chunks, and the
+  Flask reconcile endpoint hides missing inventory only when every expected chunk has a successful
+  job newer than the queue batch timestamp
 
 Decision:
 
@@ -628,6 +630,10 @@ Current decision:
   Danish as the first regional expansion set; those sources were implemented locally for `0.2.1`.
 - Production ingestion on 2026-05-18 confirmed Habitat Mobilier and Green Wall Vintage are visible
   publicly, and Mostly Danish is ingesting through the planned rotating chunk path.
+- A local source-quality check on 2026-05-29 found Mostly Danish active inventory heavily weighted
+  toward dining chairs: 159 active local listings, 137 categorized as dining chairs. This appears to
+  reflect the selected Shopify furniture feeds rather than a parser failure, but it can skew the
+  MCM-first product feel if default discovery overweights that source/category.
 - Deja Vu Meubles, Cornwall's Little Market, and A Fine Thing fit the regional taste/location
   criteria, but should wait because their public websites do not currently expose enough reliable
   item-level prices, details, and descriptions for ingestion on par with the existing shops.
@@ -639,6 +645,8 @@ Likely work:
 - monitor Chez Lamothe's Square storefront API path/cache version and add a fallback if it changes
 - review Mostly Danish after more chunks ingest to decide whether its selected collections are too
   broad for the MCM-first product promise
+- consider source/category weighting or narrower Mostly Danish collection selection if dining chairs
+  dominate the default browse experience after reconciliation and more production chunks settle
 - add profile/manual-source handling for high-quality local shops that still lack clean catalogs
 - restore location on cards when inventory becomes meaningfully non-Montreal
 - add source-specific notes for shipping and reliability; treat local delivery as enough inside the

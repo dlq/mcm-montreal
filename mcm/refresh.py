@@ -18,6 +18,12 @@ from .sources import (
     fetch_source_listings,
 )
 
+RECONCILABLE_CHUNK_COUNTS = {
+    "showroom-montreal": 12,
+    "le-centerpiece": 7,
+    "chez-lamothe": 20,
+}
+
 
 @dataclass(frozen=True)
 class RefreshResult:
@@ -182,6 +188,110 @@ def refresh_mostly_danish_chunk(db: sqlite3.Connection, chunk_index: int) -> Sou
     )
     db.commit()
     return SourceChunkResult(result=result, chunk_index=chunk_index, entry_url=entry_url)
+
+
+def reconcile_chunked_source(
+    db: sqlite3.Connection,
+    source_slug: str,
+    *,
+    since: str = "",
+) -> RefreshResult:
+    source = next((source for source in SOURCE_DEFINITIONS if source.slug == source_slug), None)
+    if source is None:
+        raise ValueError(f"Unknown source slug: {source_slug}")
+    expected_count = RECONCILABLE_CHUNK_COUNTS.get(source_slug)
+    if expected_count is None:
+        raise ValueError(f"Source is not chunk-reconcilable: {source_slug}")
+
+    started_at = datetime.now(UTC).isoformat()
+    timestamp = started_at
+    ensure_source_shop_seeded(db, source)
+    shop = get_shop_by_slug(db, source.slug)
+    if not shop:
+        raise RuntimeError(f"Missing shop record for source slug: {source.slug}")
+    job = start_refresh_job(
+        db,
+        int(shop["id"]),
+        source.slug,
+        started_at,
+        entry_url="source-wide-reconciliation",
+    )
+
+    chunk_jobs = latest_successful_chunk_jobs(
+        db,
+        source_slug,
+        expected_count,
+        since,
+    )
+    expected_indexes = set(range(expected_count))
+    observed_indexes = {int(row["chunk_index"]) for row in chunk_jobs}
+    missing_indexes = sorted(expected_indexes - observed_indexes)
+
+    if missing_indexes:
+        result = RefreshResult(
+            source_name=source.name,
+            source_slug=source.slug,
+            listings_found=0,
+            new_count=0,
+            reconciled_count=0,
+            hidden_count=0,
+            error=f"Missing successful chunk jobs for indexes: {', '.join(str(index) for index in missing_indexes)}",
+            kept_existing=True,
+        )
+        finish_refresh_job(db, job, datetime.now(UTC).isoformat(), result)
+        db.commit()
+        return result
+
+    cutoff = min(str(row["started_at"]) for row in chunk_jobs)
+    rows_to_deactivate = db.execute(
+        """
+        SELECT id, source_listing_key, availability_status
+        FROM listings
+        WHERE source_shop_id = ?
+          AND is_active = 1
+          AND last_seen_at < ?
+        """,
+        (shop["id"], cutoff),
+    ).fetchall()
+    for row in rows_to_deactivate:
+        if row["availability_status"] != "removed":
+            record_availability_event(
+                db,
+                int(row["id"]),
+                int(shop["id"]),
+                str(row["source_listing_key"]),
+                str(row["availability_status"] or ""),
+                "removed",
+                timestamp,
+                "source_reconciliation",
+            )
+
+    hidden_count = db.execute(
+        """
+        UPDATE listings
+        SET is_active = 0,
+            availability_status = 'removed',
+            last_checked_at = ?
+        WHERE source_shop_id = ?
+          AND is_active = 1
+          AND last_seen_at < ?
+        """,
+        (timestamp, shop["id"], cutoff),
+    ).rowcount
+    listings_found = sum(int(row["listings_found"] or 0) for row in chunk_jobs)
+    result = RefreshResult(
+        source_name=source.name,
+        source_slug=source.slug,
+        listings_found=listings_found,
+        new_count=0,
+        reconciled_count=0,
+        hidden_count=hidden_count,
+        error="",
+        kept_existing=False,
+    )
+    finish_refresh_job(db, job, datetime.now(UTC).isoformat(), result)
+    db.commit()
+    return result
 
 
 def refresh_source(db: sqlite3.Connection, source: SourceDefinition) -> RefreshResult:
@@ -544,6 +654,36 @@ def _refresh_source_listings(
     )
     finish_refresh_job(db, job, datetime.now(UTC).isoformat(), result)
     return result
+
+
+def latest_successful_chunk_jobs(
+    db: sqlite3.Connection,
+    source_slug: str,
+    expected_count: int,
+    since: str = "",
+) -> list[sqlite3.Row]:
+    rows = db.execute(
+        """
+        SELECT rj.chunk_index, rj.started_at, rj.listings_found
+        FROM refresh_jobs rj
+        JOIN (
+            SELECT chunk_index, MAX(started_at) AS started_at
+            FROM refresh_jobs
+            WHERE source_slug = ?
+              AND chunk_index IS NOT NULL
+              AND status = 'success'
+              AND started_at >= ?
+            GROUP BY chunk_index
+        ) latest
+          ON latest.chunk_index = rj.chunk_index
+         AND latest.started_at = rj.started_at
+        WHERE rj.source_slug = ?
+          AND rj.chunk_index >= 0
+          AND rj.chunk_index < ?
+        """,
+        (source_slug, since, source_slug, expected_count),
+    ).fetchall()
+    return rows
 
 
 def record_availability_event(
