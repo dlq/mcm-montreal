@@ -412,9 +412,6 @@ Completed on 2026-05-14:
 Likely `0.2.x` reliability work:
 
 - add external uptime checks or alert delivery if log-only/admin-dashboard monitoring is not enough
-- review production secrets handling: confirm owner storage and rotation for `D1_BRIDGE_TOKEN`,
-  decide whether `MCM_ADMIN_TOKEN` and `MCM_MANUAL_REFRESH_TOKEN` should remain shared or be split,
-  and document the owner/rotation process
 - consider a source-wide reconciliation job for chunked sources so missing inventory can be
   deactivated safely after all chunks succeed
 
@@ -437,6 +434,9 @@ Completed in `0.2.x`:
 - audit production `refresh_jobs` on 2026-05-29: no currently running jobs, all daily runs from
   2026-05-22 through 2026-05-29 reached the expected 51 successful jobs, and recent warnings were
   transient Showroom Montreal DNS failures or one Montreal Moderne `IncompleteRead`
+- document production secret purposes, owner storage expectations, and rotation checks; keep
+  `MCM_ADMIN_TOKEN` and `MCM_MANUAL_REFRESH_TOKEN` separate so admin credentials cannot force
+  manual refreshes
 
 Decision:
 

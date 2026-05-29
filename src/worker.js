@@ -156,7 +156,7 @@ async function queryD1(request, env) {
 }
 
 async function refreshNow(request, env, url) {
-  const token = env.MCM_MANUAL_REFRESH_TOKEN || env.MCM_ADMIN_TOKEN || "";
+  const token = env.MCM_MANUAL_REFRESH_TOKEN || "";
   const authorization = request.headers.get("authorization") || "";
   const headerToken = request.headers.get("x-mcm-admin-token") || "";
   if (!token || (authorization !== `Bearer ${token}` && headerToken !== token)) {

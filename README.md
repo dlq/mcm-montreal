@@ -197,10 +197,12 @@ npx wrangler secret put MCM_ADMIN_TOKEN
 npx wrangler secret put MCM_MANUAL_REFRESH_TOKEN
 ```
 
-Use long random values for `D1_BRIDGE_TOKEN` and `MCM_ADMIN_TOKEN`. `D1_BRIDGE_TOKEN` protects the
-Worker-to-D1 bridge, and `MCM_ADMIN_TOKEN` protects admin and deep-health routes in production. Do
-not commit secret values. `MCM_MANUAL_REFRESH_TOKEN` protects the operations-only Worker endpoint
-that forces the same per-source refresh path used by cron.
+Use distinct long random values for every secret. `MCM_SECRET_KEY` signs anonymous identity cookies,
+`D1_BRIDGE_TOKEN` protects the private Worker-to-D1 bridge, `MCM_ADMIN_TOKEN` protects admin and
+deep-health routes, and `MCM_MANUAL_REFRESH_TOKEN` protects the operations-only Worker endpoint
+that forces the same per-source refresh path used by cron. Do not commit secret values, and do not
+reuse the admin token as the manual-refresh token. See `docs/operations.md` for the token inventory
+and rotation checklist.
 
 Apply D1 migrations:
 

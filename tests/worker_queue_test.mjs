@@ -64,6 +64,12 @@ function makeEnv(containerResponse = new Response("ok", { status: 200 })) {
   };
 }
 
+function makeEnvWithSecrets(secrets, containerResponse = new Response("ok", { status: 200 })) {
+  const context = makeEnv(containerResponse);
+  Object.assign(context.env, secrets);
+  return context;
+}
+
 function makeCtx() {
   const promises = [];
   return {
@@ -414,6 +420,23 @@ const worker = await loadWorker();
     Array.from({ length: 7 }, (_value, index) => index),
   );
   assert.equal(queue.sentBatches[0][0].body.trigger, "manual_refresh_now");
+}
+
+{
+  const { env, queue } = makeEnvWithSecrets({
+    MCM_MANUAL_REFRESH_TOKEN: "",
+    MCM_ADMIN_TOKEN: "admin-token",
+  });
+  const response = await worker.fetch(
+    new Request("https://montreal-mcm.test/internal/refresh-now?source=morceau", {
+      method: "POST",
+      headers: { Authorization: "Bearer admin-token" },
+    }),
+    env,
+  );
+
+  assert.equal(response.status, 404);
+  assert.equal(queue.sentBatches.length, 0);
 }
 
 {

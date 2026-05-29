@@ -25,6 +25,60 @@ Required secrets:
 - `MCM_ADMIN_TOKEN`
 - `MCM_MANUAL_REFRESH_TOKEN` for the guarded Worker refresh-now endpoint
 
+## Secrets
+
+Secrets are stored in Cloudflare Worker secrets and should also be stored by the owner outside the
+repository, such as in a password manager. Do not commit secret values to `.env`, docs, shell
+history, source files, screenshots, or issue comments.
+
+Use distinct long random values for each secret:
+
+```bash
+openssl rand -hex 32
+```
+
+Token inventory:
+
+- `MCM_SECRET_KEY`: Flask signing key for durable anonymous identity cookies. Rotating it signs out
+  anonymous browser identities and can orphan existing favourites/saved searches unless a migration
+  strategy is added. Rotate only for compromise or a planned identity reset.
+- `D1_BRIDGE_TOKEN`: private Worker-to-container token used by Flask to call the Worker D1 bridge.
+  It is not for humans. Rotate after any suspected exposure, after changing bridge access patterns,
+  or during scheduled credential hygiene.
+- `MCM_ADMIN_TOKEN`: human/admin token for `/admin` and `/admin/healthz`. It should be separate
+  from refresh and bridge tokens. Rotate when a person or machine that had access no longer needs
+  it, after any suspected exposure, or during scheduled credential hygiene.
+- `MCM_MANUAL_REFRESH_TOKEN`: operations token for the guarded Worker `/internal/refresh-now`
+  endpoint. It should be separate from `MCM_ADMIN_TOKEN`; admin credentials must not be sufficient
+  to force refreshes. Rotate after manual-refresh automation changes, any suspected exposure, or
+  scheduled credential hygiene.
+
+Set or rotate a secret:
+
+```bash
+npx wrangler secret put D1_BRIDGE_TOKEN
+npm run deploy
+npm run prod:health
+```
+
+Use the same pattern for `MCM_SECRET_KEY`, `MCM_ADMIN_TOKEN`, or `MCM_MANUAL_REFRESH_TOKEN`. After
+rotating `MCM_MANUAL_REFRESH_TOKEN`, verify a single-source manual refresh with the new value:
+
+```bash
+curl -fsS \
+  -X POST \
+  -H "Authorization: Bearer $MCM_MANUAL_REFRESH_TOKEN" \
+  "https://montreal-mcm.dalaque.workers.dev/internal/refresh-now?source=morceau"
+```
+
+After rotating `MCM_ADMIN_TOKEN`, verify deep health with the new value:
+
+```bash
+curl -fsS \
+  -H "Authorization: Bearer $MCM_ADMIN_TOKEN" \
+  https://montreal-mcm.dalaque.workers.dev/admin/healthz
+```
+
 Confirm required Cloudflare queues exist:
 
 ```bash
@@ -152,18 +206,8 @@ In production, authenticate with one of:
 - `X-MCM-Admin-Token: <token>`
 - HTTP Basic auth using any username and the token as the password
 
-If a production admin token is generated directly into Cloudflare and is not stored in a password
-manager, rotate it to a new value that the owner controls:
-
-```bash
-openssl rand -hex 32
-npx wrangler secret put MCM_ADMIN_TOKEN
-npm run deploy
-npm run prod:health
-```
-
-Store the generated value outside the repository. Do not commit it to `.env`, docs, shell history,
-or source files.
+`MCM_ADMIN_TOKEN` does not authorize `/internal/refresh-now`; that endpoint requires
+`MCM_MANUAL_REFRESH_TOKEN`.
 
 ## Refresh Behavior
 
