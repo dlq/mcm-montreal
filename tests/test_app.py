@@ -2250,6 +2250,10 @@ class AppTests(unittest.TestCase):
                     "<p>Entièrement en teck. Largeur : 72” Profondeur : 18”</p>"
                 ),
                 "assetUrl": "https://images.squarespace-cdn.com/buffet.jpg",
+                "items": [
+                    {"assetUrl": "https://images.squarespace-cdn.com/buffet-gallery.jpg"},
+                    {"assetUrl": "https://images.squarespace-cdn.com/buffet-detail.jpg"},
+                ],
                 "variants": [
                     {
                         "qtyInStock": 1,
@@ -2266,6 +2270,58 @@ class AppTests(unittest.TestCase):
         self.assertEqual(listing["price_value"], 1675)
         self.assertEqual(listing["availability_status"], "available")
         self.assertEqual(listing["materials"], "teak")
+        self.assertEqual(
+            listing["primary_image_url"], "https://images.squarespace-cdn.com/buffet-gallery.jpg"
+        )
+        self.assertEqual(
+            listing["additional_image_urls"],
+            [
+                "https://images.squarespace-cdn.com/buffet-detail.jpg",
+                "https://images.squarespace-cdn.com/buffet.jpg",
+            ],
+        )
+
+    def test_squarespace_store_item_prefers_gallery_images_over_placeholder_asset(
+        self,
+    ) -> None:
+        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "habitat-mobilier")
+        listing = _parse_squarespace_store_item(
+            source,
+            {
+                "id": "habitat-bed",
+                "title": "Lit queen en teck",
+                "fullUrl": "/boutique/p/lit-queen-en-teck-annees-70-mobican",
+                "excerpt": "<p>Lit en teck Mobican. Années 70.</p>",
+                "assetUrl": (
+                    "https://static1.squarespace.com/static/5dc59aa470fe636e786603db/"
+                    "5dc59b223056b3048c0c3116/6a174d412fb5d01bb9ef1dcc/1779912256893/"
+                ),
+                "items": [
+                    {
+                        "assetUrl": (
+                            "https://images.squarespace-cdn.com/content/v1/"
+                            "5dc59aa470fe636e786603db/e330ce50-084c-4849-b7b7-bf24e1f95ee7/"
+                            "lit_queen_teck_mobican.jpg"
+                        )
+                    }
+                ],
+                "variants": [
+                    {
+                        "qtyInStock": 1,
+                        "priceMoney": {"currency": "CAD", "value": "895.00"},
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(
+            listing["primary_image_url"],
+            (
+                "https://images.squarespace-cdn.com/content/v1/"
+                "5dc59aa470fe636e786603db/e330ce50-084c-4849-b7b7-bf24e1f95ee7/"
+                "lit_queen_teck_mobican.jpg"
+            ),
+        )
 
     def test_squarespace_store_item_skips_out_of_stock_habitat_items(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "habitat-mobilier")

@@ -705,15 +705,15 @@ def _squarespace_variant_price(variants: list[dict[str, Any]]) -> float | None:
 
 def _squarespace_item_image_urls(item: dict[str, Any]) -> list[str]:
     urls = []
-    asset_url = str(item.get("assetUrl") or "")
-    if asset_url:
-        urls.append(asset_url)
     for image in item.get("items") or []:
         if not isinstance(image, dict):
             continue
         url = str(image.get("assetUrl") or image.get("url") or "")
         if url and url not in urls:
             urls.append(url)
+    asset_url = str(item.get("assetUrl") or "")
+    if asset_url and asset_url not in urls:
+        urls.append(asset_url)
     return urls
 
 
