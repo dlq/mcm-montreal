@@ -667,6 +667,31 @@ The `0.2.x` line is successful when:
 - price and availability history improve confidence
 - source expansion does not dilute the Montreal-first product feel
 
+### Remaining 0.2.x Release Shape
+
+The likely remaining `0.2.x` releases are:
+
+- `0.2.5`: implement the installable mobile web-app/PWA baseline. This is the actual build work
+  behind the pinned iOS/Android direction already added to the plan: manifest, icons, theme colors,
+  standalone display behavior, conservative service worker/offline fallback strategy, mobile
+  safe-area spacing, and a first pass on touch targets and mobile detail-page ergonomics.
+- `0.2.6`: accessibility and UI hardening. Run the planned W3C/WCAG-oriented audit and address the
+  highest-impact issues around keyboard navigation, focus states, form labels, language switching,
+  favourite controls, screen-reader behavior, branded 404 handling, and shop-detail directions
+  parity.
+- `0.2.7`: discovery/source cleanup. Revisit the misleading `Recently added by source` sort, review
+  Mostly Danish weighting/source scope after production chunks settle, decide whether price-drop or
+  recently-sold labels are worth adding, and revisit whether price/availability history should be
+  presented as one timeline.
+- `0.2.8`: conditional only. Use this for Cloudflare Web Analytics/RUM, a first-party analytics
+  endpoint, or external uptime/alerting only if audience measurement or operational monitoring
+  becomes important enough to justify a dedicated release.
+
+The logical cutoff before `0.3.0` is when Montreal MCM feels dependable as a recurring personal
+utility: durable favourites and saved searches work, listing history improves confidence, daily
+refreshes are trustworthy, the app works well pinned on iOS/Android, accessibility has a baseline
+pass, and source quality does not dilute the MCM-first promise.
+
 ## 0.3.x Development: Authority, Content, And Scale
 
 The `0.3.x` line should make the site feel like a durable destination rather than only a catalogue.
