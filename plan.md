@@ -412,9 +412,6 @@ Completed on 2026-05-14:
 Likely `0.2.x` reliability work:
 
 - add external uptime checks or alert delivery if log-only/admin-dashboard monitoring is not enough
-- investigate long-running source refreshes that write listings but leave `refresh_jobs` rows stuck
-  as `running`; Chez Lamothe production ingestion populated D1 listings on 2026-05-15, but its
-  job bookkeeping did not consistently reach `finish_refresh_job`
 - review production secrets handling: confirm owner storage and rotation for `D1_BRIDGE_TOKEN`,
   decide whether `MCM_ADMIN_TOKEN` and `MCM_MANUAL_REFRESH_TOKEN` should remain shared or be split,
   and document the owner/rotation process
@@ -436,6 +433,10 @@ Completed in `0.2.x`:
   hidden-count spikes, and unknown source slugs
 - add chunk metadata to `refresh_jobs` so chunked source failures can identify the affected
   `chunk_index` and source URL instead of only reporting source-level counts
+- add `npm run prod:refresh-audit` for repeatable production refresh-job audits
+- audit production `refresh_jobs` on 2026-05-29: no currently running jobs, all daily runs from
+  2026-05-22 through 2026-05-29 reached the expected 51 successful jobs, and recent warnings were
+  transient Showroom Montreal DNS failures or one Montreal Moderne `IncompleteRead`
 
 Decision:
 

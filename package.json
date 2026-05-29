@@ -9,6 +9,7 @@
     "cf:queue:create:refresh-dlq": "wrangler queues create montreal-mcm-refresh-dlq",
     "cf:queues:list": "wrangler queues list",
     "prod:health": "sh scripts/check-production.sh",
+    "prod:refresh-audit": "sh scripts/audit-refresh-jobs.sh",
     "d1:backup": "wrangler d1 export montreal-mcm --remote --output=backups/montreal-mcm.sql",
     "test:worker": "node --experimental-vm-modules tests/worker_queue_test.mjs",
     "lint": "uv run ruff check . && uv run djlint templates --lint && biome check static src",

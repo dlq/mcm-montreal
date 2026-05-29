@@ -108,6 +108,16 @@ Check D1 directly:
 npx wrangler d1 execute montreal-mcm --remote --command "SELECT COUNT(*) AS listings FROM listings;"
 ```
 
+Audit recent refresh reliability:
+
+```bash
+npm run prod:refresh-audit
+```
+
+By default, this checks the last seven UTC days of `refresh_jobs`, current `running` jobs, recent
+non-success jobs, and today's per-source coverage. Override `MCM_REFRESH_AUDIT_SINCE` or
+`MCM_REFRESH_AUDIT_TODAY` for a different window.
+
 ## Backup
 
 Before write-heavy changes or source refresh experiments, export D1:
@@ -179,3 +189,8 @@ It checks D1 for:
 - unknown source slugs in the refresh ledger
 
 This is log-only monitoring; external alerting can be added later if needed.
+
+As of 2026-05-29, the recent production refresh audit shows no currently running jobs. Daily runs
+from 2026-05-22 through 2026-05-29 reached the expected 51 successful jobs. Recent warnings were
+transient source/network issues: Showroom Montreal DNS failures on 2026-05-25 and 2026-05-26 later
+retried successfully, and Montreal Moderne had one `IncompleteRead` warning on 2026-05-27.
