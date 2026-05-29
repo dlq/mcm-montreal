@@ -1724,7 +1724,8 @@ def _extract_designer_and_maker(title: str, description: str) -> tuple[str, str]
         if designer:
             return designer, maker
 
-    return "", _clean_text(description) if len(description.split()) < 6 else ""
+    fallback = _clean_maker_candidate(description)
+    return "", fallback if fallback and len(fallback.split()) < 6 else ""
 
 
 def _clean_designer_candidate(value: str) -> str:
@@ -1742,7 +1743,13 @@ def _clean_maker_candidate(value: str) -> str:
         return ""
     if len(candidate.split()) > 6:
         return ""
-    if re.search(r"\b(more information|details|checkout|shipping|policies)\b", candidate, re.I):
+    if re.search(
+        r"\b(contactez-nous|contactez nous|details|détails|frais s’appliques|more information|checkout|shipping|policies)\b",
+        candidate,
+        re.I,
+    ):
+        return ""
+    if re.search(r"\b(canada|montreal|montréal|ottawa)\b", candidate, re.I):
         return ""
     return candidate
 

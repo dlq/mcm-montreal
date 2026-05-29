@@ -64,6 +64,30 @@ SEARCH_SYNONYMS = {
     for group in SEARCH_SYNONYM_GROUPS
     for alias in group
 }
+DESIGNER_FILTER_ALIASES = {
+    "arne hovmand olsen": "Arne Hovmand-Olsen",
+    "axel christiansen": "Axel Christensen",
+    "borge mogensen": "Børge Mogensen",
+    "charles and ray eames": "Charles & Ray Eames",
+    "design hans j wegner": "Hans J. Wegner",
+    "grethe jalk": "Grete Jalk",
+    "hans j wegner of denmark": "Hans J. Wegner",
+    "hans wegner": "Hans J. Wegner",
+    "henning kjaernulf": "Henning Kjærnulf",
+    "henning norgaard": "Henning Nørgaard",
+    "ib kofod larsen": "Ib Kofod-Larsen",
+    "ib kofodlarsen": "Ib Kofod-Larsen",
+    "lella and massimo vignelli": "Lella & Massimo Vignelli",
+    "massimo and lella vignelli": "Lella & Massimo Vignelli",
+    "massimo lella vignelli": "Lella & Massimo Vignelli",
+    "michel ducaroy": "Michel Ducaroy",
+    "niels koefoed": "Niels Koefoed",
+    "neils koefoed": "Niels Koefoed",
+    "orla molgaard nielsen": "Orla Mølgaard-Nielsen",
+    "orla molgaardnielsen": "Orla Mølgaard-Nielsen",
+    "orla mølgaard nielsen": "Orla Mølgaard-Nielsen",
+    "poul m volther": "Poul Volther",
+}
 PROVEN_SOLD_OUT_SQL = """
 (
     NULLIF(l.availability_override, '') = 'sold_out'
@@ -417,6 +441,7 @@ def clean_designer_filter_value(value: str) -> str:
         "current production",
         "details",
         "dimensions",
+        "frais s appliques",
         "features",
         "final sale",
         "lead time",
@@ -430,9 +455,15 @@ def clean_designer_filter_value(value: str) -> str:
     )
     if any(term in normalized for term in boilerplate):
         return ""
+    if normalized.endswith("contactez nous") or " contactez nous" in normalized:
+        return ""
+    if normalized in {"canada", "montreal", "ottawa"}:
+        return ""
+    if re.search(r"\b(40s|50s|60s|70s|80s|90s|19\d0s|20\d0s)\b", normalized):
+        return ""
     if len(cleaned) > 60 or len(cleaned.split()) > 6:
         return ""
-    return cleaned
+    return DESIGNER_FILTER_ALIASES.get(normalized, cleaned)
 
 
 def normalized_filter_key(value: str) -> str:

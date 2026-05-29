@@ -19,7 +19,7 @@ from mcm.refresh import (
     refresh_all_sources,
     refresh_source_by_slug,
 )
-from mcm.repository import query_listings, sanitize_availability
+from mcm.repository import list_filter_values, query_listings, sanitize_availability
 from mcm.seed_data import SEED_LISTINGS
 from mcm.sources import (
     SOURCE_DEFINITIONS,
@@ -1811,6 +1811,56 @@ class AppTests(unittest.TestCase):
         self.assertIn("bois de cerisier", response.text)
         self.assertIn("sherpa", response.text)
 
+    def test_designer_filter_removes_contact_artifacts_and_canonicalizes_aliases(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                shop = db.execute("SELECT id FROM shops WHERE slug = 'morceau'").fetchone()
+                self.assertIsNotNone(shop)
+                rows = [
+                    ("artifact-designer", "Artifact Chair", "Ottawa. Contactez-nous", ""),
+                    ("artifact-maker", "Artifact Table", "", "les détails - des frais s’appliques"),
+                    ("wegner-alias", "Wegner Chair", "Hans Wegner", ""),
+                    ("wegner-canonical", "Wegner Table", "Hans J. Wegner", ""),
+                    ("eames-alias", "Eames Chair", "Charles and Ray Eames", ""),
+                    ("eames-canonical", "Eames Table", "Charles & Ray Eames", ""),
+                ]
+                for source_key, title, designer, maker in rows:
+                    db.execute(
+                        """
+                        INSERT INTO listings (
+                            source_shop_id, source_listing_url, source_listing_key, title,
+                            normalized_title, price_raw, price_value, currency, primary_image_url,
+                            additional_image_urls, availability_status, shipping_scope,
+                            ships_to_montreal, shipping_note, last_seen_at, last_checked_at,
+                            first_seen_at, category, subcategory, designer, maker, era, materials,
+                            dimensions_text, width, depth, height, condition_text, location_text,
+                            source_description, ingest_source_type, parse_confidence,
+                            dedupe_group_id, is_active, is_featured, manual_notes,
+                            availability_override, category_override
+                        ) VALUES (
+                            ?, 'https://example.com/designer-test', ?, ?, ?, '$1', 1, 'CAD',
+                            '', '[]', 'available', 'canada', 1, '', '2026-05-29T00:00:00+00:00',
+                            '2026-05-29T00:00:00+00:00', '2026-05-29T00:00:00+00:00',
+                            'furniture', '', ?, ?, '', '', '', NULL, NULL, NULL, '',
+                            'Montreal, QC', '', 'test', 1.0, '', 1, 0, '', '', ''
+                        )
+                        """,
+                        (shop["id"], source_key, title, title.lower(), designer, maker),
+                    )
+                db.commit()
+
+                values = list_filter_values(db, "designer")
+
+                self.assertNotIn("Ottawa. Contactez-nous", values)
+                self.assertNotIn("les détails - des frais s’appliques", values)
+                self.assertIn("Hans J. Wegner", values)
+                self.assertNotIn("Hans Wegner", values)
+                self.assertIn("Charles & Ray Eames", values)
+                self.assertNotIn("Charles and Ray Eames", values)
+            finally:
+                db.close()
+
     def test_seed_materials_use_localized_material_tokens(self) -> None:
         seed_materials = {
             material.strip().lower()
@@ -1974,6 +2024,15 @@ class AppTests(unittest.TestCase):
                 "Italian convertible sofa bed.",
             ),
             ("Alessandro Becchi", "Giovannetti"),
+        )
+
+    def test_extractors_reject_contact_delivery_fragments_as_maker(self) -> None:
+        self.assertEqual(
+            _extract_designer_and_maker(
+                "Dining Chairs",
+                "Ottawa. Contactez-nous les détails - des frais s’appliques",
+            ),
+            ("", ""),
         )
 
     def test_morceau_source_only_uses_vintage_collection(self) -> None:
