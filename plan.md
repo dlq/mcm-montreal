@@ -71,6 +71,9 @@ data.
   Cloudflare container instance so the deployed container serves the current image
 - Release tag `0.2.3`: shop address and compact map release with production D1 address metadata
   populated
+- Release tag `0.2.4`: cleanup release for designer/maker filter normalization, guarded chunked
+  source reconciliation, refresh audit tooling, production secret documentation, and Habitat
+  Squarespace gallery image selection
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
