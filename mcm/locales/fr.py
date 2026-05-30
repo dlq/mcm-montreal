@@ -38,7 +38,7 @@ TRANSLATIONS_FR = {
     "filters.recent_check": "Vérifiés récemment",
     "filters.price_low": "Prix croissant",
     "filters.price_high": "Prix décroissant",
-    "filters.recent_source": "Ajoutés récemment par la source",
+    "filters.recent_source": "Vus récemment à la source",
     "filters.ships_to_montreal": "Livraison à Montréal",
     "filters.apply": "Appliquer les filtres",
     "filters.reset": "Réinitialiser",

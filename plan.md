@@ -299,21 +299,26 @@ Current facts:
 - Dwell time is not available from the current HTTP analytics view because Cloudflare only sees
   requests, not how long a browser tab remains open.
 
+Current decision:
+
+- Cloudflare Web Analytics and HTTP Traffic analytics are enabled for `montrealmcm.ca` as of
+  2026-05-29.
+- Treat Cloudflare dashboard metrics as directional product signals, not precise human counts:
+  Web Analytics and HTTP Traffic have different collection paths, time windows, bot handling, and
+  metric definitions.
+
 Questions to settle:
 
-- Should Cloudflare Web Analytics / RUM be enabled for privacy-friendly page-level analytics and
-  dwell-time-style engagement metrics?
-- Does enabling Cloudflare Web Analytics require changing the `montrealmcm.ca` zone plan, or can it
-  be enabled through the existing paid Cloudflare account setup?
-- Should we avoid third-party analytics entirely and add a tiny first-party event endpoint only if
+- Which Cloudflare Web Analytics engagement metrics are actually useful for product decisions after
+  enough traffic accumulates?
+- Should we avoid deeper third-party analytics and add a tiny first-party event endpoint only if
   audience signals become product-critical?
 
 Likely work:
 
-- check the Cloudflare dashboard for Web Analytics availability on `montrealmcm.ca`
-- document whether Web Analytics has any plan gate or incremental cost for this account
-- if enabled, verify what engagement metrics are actually exposed before making product decisions
-  from them
+- review Cloudflare Web Analytics and HTTP Traffic dashboards after a few weeks of real traffic
+- document which metrics are worth checking during release reviews
+- verify what engagement metrics are actually exposed before making product decisions from them
 
 ### Durable Anonymous Identity
 
@@ -390,10 +395,8 @@ Questions to settle:
   fragments be split further?
 - Is the Python application structure still contributor-friendly, especially around repository
   queries, source parsers, refresh orchestration, and presentation helpers?
-- The `Recently added by source` sort label is misleading because it currently sorts by
-  `last_seen_at`, which behaves more like "most recently seen on source" than a true source-side
-  added date. Revisit the label and decide whether to rename it, remove it, or add a real
-  source-order/source-added signal.
+- The `Recently seen on source` sort uses `last_seen_at`, which is useful for surfacing listings
+  most recently observed during refreshes but is not a true source-side added date.
 
 Likely work:
 
@@ -419,6 +422,8 @@ Completed in `0.2.x`:
   matches appear ahead of weaker description-only matches
 - make designer/maker filtering alias-aware so canonical dropdown values still match known raw
   source variants such as `Hans Wegner` and `Charles and Ray Eames`
+- rename the former `Recently added by source` sort to `Recently seen on source` so the label
+  matches its `last_seen_at` behavior
 - add broken-image fallbacks so upstream `403` / missing source images render as "Image not
   available" instead of browser broken-image icons
 - make the shops index responsive at one, two, and three columns as viewport width allows
@@ -492,10 +497,9 @@ The likely remaining `0.2.x` releases are:
   highest-impact issues around keyboard navigation, focus states, form labels, language switching,
   favourite controls, screen-reader behavior, branded 404 handling, and shop-detail directions
   parity.
-- `0.2.7`: discovery/source cleanup. Revisit the misleading `Recently added by source` sort, review
-  Mostly Danish weighting/source scope after production chunks settle, decide whether price-drop or
-  recently-sold labels are worth adding, and revisit whether price/availability history should be
-  presented as one timeline.
+- `0.2.7`: discovery/source cleanup. Review Mostly Danish weighting/source scope after production
+  chunks settle, decide whether price-drop or recently-sold labels are worth adding, and revisit
+  whether price/availability history should be presented as one timeline.
 - `0.2.8`: conditional only. Use this for Cloudflare Web Analytics/RUM, a first-party analytics
   endpoint, or external uptime/alerting only if audience measurement or operational monitoring
   becomes important enough to justify a dedicated release.
