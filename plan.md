@@ -1,7 +1,7 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-05-29
+Updated: 2026-05-30
 Current line: `0.2.x`
 
 ## Purpose
@@ -251,6 +251,8 @@ Completed in `0.2.x`:
   Le Centerpiece, and Chez Lamothe now enqueue a reconciliation message after their chunks, and the
   Flask reconcile endpoint hides missing inventory only when every expected chunk has a successful
   job newer than the queue batch timestamp
+- add a source-config drift test so the Worker refresh source list and chunk counts must stay in
+  sync with Python source definitions and refresh reconciliation settings
 
 Decision:
 
@@ -415,6 +417,8 @@ Completed in `0.2.x`:
   `teak` / `teck`, `rosewood` / `palissandre`, and `sideboard` / `buffet` find the same inventory
 - rank default search results by weighted field relevance so title/designer/category/material
   matches appear ahead of weaker description-only matches
+- make designer/maker filtering alias-aware so canonical dropdown values still match known raw
+  source variants such as `Hans Wegner` and `Charles and Ray Eames`
 - add broken-image fallbacks so upstream `403` / missing source images render as "Image not
   available" instead of browser broken-image icons
 - make the shops index responsive at one, two, and three columns as viewport width allows

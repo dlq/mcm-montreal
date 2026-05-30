@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tempfile
 import unittest
 from datetime import UTC, datetime
@@ -13,6 +14,7 @@ from mcm.db import get_db
 from mcm.i18n import MATERIAL_LABELS
 from mcm.locales import TRANSLATIONS_EN, TRANSLATIONS_FR
 from mcm.refresh import (
+    RECONCILABLE_CHUNK_COUNTS,
     listing_id_from_item_number,
     public_item_number,
     reconcile_chunked_source,
@@ -42,6 +44,8 @@ from mcm.sources import (
     _showroom_source_listing_key,
     _square_product_is_sold_out,
 )
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def seed_listing(app) -> int:
@@ -1858,8 +1862,55 @@ class AppTests(unittest.TestCase):
                 self.assertNotIn("Hans Wegner", values)
                 self.assertIn("Charles & Ray Eames", values)
                 self.assertNotIn("Charles and Ray Eames", values)
+
+                wegner_results = query_listings(
+                    db,
+                    {
+                        "designer": "Hans J. Wegner",
+                        "availability": "available",
+                        "sort": "newest",
+                    },
+                    include_inactive=False,
+                )
+                self.assertEqual(
+                    {"Wegner Chair", "Wegner Table"},
+                    {listing["title"] for listing in wegner_results},
+                )
             finally:
                 db.close()
+
+    def test_worker_refresh_source_config_matches_python_sources(self) -> None:
+        worker_source = (PROJECT_ROOT / "src" / "worker.js").read_text()
+        source_slugs_match = re.search(
+            r"const SOURCE_SLUGS = \[(?P<body>.*?)\];",
+            worker_source,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(source_slugs_match)
+        assert source_slugs_match is not None
+        worker_source_slugs = re.findall(r'"([^"]+)"', source_slugs_match.group("body"))
+        python_source_slugs = [source.slug for source in SOURCE_DEFINITIONS]
+        self.assertEqual(python_source_slugs, worker_source_slugs)
+
+        worker_chunk_source_slugs = {
+            match.group("name"): match.group("slug")
+            for match in re.finditer(
+                r'const (?P<name>[A-Z_]+)_SOURCE_SLUG = "(?P<slug>[^"]+)";',
+                worker_source,
+            )
+        }
+        worker_chunk_counts = {}
+        for match in re.finditer(
+            r"const (?P<name>[A-Z_]+)_CHUNK_COUNT = (?P<count>\d+);",
+            worker_source,
+        ):
+            source_slug = worker_chunk_source_slugs[match.group("name")]
+            worker_chunk_counts[source_slug] = int(match.group("count"))
+        expected_chunk_counts = {
+            **RECONCILABLE_CHUNK_COUNTS,
+            "mostly-danish": 30,
+        }
+        self.assertEqual(expected_chunk_counts, worker_chunk_counts)
 
     def test_seed_materials_use_localized_material_tokens(self) -> None:
         seed_materials = {

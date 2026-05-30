@@ -210,8 +210,15 @@ def listing_query_parts(
         clauses.append("l.materials LIKE ?")
         params.append(f"%{filters['material']}%")
     if filters.get("designer"):
-        clauses.append("(l.designer LIKE ? OR l.maker LIKE ?)")
-        params.extend([f"%{filters['designer']}%", f"%{filters['designer']}%"])
+        aliases = designer_filter_query_values(filters["designer"])
+        if not aliases:
+            clauses.append("0=1")
+            return clauses, params
+        designer_clauses = []
+        for alias in aliases:
+            designer_clauses.append("(l.designer LIKE ? OR l.maker LIKE ?)")
+            params.extend([f"%{alias}%", f"%{alias}%"])
+        clauses.append(f"({' OR '.join(designer_clauses)})")
     if filters.get("ships_to_montreal"):
         clauses.append("l.ships_to_montreal = 1")
     availability = filters.get("availability")
@@ -464,6 +471,19 @@ def clean_designer_filter_value(value: str) -> str:
     if len(cleaned) > 60 or len(cleaned.split()) > 6:
         return ""
     return DESIGNER_FILTER_ALIASES.get(normalized, cleaned)
+
+
+def designer_filter_query_values(value: str) -> list[str]:
+    cleaned = clean_designer_filter_value(value)
+    if not cleaned:
+        return []
+    normalized = normalized_filter_key(cleaned)
+    values = {cleaned}
+    for alias_key, canonical in DESIGNER_FILTER_ALIASES.items():
+        if normalized_filter_key(canonical) == normalized or alias_key == normalized:
+            values.add(canonical)
+            values.add(alias_key)
+    return sorted(values, key=lambda candidate: (normalized_filter_key(candidate), candidate))
 
 
 def normalized_filter_key(value: str) -> str:
