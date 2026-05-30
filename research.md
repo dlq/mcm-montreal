@@ -907,3 +907,21 @@ Checked on: 2026-05-14
 - Refresh policy should skip newly discovered records that are already `sold_out`; existing listings that were previously tracked should still update to `sold_out` when they sell.
 - Public sold-out listings now require status history evidence of an `available` to `sold_out` transition, unless an explicit manual override marks the row sold out.
 - This means a shop with a large sold archive, such as Showroom Montreal, will show zero public sold-out items until a listing Montreal MCM previously tracked as available later appears as sold.
+
+## Habitat Mobilier French Parser Evidence
+
+Checked on: 2026-05-30
+
+- Listing `MCM-012122` source description from Habitat Mobilier includes French labeled measurements:
+  `Largeur : 20” Profondeur : 16” Hauteur : 24”`.
+- The previous dimensions extractor only handled compact `L x P x H` / `W x D x H` patterns and missed these labeled French dimensions.
+- The same source description includes `Années 60`; the previous era extractor missed that French decade phrasing.
+- The parser now extracts dimensions as `20”L x 16”P x 24”H` and era as `1960s` from that text.
+- A deployed D1 audit found additional active listings with parseable dimensions in source descriptions:
+  Morceau single-axis and parenthetical `D x H` patterns, Chez Lamothe `Ø x H/P` patterns,
+  Mostly Danish centimetre and `H/W/D` shorthand patterns, Green Wall Vintage single-height
+  captions, and a few Le Centerpiece small-object dimensions.
+- Production D1 was backfilled for 310 active listings using the improved parser:
+  306 broad source-specific dimension fills plus 4 Habitat multi-range / multi-piece fills.
+- After the backfill, the deployed active listings scan returned zero rows where the current
+  parser could recover dimensions from an empty `dimensions_text`.

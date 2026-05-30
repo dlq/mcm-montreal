@@ -2411,6 +2411,87 @@ class AppTests(unittest.TestCase):
         self.assertEqual(_extract_era(text), "1960s")
         self.assertEqual(_extract_dimensions(text), "26''L x 30''P x 29.5''H")
 
+    def test_habitat_french_labeled_dimensions_and_era_are_extracted(self) -> None:
+        text = (
+            "Merton Gershun pour American of Martinsville. États-Unis. Années 60. "
+            "En paire. En noyer avec insertions et poignées en aluminium. "
+            "Excellente condition. Complètement restaurées avec nouveau fini durable. "
+            "Largeur : 20” Profondeur : 16” Hauteur : 24” - Livraison possible partout au Québec."
+        )
+
+        self.assertEqual(_extract_era(text), "1960s")
+        self.assertEqual(_extract_dimensions(text), "20”L x 16”P x 24”H")
+
+    def test_habitat_french_range_dimensions_are_extracted(self) -> None:
+        text = (
+            "REFF. Canada. Années 60. Entièrement en bois de rose. "
+            "Largeur : 125” Profondeur : 16” Hauteur : 88” à 100” (rails)"
+        )
+
+        self.assertEqual(_extract_dimensions(text), "125”L x 16”P x 88”/100”H")
+
+    def test_habitat_prefixed_multi_piece_dimensions_are_extracted(self) -> None:
+        text = (
+            "Fauteuil: Largeur : 32” Profondeur : 35” Hauteur (assise) : 17” "
+            "Hauteur totale : 38” Ottoman: Largeur : 21” Profondeur : 18” Hauteur : 14”"
+        )
+
+        self.assertEqual(
+            _extract_dimensions(text),
+            "Fauteuil: 32”L x 35”P x 38”H; Ottoman: 21”L x 18”P x 14”H",
+        )
+
+    def test_chez_lamothe_diameter_dimensions_are_extracted(self) -> None:
+        text = (
+            "Lampe champignon Space Age en verre blanc et orangé attribuées à Pukeberg, "
+            'Suède circa 60 - en parfaite condition d\'origine 8,5"Ø x 9"H '
+            "Expédition possible au Canada"
+        )
+
+        self.assertEqual(_extract_dimensions(text), '8,5"Ø x 9"H')
+
+    def test_chez_lamothe_diameter_depth_dimensions_are_extracted(self) -> None:
+        text = (
+            "Petit miroir mid century en acier et laiton, circa 60 - excellente condition "
+            'd\'origine 12"Ø x 2,75"P Expédition possible au Canada'
+        )
+
+        self.assertEqual(_extract_dimensions(text), '12"Ø x 2,75"P')
+
+    def test_parenthetical_dimension_notes_are_removed(self) -> None:
+        text = (
+            "Ceramic vase by Scheurich. Made in West Germany, 1980’s. "
+            '5,5"D(with handle) x 11”H US/CAD shipping available at checkout.'
+        )
+
+        self.assertEqual(_extract_dimensions(text), '5,5"D x 11”H')
+
+    def test_mostly_danish_centimetre_dimensions_are_extracted(self) -> None:
+        text = (
+            "ITEM# 4024267 MAHOGANY SOFA SET Sofa: Length 190 cm. "
+            "Depth 80 cm. Height 77 cm excl. pad. Seat height 45 cm."
+        )
+
+        self.assertEqual(_extract_dimensions(text), "190cmL x 80cmD x 77cmH")
+
+    def test_mostly_danish_shorthand_dimensions_are_extracted(self) -> None:
+        text = 'Rosewood secretary designed by Ib Kofod-Larsen. H. 56.5" x W. 39.3" x D. 18.25"'
+
+        self.assertEqual(_extract_dimensions(text), '56.5"H x 39.3"W x 18.25"D')
+
+    def test_single_axis_dimensions_are_extracted(self) -> None:
+        text = "Vintage EM77 stainless steel vacuum jug. Made in Denmark, 1970’s. 12”H"
+
+        self.assertEqual(_extract_dimensions(text), "12”H")
+
+    def test_seat_and_back_height_are_not_single_axis_dimensions(self) -> None:
+        text = (
+            "Poul Hundevad pour Vamdrup Stolefabrik. H (dossier) : 31” "
+            "H (assise) : 18” Largeur : 19”"
+        )
+
+        self.assertEqual(_extract_dimensions(text), "")
+
     def test_curly_apostrophe_decade_is_extracted(self) -> None:
         text = (
             "Teak wine/ice bucket by Jens Quistgaard for Dansk. "
