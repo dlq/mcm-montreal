@@ -12,6 +12,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "coverage>=7.14.1",
     "djlint>=1.36.4",
     "pre-commit>=4.3.0",
     "ruff>=0.11.0",
@@ -24,6 +25,15 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 ignore = ["E501"]
+
+[tool.coverage.run]
+branch = true
+source = ["mcm"]
+omit = ["mcm/seed_data.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
 
 [tool.djlint]
 profile = "jinja"

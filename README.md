@@ -63,6 +63,13 @@ Run tests:
 
 ```bash
 uv run python -m unittest tests.test_app
+npm run test:worker
+```
+
+Check Python coverage:
+
+```bash
+npm run test:coverage
 ```
 
 Run lint checks:

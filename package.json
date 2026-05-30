@@ -11,6 +11,7 @@
     "prod:health": "sh scripts/check-production.sh",
     "prod:refresh-audit": "sh scripts/audit-refresh-jobs.sh",
     "d1:backup": "wrangler d1 export montreal-mcm --remote --output=backups/montreal-mcm.sql",
+    "test:coverage": "uv run coverage run -m unittest tests.test_app && uv run coverage report",
     "test:worker": "node --experimental-vm-modules tests/worker_queue_test.mjs",
     "lint": "uv run ruff check . && uv run djlint templates --lint && biome check static src",
     "format": "uv run ruff format . && uv run djlint templates --reformat && biome check --write static src"

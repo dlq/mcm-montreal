@@ -8,6 +8,7 @@ Run local checks:
 
 ```bash
 uv run python -m unittest tests.test_app
+npm run test:worker
 npm run lint
 npm run deploy:dry-run
 ```
