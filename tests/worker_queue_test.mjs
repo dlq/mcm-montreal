@@ -249,7 +249,6 @@ const worker = await loadWorker();
       ...refreshJobs("le-centerpiece", 8),
       ...refreshJobs("maison-singulier", 1),
       ...refreshJobs("yardsale-vintage", 1),
-      ...refreshJobs("bond-vintage", 1),
       ...refreshJobs("chez-lamothe", 21),
       ...refreshJobs("habitat-mobilier", 1),
       ...refreshJobs("green-wall-vintage", 1),
@@ -284,7 +283,6 @@ const worker = await loadWorker();
       ...refreshJobs("le-centerpiece", 8),
       ...refreshJobs("maison-singulier", 1),
       ...refreshJobs("yardsale-vintage", 1),
-      ...refreshJobs("bond-vintage", 1),
       ...refreshJobs("chez-lamothe", 21),
       ...refreshJobs("habitat-mobilier", 1),
       ...refreshJobs("green-wall-vintage", 1),
@@ -317,7 +315,6 @@ const worker = await loadWorker();
       ...refreshJobs("le-centerpiece", 8),
       ...refreshJobs("maison-singulier", 1),
       ...refreshJobs("yardsale-vintage", 1),
-      ...refreshJobs("bond-vintage", 1),
       ...refreshJobs("chez-lamothe", 21),
       ...refreshJobs("habitat-mobilier", 1),
       ...refreshJobs("green-wall-vintage", 1),
@@ -353,7 +350,7 @@ const worker = await loadWorker();
 
   assert.equal(queue.sentBatches.length, 1);
   const messages = queue.sentBatches[0];
-  assert.equal(messages.length, 54);
+  assert.equal(messages.length, 53);
   assert.deepEqual(
     messages.map((message) => message.body.source_slug),
     [
@@ -365,7 +362,6 @@ const worker = await loadWorker();
       "le-centerpiece",
       "maison-singulier",
       "yardsale-vintage",
-      "bond-vintage",
       ...Array.from({ length: 20 }, () => "chez-lamothe"),
       "chez-lamothe",
       "habitat-mobilier",
@@ -516,7 +512,7 @@ const worker = await loadWorker();
 
   assert.equal(response.status, 202);
   assert.equal(queue.sentBatches.length, 1);
-  assert.equal(queue.sentBatches[0].length, 54);
+  assert.equal(queue.sentBatches[0].length, 53);
 }
 
 {

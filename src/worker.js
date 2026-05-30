@@ -14,7 +14,6 @@ const SOURCE_SLUGS = [
   "le-centerpiece",
   "maison-singulier",
   "yardsale-vintage",
-  "bond-vintage",
   "chez-lamothe",
   "habitat-mobilier",
   "green-wall-vintage",

@@ -55,7 +55,6 @@ uv run app.py refresh montreal-moderne
 uv run app.py refresh le-centerpiece
 uv run app.py refresh maison-singulier
 uv run app.py refresh yardsale-vintage
-uv run app.py refresh bond-vintage
 uv run app.py refresh chez-lamothe
 ```
 
@@ -131,18 +130,16 @@ The active sources are:
 4. Le Centerpiece
 5. Maison Singulier
 6. Yardsale Vintage
-7. BOND Vintage
-8. Chez Lamothe
-9. Habitat Mobilier
-10. Green Wall Vintage
-11. Mostly Danish
+7. Chez Lamothe
+8. Habitat Mobilier
+9. Green Wall Vintage
+10. Mostly Danish
 
-The first four are the original launch sources. Maison Singulier, Yardsale Vintage, BOND Vintage,
-and Chez Lamothe are the first local expansion sources. Habitat Mobilier, Green Wall Vintage, and
-Mostly Danish are regional road-trip sources with Montreal-relevant pickup or delivery paths. BOND
-Vintage currently may contribute zero public listings while its visible furniture inventory is sold
-out. Mostly Danish is intentionally ingested gradually because its selected furniture collections
-are much larger than the other sources.
+The first four are the original launch sources. Maison Singulier, Yardsale Vintage, and Chez
+Lamothe are the first local expansion sources. Habitat Mobilier, Green Wall Vintage, and Mostly
+Danish are regional road-trip sources with Montreal-relevant pickup or delivery paths. Mostly Danish
+is intentionally ingested gradually because its selected furniture collections are much larger than
+the other sources.
 
 The app tries live fetches first, then falls back to curated seed data when a source is unreachable
 or parsing fails. Fallback data can bootstrap an empty local database, but source failures do not

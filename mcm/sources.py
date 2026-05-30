@@ -210,28 +210,6 @@ SOURCE_DEFINITIONS = [
         parser="cargo_gallery",
     ),
     SourceDefinition(
-        slug="bond-vintage",
-        name="BOND Vintage",
-        website="https://bondvintage.com/",
-        street_address="5226 boulevard Saint-Laurent",
-        city="Montreal",
-        province="QC",
-        postal_code="H2T 1S1",
-        country="Canada",
-        latitude=45.5261,
-        longitude=-73.5971,
-        public_location_note="",
-        is_montreal_local=True,
-        shipping_summary="Montreal local source with online product cards and sold-out states.",
-        source_type="direct_shop",
-        crawl_priority=2,
-        notes="Shopify collection appears sparse and mostly sold out; parse visible collection only.",
-        description="Montreal vintage shop selling modern furniture and home accessories.",
-        style_focus="Vintage modern furniture, lighting, accessories, mixed-period design.",
-        listing_urls=("https://bondvintage.com/collections/collection",),
-        parser="shopify_collection",
-    ),
-    SourceDefinition(
         slug="chez-lamothe",
         name="Chez Lamothe",
         website="https://www.chezlamothe.com/",
@@ -542,8 +520,6 @@ def _parse_shopify_collection_product(
         "\n", strip=True
     )
     description = _clean_text(description_text)
-    if source.slug == "bond-vintage" and not _looks_like_furniture_text(f"{title} {description}"):
-        raise ValueError("Skipping non-furniture BOND Vintage item")
     if source.slug == "green-wall-vintage" and not _looks_like_furniture_text(
         f"{title} {description}"
     ):

@@ -246,5 +246,6 @@ As of 2026-05-29 before source-wide reconciliation was added, the recent product
 showed no currently running jobs. Daily runs from 2026-05-22 through 2026-05-29 reached the then
 expected 51 successful jobs. Recent warnings were transient source/network issues: Showroom Montreal
 DNS failures on 2026-05-25 and 2026-05-26 later retried successfully, and Montreal Moderne had one
-`IncompleteRead` warning on 2026-05-27. After source-wide reconciliation is deployed, a normal full
-daily refresh enqueues 54 messages: 51 refresh messages plus 3 reconciliation messages.
+`IncompleteRead` warning on 2026-05-27. After source-wide reconciliation is deployed and BOND
+Vintage is removed from the active source set, a normal full daily refresh enqueues 53 messages: 50
+refresh messages plus 3 reconciliation messages.

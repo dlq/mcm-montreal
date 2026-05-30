@@ -108,11 +108,10 @@ Current active sources in code:
 4. Le Centerpiece
 5. Maison Singulier
 6. Yardsale Vintage
-7. BOND Vintage
-8. Chez Lamothe
-9. Habitat Mobilier
-10. Green Wall Vintage
-11. Mostly Danish
+7. Chez Lamothe
+8. Habitat Mobilier
+9. Green Wall Vintage
+10. Mostly Danish
 
 Morceau should be treated as Vintage-collection-only ingestion. Its broader furniture and
 new-arrivals collections include current-production design inventory outside the app scope.
@@ -121,8 +120,6 @@ Implementation stance:
 
 - Maison Singulier uses Shopify live furniture collections and excludes archive collections.
 - Yardsale Vintage uses Cargo's current Shop gallery and excludes the Archive gallery.
-- BOND Vintage uses Shopify collection data, but the visible furniture inventory is currently sold
-  out, so brand-new sold-out records are skipped by existing refresh semantics.
 - Chez Lamothe uses the same Square Online storefront API as the public shop grid. This exposes
   prices, images, descriptions, detail URLs, and out-of-stock badges, so listings should not fall
   back to contact-for-details pricing unless the API omits a price.
@@ -431,12 +428,12 @@ Completed in `0.2.x`:
 
 Current decision:
 
-- Maison Singulier, Yardsale Vintage, BOND Vintage, and Chez Lamothe have source definitions and
-  local ingestion paths.
+- Maison Singulier, Yardsale Vintage, and Chez Lamothe have source definitions and local ingestion
+  paths.
 - Habitat Mobilier, Green Wall Vintage, and Mostly Danish have source definitions and local
   ingestion paths as the first regional road-trip sources.
-- Keep BOND Vintage active as a source, but expect zero public listings while its visible furniture
-  inventory remains sold out.
+- Remove BOND Vintage from active sources for now because it has had zero active listings for a
+  sustained period; keep the research notes so it can be reconsidered if live inventory returns.
 - Treat Chez Lamothe as useful but slightly more coupled to Square Online internals than the
   Shopify/Cargo sources because it follows the public storefront API path observed in the browser.
 - Keep Vintage Home Boutique later because it is outside the Ottawa/Quebec City/Townships pickup

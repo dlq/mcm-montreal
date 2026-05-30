@@ -2117,20 +2117,6 @@ class AppTests(unittest.TestCase):
         self.assertEqual(listings[0]["title"], "Available Chair")
         self.assertEqual(listings[0]["availability_status"], "available")
 
-    def test_bond_vintage_skips_non_furniture_shopify_products(self) -> None:
-        source = next(source for source in SOURCE_DEFINITIONS if source.slug == "bond-vintage")
-        with self.assertRaises(ValueError):
-            _parse_shopify_collection_product(
-                source,
-                {
-                    "title": 'Affiche "Chrome & Red" encadrée',
-                    "handle": "chrome-red-poster",
-                    "body_html": "<p>Framed poster.</p>",
-                    "variants": [{"available": False, "price": "395.00"}],
-                    "images": [{"src": "https://cdn.shopify.com/poster.jpg"}],
-                },
-            )
-
     def test_cargo_gallery_page_parses_yardsale_listing(self) -> None:
         source = next(source for source in SOURCE_DEFINITIONS if source.slug == "yardsale-vintage")
         listing = _parse_cargo_page(
