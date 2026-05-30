@@ -152,6 +152,31 @@ customElements.define("availability-pill", AvailabilityPill);
 customElements.define("listing-filters", ListingFilters);
 customElements.define("shop-card-map", ShopCardMap);
 
+const serviceWorkerAllowedHosts = new Set(["montrealmcm.ca", "www.montrealmcm.ca"]);
+
+if ("serviceWorker" in navigator && serviceWorkerAllowedHosts.has(window.location.hostname)) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {
+      // Service worker registration is an enhancement; browsing should continue normally.
+    });
+  });
+}
+
+if ("serviceWorker" in navigator && !serviceWorkerAllowedHosts.has(window.location.hostname)) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => {
+      registration.unregister();
+    });
+  });
+  window.caches?.keys().then((cacheNames) => {
+    cacheNames
+      .filter((cacheName) => cacheName.startsWith("montreal-mcm-"))
+      .forEach((cacheName) => {
+        window.caches.delete(cacheName);
+      });
+  });
+}
+
 function shopGridColumnCount(cards) {
   const grid = cards[0]?.parentElement;
   if (!grid) {

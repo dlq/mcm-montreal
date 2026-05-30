@@ -6,6 +6,13 @@ body {
     "kern" 1;
 }
 
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
 ::selection {
   background: rgba(77, 95, 74, 0.18);
 }
@@ -44,7 +51,21 @@ textarea {
 .nav-link {
   border-bottom: 1px solid transparent;
   color: rgba(28, 28, 26, 0.68);
+  min-height: 2.4rem;
   padding-bottom: 0.25rem;
+}
+
+button,
+select,
+summary,
+a[href] {
+  touch-action: manipulation;
+}
+
+button,
+select,
+summary {
+  min-height: 2.75rem;
 }
 
 .nav-link:hover,
@@ -264,9 +285,11 @@ img[data-image-fallback].hidden {
 
 .shop-card {
   align-content: start;
+  background: #fbf1e7;
   display: grid;
   grid-template-rows: auto auto auto;
   min-width: 0;
+  padding: 1.1rem;
   row-gap: 0.75rem;
 }
 
@@ -466,10 +489,10 @@ img[data-image-fallback].hidden {
   align-items: center;
   color: rgba(28, 28, 26, 0.55);
   display: inline-flex;
-  height: 1.6rem;
+  height: 2.75rem;
   justify-content: center;
   padding: 0;
-  width: 1.6rem;
+  width: 2.75rem;
 }
 
 .favourite-icon-button:hover {

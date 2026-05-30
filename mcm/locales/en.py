@@ -6,6 +6,13 @@ TRANSLATIONS_EN = {
     "nav.log_in": "Log in",
     "nav.log_out": "Log out",
     "site.tagline": "Montreal-first discovery for vintage and resale mid-century modern furniture.",
+    "offline.kicker": "Offline",
+    "offline.title": "Montreal MCM is offline right now.",
+    "offline.body": (
+        "The app shell is available, but live listings, filters, favourites, and shop details need "
+        "a network connection. Reconnect and refresh to continue browsing current inventory."
+    ),
+    "offline.retry": "Try again",
     "lang.en": "English",
     "lang.fr": "Français",
     "filters.browse": "Browse",

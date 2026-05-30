@@ -10,7 +10,17 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse
 
-from flask import Flask, Response, abort, g, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    Response,
+    abort,
+    g,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from werkzeug.datastructures import MultiDict
 
 from .db import get_db, initialize_storage
@@ -140,7 +150,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.before_request
     def open_request_resources() -> None:
-        if request.endpoint == "static":
+        if request.endpoint in {"static", "service_worker", "web_manifest"}:
             return
         g.db = get_db(app)
         load_anonymous_identity(app, g.db)
@@ -148,7 +158,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.after_request
     def persist_request_resources(response: Response) -> Response:
-        if request.endpoint == "static":
+        if request.endpoint in {"static", "service_worker", "web_manifest"}:
             return response
         return persist_anonymous_identity(response)
 
@@ -268,6 +278,27 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/readyz")
     def readyz() -> tuple[str, int]:
         return "ok", 200
+
+    @app.get("/manifest.webmanifest")
+    def web_manifest() -> Response:
+        return Response(
+            (BASE_DIR / "static" / "manifest.webmanifest").read_text(),
+            content_type="application/manifest+json",
+        )
+
+    @app.get("/service-worker.js")
+    def service_worker() -> Response:
+        response = Response(
+            (BASE_DIR / "static" / "service-worker.js").read_text(),
+            content_type="application/javascript; charset=utf-8",
+        )
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Service-Worker-Allowed"] = "/"
+        return response
+
+    @app.get("/offline")
+    def offline() -> str:
+        return render_template("offline.html")
 
     @app.get("/admin/healthz")
     @admin_required(app)

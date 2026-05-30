@@ -224,6 +224,44 @@ class AppTests(unittest.TestCase):
         self.assertIn("/static/app.css?v=", response.text)
         self.assertIn("/static/app.js?v=", response.text)
 
+    def test_pwa_manifest_and_service_worker_are_available(self) -> None:
+        response = self.client.get("/")
+        self.assertIn("/manifest.webmanifest", response.text)
+        self.assertIn("apple-mobile-web-app-capable", response.text)
+        self.assertIn("viewport-fit=cover", response.text)
+
+        manifest_response = self.client.get("/manifest.webmanifest")
+        self.assertEqual(manifest_response.status_code, 200)
+        self.assertEqual(manifest_response.content_type, "application/manifest+json")
+        self.assertEqual(manifest_response.json["display"], "standalone")
+        self.assertEqual(manifest_response.json["scope"], "/")
+        self.assertIn(
+            "/static/app-icon-512.png",
+            {icon["src"] for icon in manifest_response.json["icons"]},
+        )
+        self.assertIn(
+            "/static/app-icon-maskable-512.png",
+            {
+                icon["src"]
+                for icon in manifest_response.json["icons"]
+                if icon["purpose"] == "maskable"
+            },
+        )
+
+        service_worker_response = self.client.get("/service-worker.js")
+        self.assertEqual(service_worker_response.status_code, 200)
+        self.assertIn("application/javascript", service_worker_response.content_type)
+        self.assertEqual(service_worker_response.headers["Service-Worker-Allowed"], "/")
+        self.assertIn("/offline", service_worker_response.text)
+
+        offline_response = self.client.get("/offline")
+        self.assertEqual(offline_response.status_code, 200)
+        self.assertIn("Montreal MCM is offline", offline_response.text)
+
+        offline_fr_response = self.client.get("/offline?lang=fr")
+        self.assertEqual(offline_fr_response.status_code, 200)
+        self.assertIn("hors ligne", offline_fr_response.text)
+
     def test_sold_out_filter_requires_available_to_sold_history(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)

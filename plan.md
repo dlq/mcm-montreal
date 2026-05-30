@@ -432,6 +432,9 @@ Completed in `0.2.x`:
 - make the public listing grid lazy-load cards in 48-card batches. On 2026-05-24, the live initial
   HTML dropped from about 3.25 MB / 1,311 cards to about 145 KB / 48 cards, with a warmed response
   around 1.2 seconds and subsequent HTMX batches around 115 KB.
+- add the `0.2.5` installable web-app baseline: manifest, install icons, theme metadata,
+  root-scoped service worker, conservative offline fallback, mobile safe-area spacing, and first
+  pass touch-target sizing.
 
 ### Source Expansion
 
@@ -489,10 +492,6 @@ The `0.2.x` line is successful when:
 
 The likely remaining `0.2.x` releases are:
 
-- `0.2.5`: implement the installable mobile web-app/PWA baseline. This is the actual build work
-  behind the pinned iOS/Android direction already added to the plan: manifest, icons, theme colors,
-  standalone display behavior, conservative service worker/offline fallback strategy, mobile
-  safe-area spacing, and a first pass on touch targets and mobile detail-page ergonomics.
 - `0.2.6`: accessibility and UI hardening. Run the planned W3C/WCAG-oriented audit and address the
   highest-impact issues around keyboard navigation, focus states, form labels, language switching,
   favourite controls, screen-reader behavior, branded 404 handling, and shop-detail directions

@@ -6,6 +6,14 @@ TRANSLATIONS_FR = {
     "nav.log_in": "Connexion",
     "nav.log_out": "Déconnexion",
     "site.tagline": "Découverte montréalaise de mobilier mid-century modern vintage et de revente.",
+    "offline.kicker": "Hors ligne",
+    "offline.title": "Montreal MCM est hors ligne pour le moment.",
+    "offline.body": (
+        "L'interface de l'application est disponible, mais les annonces, les filtres, les favoris "
+        "et les détails des boutiques nécessitent une connexion réseau. Reconnectez-vous et "
+        "actualisez la page pour continuer à parcourir l'inventaire actuel."
+    ),
+    "offline.retry": "Réessayer",
     "lang.en": "English",
     "lang.fr": "Français",
     "filters.browse": "Parcourir",
