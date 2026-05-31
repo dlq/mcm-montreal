@@ -74,6 +74,9 @@ data.
 - Release tag `0.2.4`: cleanup release for designer/maker filter normalization, guarded chunked
   source reconciliation, refresh audit tooling, production secret documentation, and Habitat
   Squarespace gallery image selection
+- Release tag `0.2.5`: installable web-app baseline with app manifest, install icons, mobile
+  app metadata, root-scoped service worker, offline fallback, mobile safe-area spacing, first-pass
+  touch-target sizing, and the peach shop-card colour placeholder
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
