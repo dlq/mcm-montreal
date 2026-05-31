@@ -2,7 +2,7 @@
 {% block title %}{{ shop.name }} | Montreal MCM{% endblock %}
 {% block content %}
   <section class="grid gap-8 lg:grid-cols-[300px,1fr]">
-    <aside class="shop-detail-rail border-t border-ink/10 pt-5">
+    <aside class="shop-detail-rail border-t border-ink/10">
       <div class="mb-4 flex items-start justify-between gap-3">
         <div>
           <h1 class="text-3xl font-semibold tracking-tight">{{ shop.name }}</h1>
@@ -16,10 +16,14 @@
           <dd class="mt-1">
             {% for line in shop_address_lines(shop) %}<span class="block">{{ line }}</span>{% endfor %}
             {% if shop.street_address %}
-              <a class="shop-directions-inline"
-                 href="{{ shop_directions_url(shop) }}"
-                 target="_blank"
-                 rel="noreferrer">{{ t("shop.get_directions") }}</a>
+              <div class="shop-detail-map-links">
+                <a href="{{ shop_directions_url(shop) }}"
+                   target="_blank"
+                   rel="noreferrer">{{ t("shop.google_maps") }}</a>
+                <a href="{{ shop_apple_maps_url(shop) }}"
+                   target="_blank"
+                   rel="noreferrer">{{ t("shop.apple_maps") }}</a>
+              </div>
             {% elif shop.public_location_note %}
               <span class="block text-ink/60">{{ shop.public_location_note }}</span>
             {% endif %}

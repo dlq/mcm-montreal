@@ -477,9 +477,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         shop = get_shop_by_slug(g.db, slug)
         if not shop:
             abort(404)
-        listings = query_listings(
-            g.db, {"shop": slug, "sort": "recent_check"}, include_inactive=False
-        )
+        listings = query_listings(g.db, {"shop": slug, "sort": "newest"}, include_inactive=False)
         return render_template("shop_detail.html", shop=shop, listings=listings)
 
     @app.get("/favourites")
