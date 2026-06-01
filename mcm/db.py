@@ -36,6 +36,8 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             slug TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
             website TEXT NOT NULL,
+            wordmark_text TEXT NOT NULL DEFAULT '',
+            wordmark_style TEXT NOT NULL DEFAULT '',
             street_address TEXT NOT NULL DEFAULT '',
             city TEXT NOT NULL,
             province TEXT NOT NULL,
@@ -209,6 +211,10 @@ def ensure_shop_address_columns(db: sqlite3.Connection) -> None:
     existing_columns = {row["name"] for row in db.execute("PRAGMA table_info(shops)").fetchall()}
     if "street_address" not in existing_columns:
         db.execute("ALTER TABLE shops ADD COLUMN street_address TEXT NOT NULL DEFAULT ''")
+    if "wordmark_text" not in existing_columns:
+        db.execute("ALTER TABLE shops ADD COLUMN wordmark_text TEXT NOT NULL DEFAULT ''")
+    if "wordmark_style" not in existing_columns:
+        db.execute("ALTER TABLE shops ADD COLUMN wordmark_style TEXT NOT NULL DEFAULT ''")
     if "postal_code" not in existing_columns:
         db.execute("ALTER TABLE shops ADD COLUMN postal_code TEXT NOT NULL DEFAULT ''")
     if "public_location_note" not in existing_columns:
@@ -253,14 +259,16 @@ def ensure_source_shop_seeded(db: sqlite3.Connection, source: SourceDefinition) 
     db.execute(
         """
         INSERT INTO shops (
-            slug, name, website, street_address, city, province, postal_code,
-            country, latitude, longitude, public_location_note, is_montreal_local,
-            shipping_summary, source_type, crawl_priority, notes, description,
-            style_focus, listing_url, active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            slug, name, website, wordmark_text, wordmark_style, street_address, city, province,
+            postal_code, country, latitude, longitude, public_location_note, is_montreal_local,
+            shipping_summary, source_type, crawl_priority, notes, description, style_focus,
+            listing_url, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         ON CONFLICT(slug) DO UPDATE SET
             name = excluded.name,
             website = excluded.website,
+            wordmark_text = excluded.wordmark_text,
+            wordmark_style = excluded.wordmark_style,
             street_address = excluded.street_address,
             city = excluded.city,
             province = excluded.province,
@@ -283,6 +291,8 @@ def ensure_source_shop_seeded(db: sqlite3.Connection, source: SourceDefinition) 
             source.slug,
             source.name,
             source.website,
+            source.wordmark_text,
+            source.wordmark_style,
             source.street_address,
             source.city,
             source.province,

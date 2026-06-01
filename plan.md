@@ -438,6 +438,10 @@ Completed in `0.2.x`:
 - add the `0.2.5` installable web-app baseline: manifest, install icons, theme metadata,
   root-scoped service worker, conservative offline fallback, mobile safe-area spacing, and first
   pass touch-target sizing.
+- add source-backed shop `wordmark_text` / `wordmark_style` metadata for future brand treatments
+  while continuing to render canonical shop names in the current UI
+- make shop detail listing grids lazy-load in the same 48-card batches as the public browse page, so
+  large sources such as Mostly Danish do not render every shop item in the initial response
 
 ### Source Expansion
 

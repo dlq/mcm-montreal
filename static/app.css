@@ -130,6 +130,8 @@ textarea:focus {
   color: var(--accent-blue);
   font-weight: 800;
   letter-spacing: 0.09em;
+  line-height: 1.2;
+  min-height: 1.75rem;
   padding: 0.25rem 0;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
@@ -230,20 +232,22 @@ textarea:focus {
   color: var(--accent-blue);
   font-weight: 800;
   letter-spacing: 0.09em;
-  text-decoration-line: underline;
-  text-decoration-thickness: 2px;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
 
 .listing-load-more-link:hover {
   color: var(--accent-blue-strong);
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
 }
 
 .saved-search-button {
   color: var(--accent-green);
   font-weight: 800;
   letter-spacing: 0.09em;
+  line-height: 1.2;
+  min-height: 1.75rem;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }

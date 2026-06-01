@@ -152,6 +152,8 @@ def query_listings(
             l.*,
             s.slug AS shop_slug,
             s.name AS shop_name,
+            s.wordmark_text AS shop_wordmark_text,
+            s.wordmark_style AS shop_wordmark_style,
             s.is_montreal_local
         FROM listings l
         JOIN shops s ON s.id = l.source_shop_id
@@ -290,6 +292,8 @@ def get_listing(db: sqlite3.Connection, listing_id: int) -> dict[str, Any] | Non
             l.*,
             s.slug AS shop_slug,
             s.name AS shop_name,
+            s.wordmark_text AS shop_wordmark_text,
+            s.wordmark_style AS shop_wordmark_style,
             s.website AS shop_website,
             s.shipping_summary AS shop_shipping_summary,
             s.is_montreal_local
@@ -554,7 +558,13 @@ def list_favourite_listings(db: sqlite3.Connection) -> list[dict[str, Any]]:
     placeholders = ",".join("?" for _ in listing_ids)
     rows = db.execute(
         f"""
-        SELECT l.*, s.slug AS shop_slug, s.name AS shop_name, s.is_montreal_local
+        SELECT
+            l.*,
+            s.slug AS shop_slug,
+            s.name AS shop_name,
+            s.wordmark_text AS shop_wordmark_text,
+            s.wordmark_style AS shop_wordmark_style,
+            s.is_montreal_local
         FROM listings l
         JOIN shops s ON s.id = l.source_shop_id
         WHERE l.id IN ({placeholders})

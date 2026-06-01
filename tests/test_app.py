@@ -152,12 +152,14 @@ class AppTests(unittest.TestCase):
         self.assertEqual(detail_response.status_code, 200)
         self.assertIn("4812 rue Saint-Urbain", detail_response.text)
         self.assertIn("Montreal QC H2T 2W2", detail_response.text)
-        self.assertIn("Get directions", detail_response.text)
+        self.assertIn("Google Maps", detail_response.text)
+        self.assertIn("Apple Maps", detail_response.text)
 
     def test_shop_directions_are_localized(self) -> None:
         response = self.client.get("/shops/morceau?lang=fr")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Itinéraire", response.text)
+        self.assertIn("Google Maps", response.text)
+        self.assertIn("Apple Plans", response.text)
 
     def test_unlisted_shop_address_uses_location_note(self) -> None:
         response = self.client.get("/shops/yardsale-vintage")

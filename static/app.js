@@ -1,3 +1,5 @@
+const SHOP_CARD_MAP_ZOOM = 12;
+
 class FavoriteToggle extends HTMLElement {
   connectedCallback() {
     this.dataset.ready = "true";
@@ -104,7 +106,7 @@ class ShopCardMap extends HTMLElement {
       scrollWheelZoom: false,
       touchZoom: false,
       zoomControl: false,
-    }).setView(point, 15);
+    }).setView(point, SHOP_CARD_MAP_ZOOM);
 
     window.L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       attribution:
@@ -131,7 +133,7 @@ class ShopCardMap extends HTMLElement {
 
     const resizeMap = () => {
       map.invalidateSize({ animate: false });
-      map.setView(point, 15, { animate: false });
+      map.setView(point, SHOP_CARD_MAP_ZOOM, { animate: false });
     };
     window.requestAnimationFrame(resizeMap);
     window.setTimeout(resizeMap, 150);

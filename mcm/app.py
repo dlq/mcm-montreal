@@ -477,8 +477,38 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         shop = get_shop_by_slug(g.db, slug)
         if not shop:
             abort(404)
-        listings = query_listings(g.db, {"shop": slug, "sort": "newest"}, include_inactive=False)
-        return render_template("shop_detail.html", shop=shop, listings=listings)
+        filters = {"shop": slug, "sort": "newest"}
+        offset = max(request.args.get("offset", default=0, type=int) or 0, 0)
+        listing_total_count = count_listings(g.db, filters, include_inactive=False)
+        listings = query_listings(
+            g.db,
+            filters,
+            include_inactive=False,
+            limit=LISTING_PAGE_SIZE,
+            offset=offset,
+        )
+        next_offset = offset + len(listings)
+        has_more_listings = next_offset < listing_total_count
+        next_page_url = ""
+        if has_more_listings:
+            next_args = request.args.copy()
+            next_args["offset"] = str(next_offset)
+            next_page_url = (
+                f"{url_for('shop_detail', slug=slug)}?{urlencode(next_args, doseq=True)}"
+            )
+        template = (
+            "_listing_cards.html"
+            if request.headers.get("HX-Request") and offset
+            else "shop_detail.html"
+        )
+        return render_template(
+            template,
+            shop=shop,
+            listings=listings,
+            listing_total_count=listing_total_count,
+            has_more_listings=has_more_listings,
+            next_page_url=next_page_url,
+        )
 
     @app.get("/favourites")
     def favourites() -> str:

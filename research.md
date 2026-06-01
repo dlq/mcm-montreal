@@ -925,3 +925,43 @@ Checked on: 2026-05-30
   306 broad source-specific dimension fills plus 4 Habitat multi-range / multi-piece fills.
 - After the backfill, the deployed active listings scan returned zero rows where the current
   parser could recover dimensions from an empty `dimensions_text`.
+
+## Shop Wordmark Research
+
+Checked on: 2026-05-31
+
+- Current source definitions store a canonical shop `name`, but no separate logo or wordmark field.
+- Official shop sites expose useful text wordmarks through page metadata, logo alt text, or visible
+  header text. This is more reliable for the app than importing external logo image assets because
+  some logos are image-only, theme-dependent, or low-accessibility.
+- Canonical shop names and visual wordmarks should be separate: the canonical name can stay
+  title-cased for prose, filters, and accessibility, while `wordmark_text` should preserve observed
+  brand casing, including lowercase or all-caps treatments.
+- First-pass display wordmarks:
+  - Morceau: official logo alt / metadata says `Morceau Montreal`, while the visible logo is lower
+    case in a stylized font. Use `Morceau` for canonical prose and `morceau` for `wordmark_text`.
+  - Showroom Montreal: visible site header says `SHOWROOM MONTRÉAL`; use `Showroom Montreal` for
+    readable title contexts and `SHOWROOM MONTRÉAL` only for an explicit wordmark treatment.
+  - Montreal Moderne: metadata says `MONTRÉAL MODERNE`; observed visual brand treatment is
+    `MONTRÉAL MØDERNE`. Use `Montreal Moderne` for canonical prose and `MONTRÉAL MØDERNE` for
+    `wordmark_text`.
+  - Le Centerpiece: metadata and logo alt say `Le Centerpiece`, but visible brand text appears to
+    emphasize `Centerpiece` without `Le`. Use `Le Centerpiece` for canonical prose and `Centerpiece`
+    for `wordmark_text`.
+  - Maison Singulier: metadata and logo alt say `Maison Singulier`, while the visual wordmark appears
+    lower case. Use `Maison Singulier` for canonical prose and `maison singulier` for
+    `wordmark_text`.
+  - Yardsale Vintage: Cargo site title says `Yardsale Vintage`; use `Yardsale Vintage`.
+  - Chez Lamothe: Square metadata says `Chez Lamothe`, while the logo uses `CHEZ LAMOTHE`. Use
+    `Chez Lamothe` for canonical prose and `CHEZ LAMOTHE` for `wordmark_text`.
+  - Habitat Mobilier: metadata says `Habitat - meubles vintage scandinaves`, while the logo appears
+    to use lower-case `habitat`. Use `Habitat Mobilier` for canonical prose, `habitat` for
+    `wordmark_text`, and keep the longer phrase as source positioning, not card wordmark text.
+  - Green Wall Vintage: Shopify metadata says `Green Wall Vintage`; use `Green Wall Vintage`.
+  - Mostly Danish: Shopify metadata says `Mostly Danish Furniture Ottawa`, structured data says
+    `Mostly Danish`, and the logo uses all caps. Use `Mostly Danish` for canonical prose and
+    `MOSTLY DANISH` for `wordmark_text`.
+- Implemented source metadata shape: shops now have `wordmark_text` and `wordmark_style` fields rather
+  than external logo URLs. Keep style choices constrained to a few variants, such as `title`,
+  `lowercase`, `wide_caps`, and `compact_caps`, so shop cards gain identity without becoming
+  inconsistent.
