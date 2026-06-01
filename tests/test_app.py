@@ -226,6 +226,28 @@ class AppTests(unittest.TestCase):
         self.assertIn("/static/app.css?v=", response.text)
         self.assertIn("/static/app.js?v=", response.text)
 
+    def test_primary_navigation_has_accessibility_landmarks(self) -> None:
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('class="skip-link"', response.text)
+        self.assertIn('href="#main-content"', response.text)
+        self.assertIn('id="main-content"', response.text)
+        self.assertIn('aria-label="Primary navigation"', response.text)
+        self.assertIn('aria-current="page"', response.text)
+        self.assertIn('aria-live="polite"', response.text)
+
+    def test_not_found_page_is_branded_and_localized(self) -> None:
+        response = self.client.get("/not-a-real-page")
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("This page is not available", response.text)
+        self.assertIn(">Listings<", response.text)
+        self.assertIn(">Shops<", response.text)
+
+        fr_response = self.client.get("/not-a-real-page?lang=fr")
+        self.assertEqual(fr_response.status_code, 404)
+        self.assertIn("Cette page n", fr_response.text)
+        self.assertIn(">Annonces<", fr_response.text)
+
     def test_pwa_manifest_and_service_worker_are_available(self) -> None:
         response = self.client.get("/")
         self.assertIn("/manifest.webmanifest", response.text)

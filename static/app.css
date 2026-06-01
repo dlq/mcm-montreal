@@ -13,6 +13,8 @@
   --accent-source-strong: #57466f;
   --accent-shop: #765742;
   --accent-shop-strong: #604a3b;
+  --muted-readable: rgba(28, 28, 26, 0.72);
+  --subtle-readable: rgba(28, 28, 26, 0.68);
 }
 
 body {
@@ -34,6 +36,24 @@ body.bg-oat {
   }
 }
 
+.skip-link {
+  background: #1c1c1a;
+  color: #ffffff;
+  font-weight: 700;
+  left: 1rem;
+  padding: 0.75rem 1rem;
+  position: fixed;
+  top: 1rem;
+  transform: translateY(-150%);
+  z-index: 1000;
+}
+
+.skip-link:focus {
+  outline: 3px solid var(--accent-green);
+  outline-offset: 3px;
+  transform: translateY(0);
+}
+
 ::selection {
   background: rgba(77, 101, 72, 0.18);
 }
@@ -48,6 +68,17 @@ textarea {
     border-color 160ms ease,
     color 160ms ease,
     opacity 160ms ease;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--accent-blue);
+  outline-offset: 3px;
 }
 
 .site-mark {
@@ -71,9 +102,21 @@ textarea {
 
 .nav-link {
   border-bottom: 1px solid transparent;
-  color: rgba(28, 28, 26, 0.68);
+  color: var(--subtle-readable);
+  display: inline-flex;
+  align-items: center;
+  min-width: 1.5rem;
   min-height: 2.4rem;
   padding-bottom: 0.25rem;
+}
+
+.text-ink\/40,
+.text-ink\/45,
+.text-ink\/50,
+.text-ink\/55,
+.text-ink\/60,
+.text-ink\/65 {
+  color: var(--muted-readable);
 }
 
 button,
@@ -128,10 +171,12 @@ textarea:focus {
 
 .filter-apply-button {
   color: var(--accent-blue);
+  display: inline-flex;
+  align-items: center;
   font-weight: 800;
   letter-spacing: 0.09em;
   line-height: 1.2;
-  min-height: 1.75rem;
+  min-height: 2rem;
   padding: 0.25rem 0;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
@@ -144,9 +189,12 @@ textarea:focus {
 }
 
 .detail-primary-action {
+  align-items: center;
   color: var(--accent-source);
+  display: inline-flex;
   font-weight: 800;
   letter-spacing: 0.09em;
+  min-height: 1.5rem;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
@@ -157,9 +205,12 @@ textarea:focus {
 }
 
 .detail-secondary-action {
+  align-items: center;
   color: var(--accent-shop);
+  display: inline-flex;
   font-weight: 800;
   letter-spacing: 0.09em;
+  min-height: 1.5rem;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
@@ -216,9 +267,12 @@ textarea:focus {
 }
 
 .listing-toolbar-reset {
+  align-items: center;
   color: var(--accent-reset);
+  display: inline-flex;
   font-weight: 800;
   letter-spacing: 0.09em;
+  min-height: 1.5rem;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
@@ -229,9 +283,12 @@ textarea:focus {
 }
 
 .listing-load-more-link {
+  align-items: center;
   color: var(--accent-blue);
+  display: inline-flex;
   font-weight: 800;
   letter-spacing: 0.09em;
+  min-height: 1.5rem;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
@@ -243,11 +300,13 @@ textarea:focus {
 }
 
 .saved-search-button {
+  align-items: center;
   color: var(--accent-green);
+  display: inline-flex;
   font-weight: 800;
   letter-spacing: 0.09em;
   line-height: 1.2;
-  min-height: 1.75rem;
+  min-height: 2rem;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
@@ -323,7 +382,7 @@ img[data-image-fallback].hidden {
 
 .source-kicker {
   align-items: center;
-  color: rgba(154, 53, 82, 0.72);
+  color: var(--accent-red);
   display: flex;
   font-size: 0.72rem;
   font-weight: 700;
@@ -397,12 +456,22 @@ img[data-image-fallback].hidden {
 }
 
 .shop-detail-map-links a {
+  align-items: center;
   color: var(--accent-blue);
+  display: inline-flex;
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.09em;
+  min-height: 1.5rem;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
+}
+
+.shop-detail-rail a[href],
+.listing-detail-panel a[href] {
+  align-items: center;
+  display: inline-flex;
+  min-height: 1.5rem;
 }
 
 .shop-detail-map-links a:hover {
@@ -542,10 +611,13 @@ img[data-image-fallback].hidden {
 }
 
 .shop-card-map-actions a {
+  align-items: center;
   color: var(--accent-blue);
+  display: inline-flex;
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.09em;
+  min-height: 1.5rem;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Montreal MCM{% endblock %}
 {% block content %}
-  <main class="mx-auto max-w-2xl border-t border-ink/10 pt-10">
+  <section class="mx-auto max-w-2xl border-t border-ink/10 pt-10">
     <p class="source-kicker mb-4">{{ t("offline.kicker") }}</p>
     <h1 class="item-title item-title-detail">{{ t("offline.title") }}</h1>
     <p class="mt-5 text-base leading-7 text-ink/65">{{ t("offline.body") }}</p>
     <a class="button-primary mt-8 inline-flex min-h-11 items-center px-5 py-3"
        href="{{ url_for('listings') }}">{{ t("offline.retry") }}</a>
-  </main>
+  </section>
 {% endblock %}

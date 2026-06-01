@@ -6,6 +6,17 @@ TRANSLATIONS_FR = {
     "nav.log_in": "Connexion",
     "nav.log_out": "Déconnexion",
     "site.tagline": "Découverte montréalaise de mobilier mid-century modern vintage et de revente.",
+    "a11y.skip_to_content": "Aller au contenu",
+    "a11y.primary_navigation": "Navigation principale",
+    "a11y.language_switcher": "Langue",
+    "a11y.switch_to_english": "Passer la langue à l’anglais",
+    "a11y.switch_to_french": "Passer la langue au français",
+    "error.not_found_kicker": "Introuvable",
+    "error.not_found_title": "Cette page n’est pas disponible.",
+    "error.not_found_body": (
+        "L’annonce, la boutique ou la page a peut-être été déplacée. Retournez aux annonces "
+        "actuelles ou parcourez les boutiques pour continuer."
+    ),
     "offline.kicker": "Hors ligne",
     "offline.title": "Montreal MCM est hors ligne pour le moment.",
     "offline.body": (

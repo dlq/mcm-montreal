@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ t("nav.listings") }} | Montreal MCM{% endblock %}
 {% block content %}
+  <h1 class="sr-only">{{ t("nav.listings") }}</h1>
   <details class="filter-drawer mb-6 border-y border-ink/10 py-4 lg:hidden">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold">
       <span>{{ t("filters.mobile_summary") }}</span>
-      <span class="text-xl leading-none text-ink/45">+</span>
+      <span class="text-xl leading-none text-ink/45" aria-hidden="true">+</span>
     </summary>
     <div class="mt-5">
       {% set filter_panel_class = "block" %}

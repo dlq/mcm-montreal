@@ -3,7 +3,9 @@
   {% set availability = listing.availability_override or listing.availability_status %}
   <article class="listing-card group flex h-full flex-col">
     <a href="{{ url_for('listing_detail', item_number=public_item_number(listing.id) ) }}"
-       class="block">
+       class="block"
+       tabindex="-1"
+       aria-hidden="true">
       <div class="film-frame listing-thumb aspect-[4/3] overflow-hidden">
         {% if listing.primary_image_url %}
           <img src="{{ listing.primary_image_url }}"

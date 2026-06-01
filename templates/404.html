@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ t("error.not_found_title") }} | Montreal MCM{% endblock %}
+{% block content %}
+  <section class="mx-auto max-w-2xl border-t border-ink/10 pt-10">
+    <p class="source-kicker mb-4">{{ t("error.not_found_kicker") }}</p>
+    <h1 class="item-title item-title-detail">{{ t("error.not_found_title") }}</h1>
+    <p class="mt-5 text-base leading-7 text-ink/65">{{ t("error.not_found_body") }}</p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a class="button-primary inline-flex min-h-11 items-center px-5 py-3"
+         href="{{ url_for('listings') }}">{{ t("nav.listings") }}</a>
+      <a class="button-secondary inline-flex min-h-11 items-center border px-5 py-3"
+         href="{{ url_for('shops') }}">{{ t("nav.shops") }}</a>
+    </div>
+  </section>
+{% endblock %}

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ t("nav.shops") }} | Montreal MCM{% endblock %}
 {% block content %}
+  <h1 class="sr-only">{{ t("nav.shops") }}</h1>
   <section class="space-y-5">
     <div class="shop-card-grid grid gap-x-8 gap-y-6 md:grid-cols-2 xl:grid-cols-3">
       {% for shop in shops %}
@@ -45,7 +46,7 @@
             </div>
           </dl>
           {% if shop_has_map(shop) %}
-            <shop-card-map class="shop-card-map shop-card-map-slot" data-latitude="{{ shop.latitude }}" data-longitude="{{ shop.longitude }}" data-google-url="{{ shop_directions_url(shop) }}" data-apple-url="{{ shop_apple_maps_url(shop) }}" data-label="{{ shop.name }} · {{ shop.street_address }}, {{ shop.city }}" tabindex="0" role="link" aria-label="{{ t('shop.open_map', name=shop.name) }}">
+            <shop-card-map class="shop-card-map shop-card-map-slot" data-latitude="{{ shop.latitude }}" data-longitude="{{ shop.longitude }}" data-google-url="{{ shop_directions_url(shop) }}" data-apple-url="{{ shop_apple_maps_url(shop) }}" data-label="{{ shop.name }} · {{ shop.street_address }}, {{ shop.city }}">
             <div class="shop-card-map-canvas"></div>
             <div class="shop-card-map-actions">
               <a href="{{ shop_directions_url(shop) }}"

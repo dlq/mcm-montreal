@@ -1,7 +1,7 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-05-30
+Updated: 2026-06-01
 Current line: `0.2.x`
 
 ## Purpose
@@ -442,6 +442,13 @@ Completed in `0.2.x`:
   while continuing to render canonical shop names in the current UI
 - make shop detail listing grids lazy-load in the same 48-card batches as the public browse page, so
   large sources such as Mostly Danish do not render every shop item in the initial response
+- add the first `0.2.6` accessibility hardening pass: skip link, main landmark, current navigation
+  state, labelled language switcher, live listing-count updates, visible focus states, and a branded
+  localized 404 page with recovery paths
+- tighten the `0.2.6` accessibility baseline with screen-reader page headings on index pages,
+  language switcher state that does not compete with page navigation state, reduced duplicate
+  listing-card tab stops, stronger contrast for muted metadata text, larger small-link target areas,
+  and less noisy shop-map keyboard traversal
 
 ### Source Expansion
 
@@ -601,26 +608,28 @@ Live design audit notes from 2026-05-20:
   thumbnails push title, price, favourite action, and metadata below the first viewport.
 - The mobile filter drawer is long enough that apply/reset controls are not immediately visible,
   making filtering feel heavier than it is.
-- Complete the installable web-app/PWA work so Montreal MCM can be pinned on iOS and Android: web
-  app manifest, appropriate icons, theme/background colors, standalone display behavior, service
-  worker strategy, offline/fallback behavior, touch targets, browser-chrome-safe spacing, and
-  notification readiness.
+- Iterate on the installable web-app/PWA baseline from `0.2.5`: notification readiness, richer
+  offline behavior, and any iOS/Android standalone-mode polish that emerges from real use.
 - Revisit saved-search alerts as part of the installable web-app/PWA work. Prefer anonymous Web
   Push tied to the existing durable owner key before adding email capture or real accounts.
 - Listing image frames need a more intentional loading/unavailable state so slow, blocked, or
   missing source images do not create large blank wells.
 - Shop index cards are becoming text-heavy at three columns; simplify card metadata before adding
   black-and-white shop maps.
-- Shop detail pages currently expose `Get directions` as a Google Maps-only link. Revisit this so
-  the detail page mirrors the shop listing card direction options and does not force one map
-  provider.
-- Add a branded 404 page with recovery paths back to listings/search instead of Flask's default
-  unstyled 404.
+- Continue tightening shop map and direction UX as the address dataset improves, especially for
+  addressless sources and provider parity on detail pages.
 - Strengthen interactive hierarchy for primary filter actions and favourite saved states without
   abandoning the restrained visual style.
-- Review the UI against W3C/WCAG accessibility guidance, including semantic structure, keyboard
-  navigation, focus states, color contrast, form labels, language switching, favourite controls, and
-  screen-reader behavior.
+- Continue WCAG-oriented accessibility review beyond the first `0.2.6` pass, especially color
+  contrast, mobile listing-detail ordering, filter drawer ergonomics, and screen-reader behavior on
+  dynamic HTMX updates.
+- Run a deeper assistive-technology pass in `0.3.x`, including VoiceOver/NVDA-style traversal,
+  modal/drawer expectations for the mobile filter UI, map attribution/provider-link behavior, and
+  whether listing cards should become a single larger accessible link without compromising favourite
+  controls.
+- Revisit third-party Leaflet attribution links in maps during the `0.3.x` accessibility pass. They
+  remain visually required attribution today, but they are tiny interactive anchors that should be
+  reviewed against target-size and keyboard expectations without weakening source attribution.
 
 ### 0.3.x Success Criteria
 

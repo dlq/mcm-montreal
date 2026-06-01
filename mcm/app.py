@@ -300,6 +300,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def offline() -> str:
         return render_template("offline.html")
 
+    @app.errorhandler(404)
+    def not_found(_error: Exception) -> tuple[str, int]:
+        return render_template("404.html"), 404
+
     @app.get("/admin/healthz")
     @admin_required(app)
     def admin_healthz() -> tuple[dict[str, Any], int]:

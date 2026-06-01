@@ -1,7 +1,9 @@
 <div class="listing-results-toolbar mb-4 border-b border-ink/10 pb-3">
   <div class="flex flex-wrap items-center justify-between gap-3">
     {% set active_filter_parts = filter_summary_parts(filters) if filters is defined else [] %}
-    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-ink/60">
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-ink/60"
+         role="status"
+         aria-live="polite">
       <span>{{ listing_count_text(listing_total_count|default(listings|length) ) }}</span>
       {% if active_filter_parts %}
         {% for filter_part in active_filter_parts %}

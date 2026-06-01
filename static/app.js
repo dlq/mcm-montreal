@@ -114,6 +114,7 @@ class ShopCardMap extends HTMLElement {
       maxZoom: 20,
       subdomains: "abcd",
     }).addTo(map);
+    this.disableAttributionTabStops(canvas);
 
     window.L.marker(point, {
       icon: window.L.divIcon({
@@ -139,6 +140,12 @@ class ShopCardMap extends HTMLElement {
     window.setTimeout(resizeMap, 150);
     window.setTimeout(resizeMap, 500);
     new ResizeObserver(resizeMap).observe(this);
+  }
+
+  disableAttributionTabStops(canvas) {
+    canvas.querySelectorAll(".leaflet-control-attribution a").forEach((link) => {
+      link.tabIndex = -1;
+    });
   }
 
   openDirections() {

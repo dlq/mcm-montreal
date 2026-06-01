@@ -6,6 +6,17 @@ TRANSLATIONS_EN = {
     "nav.log_in": "Log in",
     "nav.log_out": "Log out",
     "site.tagline": "Montreal-first discovery for vintage and resale mid-century modern furniture.",
+    "a11y.skip_to_content": "Skip to content",
+    "a11y.primary_navigation": "Primary navigation",
+    "a11y.language_switcher": "Language",
+    "a11y.switch_to_english": "Switch language to English",
+    "a11y.switch_to_french": "Switch language to French",
+    "error.not_found_kicker": "Not found",
+    "error.not_found_title": "This page is not available.",
+    "error.not_found_body": (
+        "The listing, shop, or page may have moved. Return to current listings or browse shops to "
+        "continue."
+    ),
     "offline.kicker": "Offline",
     "offline.title": "Montreal MCM is offline right now.",
     "offline.body": (
