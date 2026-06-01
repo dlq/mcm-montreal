@@ -472,6 +472,10 @@ Current decision:
   toward dining chairs: 159 active local listings, 137 categorized as dining chairs. This appears to
   reflect the selected Shopify furniture feeds rather than a parser failure, but it can skew the
   MCM-first product feel if default discovery overweights that source/category.
+- A local source-quality check on 2026-06-01 confirmed the Mostly Danish skew remains: 159 active
+  available local listings, 137 categorized as dining chairs. Keep Mostly Danish in source scope for
+  now, but default curated ordering should prevent this initial catalogue shape from dominating
+  Montreal-first discovery.
 - Deja Vu Meubles, Cornwall's Little Market, and A Fine Thing fit the regional taste/location
   criteria, but should wait because their public websites do not currently expose enough reliable
   item-level prices, details, and descriptions for ingestion on par with the existing shops.
@@ -492,6 +496,18 @@ Likely work:
   beyond Montreal
 - keep source additions conservative and review-friendly
 
+Completed in `0.2.7`:
+
+- keep Mostly Danish in the active source set because its selected Shopify furniture collections are
+  parseable and relevant enough, but treat it as a lower-priority regional source in the default
+  curated feed
+- make the curated default ordering explicit: Montreal-local sources first, other regional sources
+  next, Mostly Danish non-chair inventory after that, and Mostly Danish dining-chair inventory last
+  within the curated source buckets
+- keep explicit `Newest found` sorting unmodified so users can still inspect raw first-seen order
+- defer price-drop, recently-sold, and unified timeline UI until there is enough production history
+  to show the labels/timeline without adding noise
+
 ### 0.2.x Success Criteria
 
 The `0.2.x` line is successful when:
@@ -506,16 +522,8 @@ The `0.2.x` line is successful when:
 
 The likely remaining `0.2.x` releases are:
 
-- `0.2.6`: accessibility and UI hardening. Run the planned W3C/WCAG-oriented audit and address the
-  highest-impact issues around keyboard navigation, focus states, form labels, language switching,
-  favourite controls, screen-reader behavior, branded 404 handling, and shop-detail directions
-  parity.
-- `0.2.7`: discovery/source cleanup. Review Mostly Danish weighting/source scope after production
-  chunks settle, decide whether price-drop or recently-sold labels are worth adding, and revisit
-  whether price/availability history should be presented as one timeline.
-- `0.2.8`: conditional only. Use this for Cloudflare Web Analytics/RUM, a first-party analytics
-  endpoint, or external uptime/alerting only if audience measurement or operational monitoring
-  becomes important enough to justify a dedicated release.
+- no planned `0.2.x` feature releases remain after `0.2.7`; use another `0.2.x` tag only for small
+  stabilization fixes before starting `0.3.0`
 
 The logical cutoff before `0.3.0` is when Montreal MCM feels dependable as a recurring personal
 utility: durable favourites and saved searches work, listing history improves confidence, daily
@@ -630,6 +638,25 @@ Live design audit notes from 2026-05-20:
 - Revisit third-party Leaflet attribution links in maps during the `0.3.x` accessibility pass. They
   remain visually required attribution today, but they are tiny interactive anchors that should be
   reviewed against target-size and keyboard expectations without weakening source attribution.
+
+### Analytics And Monitoring
+
+Questions to settle:
+
+- Is Cloudflare Web Analytics enough for product usage questions, or does the app need a small
+  first-party analytics endpoint for outbound source clicks, saved-search usage, and refresh health?
+- Is external uptime or alert delivery needed beyond Cloudflare dashboard visibility and existing
+  refresh-job records?
+- Which metrics are useful enough to collect without creating privacy or maintenance cost?
+
+Likely work:
+
+- review Cloudflare Web Analytics after enough production usage has accumulated
+- decide whether to add first-party event collection for outbound source clicks and high-level
+  feature usage
+- decide whether external uptime/alerting belongs in operations before source count or traffic grows
+- keep analytics privacy-preserving and avoid user accounts unless alerts or trade features require
+  stronger identity
 
 ### 0.3.x Success Criteria
 

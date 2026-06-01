@@ -2033,6 +2033,90 @@ class AppTests(unittest.TestCase):
             finally:
                 db.close()
 
+    def test_curated_feed_keeps_mostly_danish_dining_chairs_below_regional_sources(
+        self,
+    ) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                mostly_danish = db.execute(
+                    "SELECT id FROM shops WHERE slug = 'mostly-danish'"
+                ).fetchone()
+                green_wall = db.execute(
+                    "SELECT id FROM shops WHERE slug = 'green-wall-vintage'"
+                ).fetchone()
+                self.assertIsNotNone(mostly_danish)
+                self.assertIsNotNone(green_wall)
+                db.executemany(
+                    """
+                    INSERT INTO listings (
+                        source_shop_id, source_listing_url, source_listing_key, title,
+                        normalized_title, price_raw, price_value, currency, primary_image_url,
+                        additional_image_urls, availability_status, shipping_scope,
+                        ships_to_montreal, shipping_note, last_seen_at, last_checked_at,
+                        first_seen_at, category, subcategory, designer, maker, era,
+                        materials, dimensions_text, width, depth, height, condition_text,
+                        location_text, source_description, ingest_source_type, parse_confidence,
+                        dedupe_group_id, is_active, is_featured, manual_notes,
+                        availability_override, category_override
+                    ) VALUES (
+                        ?, ?, ?, ?, ?, '$950', 950, 'CAD', 'https://example.com/image.jpg',
+                        '[]', 'available', 'regional_quote', 1, 'Regional source',
+                        '2026-05-24T09:00:00+00:00', '2026-05-24T09:00:00+00:00',
+                        ?, ?, '', '', '', '', 'teak', '', NULL, NULL, NULL, 'Good',
+                        ?, 'Regional listing', 'test', 1.0, '', 1, 0, '', '', ''
+                    )
+                    """,
+                    (
+                        (
+                            mostly_danish["id"],
+                            "https://mostlydanish.com/products/new-dining-chair",
+                            "mostly-danish:new-dining-chair",
+                            "Mostly Danish New Dining Chair",
+                            "mostly danish new dining chair",
+                            "2026-05-24T09:00:00+00:00",
+                            "dining chairs",
+                            "Ingleside, ON",
+                        ),
+                        (
+                            green_wall["id"],
+                            "https://www.greenwallvintage.ca/products/green-wall-desk",
+                            "green-wall:new-desk",
+                            "Green Wall New Desk",
+                            "green wall new desk",
+                            "2026-05-23T09:00:00+00:00",
+                            "desks",
+                            "Ottawa, ON",
+                        ),
+                    ),
+                )
+                db.commit()
+
+                curated_keys = [
+                    row["source_listing_key"]
+                    for row in query_listings(
+                        db,
+                        {"sort": "curated", "availability": "available"},
+                        include_inactive=False,
+                    )
+                ]
+                newest_keys = [
+                    row["source_listing_key"]
+                    for row in query_listings(
+                        db,
+                        {"sort": "newest", "availability": "available"},
+                        include_inactive=False,
+                    )
+                ]
+
+                self.assertLess(
+                    curated_keys.index("green-wall:new-desk"),
+                    curated_keys.index("mostly-danish:new-dining-chair"),
+                )
+                self.assertEqual(newest_keys[0], "mostly-danish:new-dining-chair")
+            finally:
+                db.close()
+
     def test_showroom_detail_uses_source_page_label(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)

@@ -15,19 +15,29 @@ ALLOWED_FILTER_FIELDS = {"category", "materials", "designer"}
 ALLOWED_AVAILABILITY = {"available", "sold_out", "all"}
 ALLOWED_SORT = {"curated", "newest", "recent_check", "price_low", "price_high", "recent_source"}
 EFFECTIVE_AVAILABILITY_SQL = "COALESCE(NULLIF(l.availability_override, ''), l.availability_status)"
+EFFECTIVE_CATEGORY_SQL = "COALESCE(NULLIF(l.category_override, ''), l.category)"
+CURATED_SOURCE_ORDER_SQL = f"""
+CASE
+    WHEN s.is_montreal_local = 1 THEN 0
+    WHEN s.slug = 'mostly-danish' AND {EFFECTIVE_CATEGORY_SQL} = 'dining chairs' THEN 3
+    WHEN s.slug = 'mostly-danish' THEN 2
+    ELSE 1
+END ASC,
+l.first_seen_at DESC
+"""
 SEARCH_FIELDS = (
     "l.title",
     "l.designer",
     "l.maker",
     "l.materials",
-    "COALESCE(NULLIF(l.category_override, ''), l.category)",
+    EFFECTIVE_CATEGORY_SQL,
     "l.source_description",
 )
 SEARCH_SCORE_FIELDS = (
     ("l.title", 16),
     ("l.designer", 12),
     ("l.maker", 12),
-    ("COALESCE(NULLIF(l.category_override, ''), l.category)", 10),
+    (EFFECTIVE_CATEGORY_SQL, 10),
     ("l.materials", 8),
     ("l.source_description", 3),
 )
@@ -129,7 +139,7 @@ def query_listings(
     clauses, params = listing_query_parts(filters, include_inactive)
     sort = sanitize_sort(filters.get("sort", "curated"))
     order_by = {
-        "curated": "CASE WHEN s.slug = 'mostly-danish' THEN 1 ELSE 0 END ASC, l.first_seen_at DESC",
+        "curated": CURATED_SOURCE_ORDER_SQL,
         "newest": "l.first_seen_at DESC",
         "recent_check": "l.last_checked_at DESC",
         "price_low": "CASE WHEN l.price_value IS NULL THEN 1 ELSE 0 END, l.price_value ASC",
