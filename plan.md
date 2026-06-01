@@ -77,6 +77,8 @@ data.
 - Release tag `0.2.5`: installable web-app baseline with app manifest, install icons, mobile
   app metadata, root-scoped service worker, offline fallback, mobile safe-area spacing, first-pass
   touch-target sizing, and the peach shop-card colour placeholder
+- Release tag `0.2.6`: accessibility baseline, branded 404 page, and final `0.2.x`
+  discovery/source cleanup with Mostly Danish weighting kept explicit in the curated feed
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
@@ -496,7 +498,7 @@ Likely work:
   beyond Montreal
 - keep source additions conservative and review-friendly
 
-Completed in `0.2.7`:
+Completed in `0.2.6`:
 
 - keep Mostly Danish in the active source set because its selected Shopify furniture collections are
   parseable and relevant enough, but treat it as a lower-priority regional source in the default
@@ -522,7 +524,7 @@ The `0.2.x` line is successful when:
 
 The likely remaining `0.2.x` releases are:
 
-- no planned `0.2.x` feature releases remain after `0.2.7`; use another `0.2.x` tag only for small
+- no planned `0.2.x` feature releases remain after `0.2.6`; use another `0.2.x` tag only for small
   stabilization fixes before starting `0.3.0`
 
 The logical cutoff before `0.3.0` is when Montreal MCM feels dependable as a recurring personal
