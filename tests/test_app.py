@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 from mcm.app import create_app
 from mcm.db import get_db
-from mcm.i18n import MATERIAL_LABELS
+from mcm.i18n import MATERIAL_LABELS, SHOP_TRANSLATIONS
 from mcm.locales import TRANSLATIONS_EN, TRANSLATIONS_FR
 from mcm.refresh import (
     RECONCILABLE_CHUNK_COUNTS,
@@ -115,6 +115,7 @@ class AppTests(unittest.TestCase):
                 "TESTING": True,
                 "DATABASE": str(self.db_path),
                 "SECRET_KEY": "test-secret",
+                "MCM_ALLOW_OPEN_ADMIN": True,
             }
         )
         self.listing_id = seed_listing(self.app)
@@ -170,6 +171,18 @@ class AppTests(unittest.TestCase):
     def test_locale_files_have_matching_keys(self) -> None:
         self.assertEqual(set(TRANSLATIONS_EN), set(TRANSLATIONS_FR))
 
+    def test_active_shop_metadata_has_french_copy(self) -> None:
+        translated_fields = {"description", "style_focus", "shipping_summary", "notes"}
+        source_slugs = {source.slug for source in SOURCE_DEFINITIONS}
+
+        self.assertEqual(set(SHOP_TRANSLATIONS), source_slugs)
+        for source in SOURCE_DEFINITIONS:
+            self.assertGreaterEqual(
+                set(SHOP_TRANSLATIONS[source.slug].get("fr", {})),
+                translated_fields,
+                source.slug,
+            )
+
     def test_process_health_does_not_require_database_or_auth(self) -> None:
         response = self.client.get("/healthz")
         self.assertEqual(response.status_code, 200)
@@ -216,6 +229,32 @@ class AppTests(unittest.TestCase):
             headers={"Authorization": "Basic YWRtaW46YWRtaW4tc2VjcmV0"},
         )
         self.assertEqual(response.status_code, 200)
+
+    def test_admin_routes_fail_closed_without_token(self) -> None:
+        protected_app = create_app(
+            {
+                "TESTING": True,
+                "DATABASE": str(Path(self.temp_dir.name) / "fail-closed.db"),
+                "SECRET_KEY": "test-secret",
+            }
+        )
+        client = protected_app.test_client()
+
+        self.assertEqual(client.get("/healthz").status_code, 200)
+        self.assertEqual(client.get("/admin").status_code, 401)
+        self.assertEqual(client.get("/admin/healthz").status_code, 401)
+
+    def test_language_redirect_rejects_external_next_url(self) -> None:
+        response = self.client.get("/language/fr?next=https://example.com/phish")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/")
+
+    def test_language_redirect_allows_relative_next_url(self) -> None:
+        response = self.client.get("/language/fr?next=/shops")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/shops")
 
     def test_invalid_price_filter_does_not_error(self) -> None:
         response = self.client.get("/?price_min=abc")

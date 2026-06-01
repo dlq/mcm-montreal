@@ -538,6 +538,48 @@ The `0.3.x` line should make the site feel like a durable destination rather tha
 This is where editorial, SEO, normalized entities, broader source strategy, and monetization should
 be considered.
 
+### 0.3.x Release Shape
+
+Proposed release slices:
+
+- `0.3.0`: dependency/tooling maintenance and release hygiene. Update npm tooling
+  (`wrangler` `4.90.0` to `4.96.0`, `@cloudflare/containers` `0.3.3` to `0.3.6`,
+  `@biomejs/biome` `2.4.13` to `2.4.16`, `playwright` `1.59.1` to `1.60.0`) and
+  Python dependencies (`Flask` `3.1.0` to `3.1.3`, `beautifulsoup4` `4.13.4` to
+  `4.14.3`, `ruff` `0.15.12` to `0.15.15`, plus safe transitive lockfile updates).
+  Run the full local checks, worker tests, production dry run, and deploy only after the toolchain
+  update is boring. Pre-`0.3.0` hardening already tightened admin auth to fail closed unless a
+  local dev override is explicitly enabled, rejected external language-switch redirects, and added
+  French shop-copy coverage tests for every active source.
+
+  Readiness checklist before tagging `0.3.0`:
+
+  - commit the current hardening, localization, tests, and planning changes
+  - update dependency manifests and lockfiles in a boring, reviewable change
+  - run `npm run lint`, `npm run test:worker`, `uv run python -m unittest tests.test_app`, and
+    `npm run deploy:dry-run`
+  - smoke-test local desktop and mobile views after dependency updates
+  - deploy only after checks pass, then run `npm run prod:health`
+  - confirm production admin routes still fail closed and manual refresh still works
+
+- `0.3.1`: UI quality and accessibility polish. Focus on mobile listing detail ordering, filter
+  drawer ergonomics, unavailable/loading image states, HTMX dynamic-update accessibility, and deeper
+  assistive-technology traversal.
+- `0.3.2`: editorial and SEO foundations. Decide canonical indexable page types, add sitemap and
+  canonical URL policy, and begin useful Montreal-specific category/shop/location content.
+- `0.3.3`: normalized design data. Introduce canonical creator/designer/maker entities, alias
+  handling, source evidence, and admin review before adding public entity pages.
+- `0.3.4`: analytics, monitoring, and operational visibility. Review Cloudflare Analytics after
+  enough usage, decide whether first-party outbound-click/feature metrics are needed, and decide
+  whether external uptime or alert delivery is justified.
+- Later structural hardening: split the oversized source-ingestion module into source definitions,
+  shared parser helpers, and parser-specific modules; introduce a typed parsed-listing contract;
+  reduce duplicated source/chunk configuration between Python and the Worker; add schema drift
+  checks between local SQLite initialization and D1 migrations; and split the monolithic app test
+  file as those refactors land.
+- Later `0.3.x`: broader marketplace strategy and monetization experiments only after source
+  quality, trust, and editorial foundations are strong enough.
+
 ### Editorial And SEO
 
 Questions to settle:
@@ -694,6 +736,28 @@ Likely work:
   automatic public exclusion
 - keep the option to move this work back to future research if simpler collection-level scope rules
   are enough
+
+## Future Research: Public Data Access
+
+The site may eventually expose a public API so other people can build on Montreal MCM inventory and
+source metadata, but this is intentionally beyond `0.4.x` unless a clear external use case appears.
+
+Questions to settle:
+
+- Is there real demand for machine-readable listings, shops, price history, availability history, or
+  normalized designer/maker data?
+- Which data can be exposed without creating source-attribution, scraping, privacy, abuse, or
+  maintenance problems?
+- Should the interface be REST, GraphQL, static feeds, downloadable snapshots, or something simpler?
+- What rate limits, caching, attribution requirements, and versioning would make the API safe to
+  operate?
+
+Likely work:
+
+- start with read-only, cacheable public data if an API is justified
+- prefer documented stable fields over exposing internal database shape
+- avoid API keys, accounts, or write access unless there is a concrete need
+- defer implementation until the public web app, data model, and source trust story are more mature
 
 ## Cross-Cutting Risks
 

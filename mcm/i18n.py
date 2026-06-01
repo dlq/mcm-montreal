@@ -48,6 +48,54 @@ SHOP_TRANSLATIONS: dict[str, dict[str, dict[str, str]]] = {
             "style_focus": "Design de collection, mobilier vintage haut de gamme, modernisme européen.",
         }
     },
+    "maison-singulier": {
+        "fr": {
+            "shipping_summary": "Source locale montréalaise; les gros articles peuvent nécessiter une soumission de transport.",
+            "notes": "Collections Shopify avec inventaire mobilier actif; les collections d’archives sont exclues.",
+            "description": "Boutique montréalaise de mobilier vintage et d’objets pour la maison axée sur le design moderniste et mid-century.",
+            "style_focus": "Moderniste, brésilien, Mid-Century, Postmoderne, mobilier de collection.",
+        }
+    },
+    "yardsale-vintage": {
+        "fr": {
+            "shipping_summary": "Ramassage local à Montréal; expédition offerte au Canada et aux États-Unis sur soumission.",
+            "notes": "Galerie Cargo; la galerie Shop actuelle est analysée et la galerie Archive est exclue.",
+            "description": "Studio montréalais axé sur le mobilier vintage restauré et unique.",
+            "style_focus": "Mobilier vintage restauré, sièges de designer, meubles de rangement MCM.",
+        }
+    },
+    "chez-lamothe": {
+        "fr": {
+            "shipping_summary": "Source locale montréalaise; livraison à Montréal et expédition régionale sur soumission.",
+            "notes": "API de vitrine Square Online; les données produit incluent prix, images, descriptions et badges de rupture de stock.",
+            "description": "Boutique montréalaise spécialisée en mobilier mid-century restauré, surtout en teck et pièces scandinaves.",
+            "style_focus": "Mid-Century restauré, teck, scandinave, mobilier danois et canadien.",
+        }
+    },
+    "habitat-mobilier": {
+        "fr": {
+            "shipping_summary": "Source des Cantons-de-l’Est; livraison offerte dans le grand Montréal et partout au Québec.",
+            "notes": "Boutique Squarespace; seuls les produits en stock sont traités comme inventaire public courant.",
+            "description": "Boutique de West Brome axée sur le mobilier scandinave restauré et vintage mid-century.",
+            "style_focus": "Scandinave restauré, danois, teck, palissandre, noyer, mobilier mid-century.",
+        }
+    },
+    "green-wall-vintage": {
+        "fr": {
+            "shipping_summary": "Source régionale d’Ottawa avec livraison offerte au Canada et aux États-Unis.",
+            "notes": "Inventaire Shopify avec prix et états de stock visibles; les produits non mobiliers sont filtrés.",
+            "description": "Boutique vintage de la région d’Ottawa avec un catalogue important de mobilier mid-century modern.",
+            "style_focus": "Mid-century modern, inspiration danoise, teck, noyer, palissandre.",
+        }
+    },
+    "mostly-danish": {
+        "fr": {
+            "shipping_summary": "Source régionale du corridor Montréal-Ottawa; ramassage ou livraison sur soumission.",
+            "notes": "Collections Shopify de mobilier seulement; les collections extérieur, oriental, accents et archives sont exclues.",
+            "description": "Source régionale de mobilier scandinave avec inventaire vintage danois et en teck.",
+            "style_focus": "Danois, scandinave, teck, palissandre, sièges, tables, buffets, rangement.",
+        }
+    },
 }
 
 LAUNCH_CATEGORIES = [

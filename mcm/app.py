@@ -139,6 +139,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app.config["D1_BRIDGE_URL"] = os.environ.get("D1_BRIDGE_URL", "")
     app.config["D1_BRIDGE_TOKEN"] = os.environ.get("D1_BRIDGE_TOKEN", "")
     app.config["MCM_ADMIN_TOKEN"] = os.environ.get("MCM_ADMIN_TOKEN", "")
+    app.config["MCM_ALLOW_OPEN_ADMIN"] = os.environ.get("MCM_ALLOW_OPEN_ADMIN", "") == "1"
     if test_config:
         app.config.update(test_config)
     app.jinja_env.globals["freshness_label"] = freshness_label
@@ -526,7 +527,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/language/<lang_code>")
     def set_language(lang_code: str) -> Any:
         session["lang"] = normalize_lang(lang_code)
-        return redirect(request.args.get("next") or url_for("listings"))
+        return redirect(safe_redirect_target(request.args.get("next")))
 
     @app.post("/favourites/listing/<int:listing_id>")
     def toggle_listing_favourite(listing_id: int) -> str:
@@ -609,7 +610,9 @@ def admin_required(app: Flask) -> Any:
         @wraps(view)
         def _wrapped(*args: Any, **kwargs: Any) -> Any:
             expected_token = app.config.get("MCM_ADMIN_TOKEN", "")
-            if not expected_token or admin_token_matches(expected_token):
+            if expected_token and admin_token_matches(expected_token):
+                return view(*args, **kwargs)
+            if not expected_token and app.config.get("MCM_ALLOW_OPEN_ADMIN"):
                 return view(*args, **kwargs)
             return Response(
                 "Admin authentication required",
@@ -620,6 +623,15 @@ def admin_required(app: Flask) -> Any:
         return _wrapped
 
     return _decorator
+
+
+def safe_redirect_target(target: str | None) -> str:
+    if not target:
+        return url_for("listings")
+    parsed = urlparse(target)
+    if parsed.scheme or parsed.netloc or not parsed.path.startswith("/"):
+        return url_for("listings")
+    return target
 
 
 def admin_token_matches(expected_token: str) -> bool:

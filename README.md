@@ -238,7 +238,8 @@ npm run prod:health
 `scripts/check-production.sh`. Override them with `MCM_BASE_URL`, `MCM_APEX_URL`, `MCM_WWW_URL`, and
 `MCM_D1_DATABASE` when checking a different deployment.
 
-Admin routes are open in local development when `MCM_ADMIN_TOKEN` is unset. In production, set
+Admin routes fail closed when `MCM_ADMIN_TOKEN` is unset. For local development only, set
+`MCM_ALLOW_OPEN_ADMIN=1` if you need to inspect admin pages without a token. In production, set
 `MCM_ADMIN_TOKEN` and authenticate with HTTP Basic auth using any username and the token as the
 password, or send `Authorization: Bearer <token>` / `X-MCM-Admin-Token: <token>`.
 
