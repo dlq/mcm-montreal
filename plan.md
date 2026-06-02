@@ -597,6 +597,26 @@ Likely work:
 - structured metadata
 - sitemap and canonical URL policy
 
+### Public Launch And Promotion
+
+Current decision:
+
+- Do not broadly promote the site before the `0.3.0` line is minted and deployed. Quiet sharing
+  with a handful of trusted local users is fine, but public posts such as `r/montreal` should wait
+  until the site is ready for stranger feedback.
+- Treat `0.3.0` as the baseline for a dependable public-facing version: release hygiene complete,
+  production health verified, analytics reviewed, and obvious trust/accessibility issues not
+  dominating the first impression.
+
+Likely work:
+
+- create one or more shareable entry URLs beyond the generic listings page
+- write a lightweight explanation of what Montreal MCM is, without turning the app into a marketing
+  homepage
+- prepare a low-key launch message framed as a Montreal-focused vintage/MCM furniture discovery
+  project seeking feedback
+- start promotion gradually with local design/vintage people before any broader public post
+
 ### Normalized Design Data
 
 Questions to settle:
