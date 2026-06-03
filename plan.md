@@ -563,15 +563,25 @@ Proposed release slices:
   - confirm production admin routes still fail closed and manual refresh still works
 
 - `0.3.1`: UI quality and accessibility polish. Focus on mobile listing detail ordering, filter
-  drawer ergonomics, unavailable/loading image states, HTMX dynamic-update accessibility, and deeper
-  assistive-technology traversal.
+  drawer ergonomics, unavailable/loading image states, HTMX dynamic-update accessibility, deeper
+  assistive-technology traversal, touch target checks, reduced-motion behavior, and any remaining
+  Website Spec accessibility baseline gaps that are practical for this app.
 - `0.3.2`: editorial and SEO foundations. Decide canonical indexable page types, add sitemap and
-  canonical URL policy, and begin useful Montreal-specific category/shop/location content.
+  canonical URL policy, robots.txt, meta descriptions, Open Graph/Twitter metadata, JSON-LD
+  structured data, hreflang or an explicit language URL policy, localized head metadata, and begin
+  useful Montreal-specific category/shop/location content.
 - `0.3.3`: normalized design data. Introduce canonical creator/designer/maker entities, alias
   handling, source evidence, and admin review before adding public entity pages.
 - `0.3.4`: analytics, monitoring, and operational visibility. Review Cloudflare Analytics after
   enough usage, decide whether first-party outbound-click/feature metrics are needed, and decide
   whether external uptime or alert delivery is justified.
+- `0.3.5`: security, privacy, and resilience hardening. Add practical response headers such as HSTS,
+  `X-Content-Type-Options`, frame protection, `Referrer-Policy`, and `Permissions-Policy`; decide
+  whether a CSP is feasible while Tailwind/HTMX/Leaflet are still CDN-loaded; add
+  `/.well-known/security.txt`; write a privacy policy that explains anonymous favourites/searches,
+  cookies, Cloudflare analytics/logs, and data retention; decide whether cookie consent or Global
+  Privacy Control handling is needed for the current analytics posture; and consider a 503
+  maintenance page pattern.
 - Later structural hardening: split the oversized source-ingestion module into source definitions,
   shared parser helpers, and parser-specific modules; introduce a typed parsed-listing contract;
   reduce duplicated source/chunk configuration between Python and the Worker; add schema drift
@@ -579,6 +589,10 @@ Proposed release slices:
   file as those refactors land.
 - Later `0.3.x`: broader marketplace strategy and monetization experiments only after source
   quality, trust, and editorial foundations are strong enough.
+- Later `0.3.x` or `0.4.x`: revisit agent-readiness only after the public web/SEO surface is stable:
+  `/llms.txt`, optional `/llms-full.txt`, robots.txt AI crawler guidance, machine-readable resource
+  formats, HTTP discovery links, and any `.well-known` API/agent catalogues should follow real use
+  cases rather than be added speculatively.
 
 ### Editorial And SEO
 
@@ -596,6 +610,12 @@ Likely work:
 - indexable designer/material/category pages once data quality supports them
 - structured metadata
 - sitemap and canonical URL policy
+- `robots.txt` with sitemap discovery and explicit crawler stance
+- page-specific meta descriptions and social previews for listings, shops, category pages, and
+  editorial pages
+- JSON-LD for the site, shop pages, breadcrumbs, and carefully selected listing/product-like pages
+- `hreflang` or a consciously documented alternative if language stays query-param based for now
+- localized metadata so French pages do not carry English-only title/description/social fields
 
 ### Public Launch And Promotion
 
@@ -721,6 +741,8 @@ Likely work:
 - decide whether external uptime/alerting belongs in operations before source count or traffic grows
 - keep analytics privacy-preserving and avoid user accounts unless alerts or trade features require
   stronger identity
+- decide whether Website Spec privacy items imply any new app behavior, especially privacy policy
+  placement, anonymous identifier retention, cookie consent, and Global Privacy Control handling
 
 ### 0.3.x Success Criteria
 
@@ -761,6 +783,9 @@ Likely work:
 
 The site may eventually expose a public API so other people can build on Montreal MCM inventory and
 source metadata, but this is intentionally beyond `0.4.x` unless a clear external use case appears.
+This also covers the Website Spec agent-readiness ideas that overlap with API discovery, such as
+`.well-known/api-catalog`, machine-readable resources, HTTP discovery links, and agent/tool
+catalogues.
 
 Questions to settle:
 
