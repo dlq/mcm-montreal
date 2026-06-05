@@ -187,6 +187,7 @@ class AppTests(unittest.TestCase):
         response = self.client.get("/healthz")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.text, "ok")
+        self.assertIn("X-MCM-App-Ms", response.headers)
 
     def test_admin_health_checks_database(self) -> None:
         response = self.client.get("/admin/healthz")
@@ -438,6 +439,21 @@ class AppTests(unittest.TestCase):
                 ).fetchone()
                 self.assertEqual(identity_count, 1)
                 self.assertIsNotNone(favourite)
+            finally:
+                db.close()
+
+    def test_plain_browse_does_not_create_anonymous_identity(self) -> None:
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("mcm_anonymous_id=", response.headers.get("Set-Cookie", ""))
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                identity_count = db.execute(
+                    "SELECT COUNT(*) AS count FROM anonymous_identities"
+                ).fetchone()["count"]
+                self.assertEqual(identity_count, 0)
             finally:
                 db.close()
 
@@ -1702,6 +1718,7 @@ class AppTests(unittest.TestCase):
         self.assertNotIn("listing-results-toolbar", next_response.text)
         self.assertEqual(next_response.text.count('class="listing-card group'), 13)
         self.assertNotIn("Load more listings", next_response.text)
+        self.assertIn("X-MCM-App-Ms", next_response.headers)
 
     def test_location_filter_uses_existing_locations(self) -> None:
         response = self.client.get("/")

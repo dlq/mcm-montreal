@@ -16,10 +16,37 @@ ANONYMOUS_COOKIE_SALT = "mcm-anonymous-identity"
 
 def load_anonymous_identity(app: Flask, db: sqlite3.Connection) -> None:
     token = read_identity_token(app)
+    if not token and not has_session_favourites():
+        return
     if not token:
-        token = secrets.token_urlsafe(32)
-        g.anonymous_identity_cookie = token
+        token = mint_identity_token()
     owner_key = owner_key_for_token(token)
+    g.anonymous_owner_key = owner_key
+    if has_session_favourites():
+        store_anonymous_identity(db, owner_key)
+        migrate_session_favourites(db, owner_key)
+
+
+def ensure_anonymous_identity(app: Flask, db: sqlite3.Connection) -> str:
+    owner_key = current_owner_key()
+    if owner_key:
+        store_anonymous_identity(db, owner_key)
+        return owner_key
+    token = read_identity_token(app) or mint_identity_token()
+    owner_key = owner_key_for_token(token)
+    g.anonymous_owner_key = owner_key
+    store_anonymous_identity(db, owner_key)
+    migrate_session_favourites(db, owner_key)
+    return owner_key
+
+
+def mint_identity_token() -> str:
+    token = secrets.token_urlsafe(32)
+    g.anonymous_identity_cookie = token
+    return token
+
+
+def store_anonymous_identity(db: sqlite3.Connection, owner_key: str) -> None:
     now = datetime.now(UTC).isoformat()
     db.execute(
         """
@@ -30,8 +57,6 @@ def load_anonymous_identity(app: Flask, db: sqlite3.Connection) -> None:
         (owner_key, now, now),
     )
     db.commit()
-    g.anonymous_owner_key = owner_key
-    migrate_session_favourites(db, owner_key)
 
 
 def persist_anonymous_identity(response: Response) -> Response:
@@ -50,6 +75,13 @@ def persist_anonymous_identity(response: Response) -> Response:
 
 def current_owner_key() -> str:
     return str(getattr(g, "anonymous_owner_key", ""))
+
+
+def has_session_favourites() -> bool:
+    return bool(
+        clean_int_values(session.get("favourite_listing_ids", []))
+        or clean_int_values(session.get("favourite_shop_ids", []))
+    )
 
 
 def read_identity_token(app: Flask) -> str:

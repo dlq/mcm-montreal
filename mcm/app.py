@@ -4,6 +4,7 @@ import json
 import os
 import secrets
 import sys
+import time
 from datetime import UTC, datetime
 from functools import wraps
 from pathlib import Path
@@ -45,7 +46,7 @@ from .i18n import (
     status_label,
     translator_for,
 )
-from .identity import load_anonymous_identity, persist_anonymous_identity
+from .identity import ensure_anonymous_identity, load_anonymous_identity, persist_anonymous_identity
 from .locations import shop_address_lines, shop_apple_maps_url, shop_directions_url, shop_has_map
 from .refresh import (
     listing_id_from_item_number,
@@ -151,6 +152,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.before_request
     def open_request_resources() -> None:
+        g.request_started_at = time.perf_counter()
         if request.endpoint in {"static", "service_worker", "web_manifest"}:
             return
         g.db = get_db(app)
@@ -161,7 +163,26 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     def persist_request_resources(response: Response) -> Response:
         if request.endpoint in {"static", "service_worker", "web_manifest"}:
             return response
-        return persist_anonymous_identity(response)
+        response = persist_anonymous_identity(response)
+        started_at = getattr(g, "request_started_at", None)
+        if started_at is not None:
+            elapsed_ms = (time.perf_counter() - started_at) * 1000
+            response.headers["X-MCM-App-Ms"] = f"{elapsed_ms:.1f}"
+            db = getattr(g, "db", None)
+            d1_query_count = getattr(db, "query_count", None)
+            d1_query_ms = getattr(db, "total_query_ms", None)
+            if d1_query_count is not None and d1_query_ms is not None:
+                response.headers["X-MCM-D1-Queries"] = str(d1_query_count)
+                response.headers["X-MCM-D1-Ms"] = f"{d1_query_ms:.1f}"
+            app.logger.info(
+                "request_timing path=%s status=%s app_ms=%.1f d1_queries=%s d1_ms=%s",
+                request.path,
+                response.status_code,
+                elapsed_ms,
+                d1_query_count if d1_query_count is not None else "-",
+                f"{d1_query_ms:.1f}" if d1_query_ms is not None else "-",
+            )
+        return response
 
     @app.teardown_appcontext
     def close_db(exc: BaseException | None) -> None:  # noqa: ARG001
@@ -235,6 +256,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             if request.headers.get("HX-Request")
             else "listings.html"
         )
+        context = {}
+        if not (request.headers.get("HX-Request") and offset):
+            context = listing_context(filters)
         return render_template(
             template,
             listings=rows,
@@ -242,7 +266,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             has_more_listings=has_more_listings,
             next_page_url=next_page_url,
             filters=filters,
-            **listing_context(filters),
+            **context,
         )
 
     @app.post("/saved-searches")
@@ -260,6 +284,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         filters = build_listing_filters(form_data)
         query_string = saved_search_query_string(filters)
         if query_string:
+            ensure_anonymous_identity(app, g.db)
             save_search(g.db, saved_search_name(filters), query_string)
         return redirect(url_for("favourites"))
 
@@ -534,6 +559,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         listing = get_listing(g.db, listing_id)
         if not listing:
             abort(404)
+        ensure_anonymous_identity(app, g.db)
         toggle_favourite_listing(g.db, listing_id)
         return render_template(
             "_favourite_listing_button.html", listing=get_listing(g.db, listing_id)
@@ -547,6 +573,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         shop = get_shop(g.db, shop_id)
         if not shop:
             abort(404)
+        ensure_anonymous_identity(app, g.db)
         toggle_favourite_shop(g.db, shop_id)
         return render_template(
             "_favourite_shop_button.html", shop=get_shop(g.db, shop_id)

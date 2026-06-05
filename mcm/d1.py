@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Iterable, Sequence
@@ -15,8 +16,11 @@ class D1Connection:
     def __init__(self, url: str, token: str) -> None:
         self.url = url
         self.token = token
+        self.query_count = 0
+        self.total_query_ms = 0.0
 
     def execute(self, sql: str, parameters: Sequence[Any] | None = None) -> D1Cursor:
+        started = time.perf_counter()
         payload = json.dumps(
             {
                 "sql": sql,
@@ -45,6 +49,8 @@ class D1Connection:
 
         if not body.get("success", False):
             raise D1Error(body.get("error") or "D1 bridge query failed")
+        self.query_count += 1
+        self.total_query_ms += (time.perf_counter() - started) * 1000
         return D1Cursor(body.get("results", []), int(body.get("changes") or 0))
 
     def executemany(self, sql: str, seq_of_parameters: Iterable[Sequence[Any]]) -> None:
