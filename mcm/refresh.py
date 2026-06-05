@@ -10,6 +10,7 @@ from .db import ensure_source_shop_seeded
 from .repository import get_shop_by_slug
 from .sources import (
     SOURCE_DEFINITIONS,
+    ParsedListing,
     SourceDefinition,
     fetch_chez_lamothe_page_listings,
     fetch_le_centerpiece_entry_listings,
@@ -308,7 +309,7 @@ def refresh_source(db: sqlite3.Connection, source: SourceDefinition) -> RefreshR
 def _refresh_source_listings(
     db: sqlite3.Connection,
     source: SourceDefinition,
-    listings: list[dict[str, object]],
+    listings: list[ParsedListing],
     error: str | None,
     *,
     crawl_is_authoritative: bool,
@@ -719,7 +720,7 @@ def price_changed(
     old_price_raw: str,
     old_price_value: object,
     old_currency: str,
-    item: dict[str, object],
+    item: ParsedListing,
 ) -> bool:
     return (
         old_price_raw != str(item.get("price_raw", ""))
@@ -871,7 +872,7 @@ def listing_id_from_item_number(item_number: str) -> int | None:
 def find_reconciliation_candidate(
     db: sqlite3.Connection,
     shop_id: int,
-    item: dict[str, object],
+    item: ParsedListing,
     seen_keys: set[str],
     timestamp: str,
     source_listing_key: str,
@@ -917,7 +918,7 @@ def find_reconciliation_candidate(
     return None
 
 
-def reconciliation_score(row: sqlite3.Row, item: dict[str, object]) -> int:
+def reconciliation_score(row: sqlite3.Row, item: ParsedListing) -> int:
     score = 0
     item_image = str(item.get("primary_image_url") or "")
     if item_image and item_image == row["primary_image_url"]:

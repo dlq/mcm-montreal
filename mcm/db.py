@@ -190,10 +190,17 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             ON listing_availability_events(listing_id, observed_at);
         CREATE INDEX IF NOT EXISTS idx_listing_availability_events_transition
             ON listing_availability_events(listing_id, from_status, to_status);
+        CREATE INDEX IF NOT EXISTS idx_listings_source_shop ON listings(source_shop_id);
+        CREATE INDEX IF NOT EXISTS idx_listings_active_availability
+            ON listings(is_active, availability_status, availability_override);
+        CREATE INDEX IF NOT EXISTS idx_listings_first_seen ON listings(first_seen_at);
+        CREATE INDEX IF NOT EXISTS idx_listings_last_checked ON listings(last_checked_at);
         CREATE INDEX IF NOT EXISTS idx_listing_price_events_listing
             ON listing_price_events(listing_id, observed_at);
         CREATE INDEX IF NOT EXISTS idx_listing_price_events_change
             ON listing_price_events(listing_id, from_price_value, to_price_value);
+        CREATE INDEX IF NOT EXISTS idx_refresh_jobs_source_started
+            ON refresh_jobs(source_slug, started_at);
         CREATE INDEX IF NOT EXISTS idx_anonymous_favourite_listings_listing
             ON anonymous_favourite_listings(listing_id);
         CREATE INDEX IF NOT EXISTS idx_anonymous_favourite_shops_shop

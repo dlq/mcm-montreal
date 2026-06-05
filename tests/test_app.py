@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import sqlite3
 import tempfile
 import unittest
 from datetime import UTC, datetime
@@ -10,7 +11,7 @@ from typing import Any
 from unittest.mock import patch
 
 from mcm.app import create_app
-from mcm.db import get_db
+from mcm.db import ensure_schema, get_db
 from mcm.i18n import MATERIAL_LABELS, SHOP_TRANSLATIONS
 from mcm.locales import TRANSLATIONS_EN, TRANSLATIONS_FR
 from mcm.refresh import (
@@ -46,6 +47,55 @@ from mcm.sources import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def schema_signature(db: sqlite3.Connection) -> dict[str, Any]:
+    tables = [
+        row["name"]
+        for row in db.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+              AND name NOT LIKE 'sqlite_%'
+            ORDER BY name
+            """
+        ).fetchall()
+    ]
+    return {
+        table: {
+            "columns": {
+                row["name"]: {
+                    "name": row["name"],
+                    "type": row["type"],
+                    "notnull": row["notnull"],
+                    "default": row["dflt_value"],
+                    "primary_key": row["pk"],
+                }
+                for row in db.execute(f"PRAGMA table_info({table})").fetchall()
+            },
+            "indexes": {
+                row["name"]: [
+                    column["name"]
+                    for column in db.execute(f"PRAGMA index_info({row['name']})").fetchall()
+                ]
+                for row in db.execute(f"PRAGMA index_list({table})").fetchall()
+                if row["origin"] == "c"
+            },
+        }
+        for table in tables
+    }
+
+
+def migrated_schema_signature() -> dict[str, Any]:
+    db = sqlite3.connect(":memory:")
+    db.row_factory = sqlite3.Row
+    try:
+        for path in sorted((PROJECT_ROOT / "migrations").glob("*.sql")):
+            db.executescript(path.read_text())
+        return schema_signature(db)
+    finally:
+        db.close()
 
 
 def seed_listing(app) -> int:
@@ -171,6 +221,17 @@ class AppTests(unittest.TestCase):
     def test_locale_files_have_matching_keys(self) -> None:
         self.assertEqual(set(TRANSLATIONS_EN), set(TRANSLATIONS_FR))
 
+    def test_local_schema_matches_migrations(self) -> None:
+        db = sqlite3.connect(":memory:")
+        db.row_factory = sqlite3.Row
+        try:
+            ensure_schema(db)
+            local_schema = schema_signature(db)
+        finally:
+            db.close()
+
+        self.assertEqual(migrated_schema_signature(), local_schema)
+
     def test_active_shop_metadata_has_french_copy(self) -> None:
         translated_fields = {"description", "style_focus", "shipping_summary", "notes"}
         source_slugs = {source.slug for source in SOURCE_DEFINITIONS}
@@ -187,6 +248,25 @@ class AppTests(unittest.TestCase):
         response = self.client.get("/healthz")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.text, "ok")
+        self.assertNotIn("X-MCM-App-Ms", response.headers)
+        self.assertNotIn("X-MCM-D1-Queries", response.headers)
+        self.assertNotIn("X-MCM-D1-Ms", response.headers)
+
+    def test_timing_headers_are_opt_in(self) -> None:
+        timing_app = create_app(
+            {
+                "TESTING": True,
+                "DATABASE": str(Path(self.temp_dir.name) / "timing.db"),
+                "SECRET_KEY": "test-secret",
+                "MCM_ALLOW_OPEN_ADMIN": True,
+                "MCM_EXPOSE_TIMING_HEADERS": True,
+            }
+        )
+        client = timing_app.test_client()
+
+        response = client.get("/healthz")
+
+        self.assertEqual(response.status_code, 200)
         self.assertIn("X-MCM-App-Ms", response.headers)
 
     def test_admin_health_checks_database(self) -> None:
@@ -1718,7 +1798,7 @@ class AppTests(unittest.TestCase):
         self.assertNotIn("listing-results-toolbar", next_response.text)
         self.assertEqual(next_response.text.count('class="listing-card group'), 13)
         self.assertNotIn("Load more listings", next_response.text)
-        self.assertIn("X-MCM-App-Ms", next_response.headers)
+        self.assertNotIn("X-MCM-App-Ms", next_response.headers)
 
     def test_location_filter_uses_existing_locations(self) -> None:
         response = self.client.get("/")

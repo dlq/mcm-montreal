@@ -549,8 +549,10 @@ Proposed release slices:
   `4.14.3`, `ruff` `0.15.12` to `0.15.15`, plus safe transitive lockfile updates).
   Run the full local checks, worker tests, production dry run, and deploy only after the toolchain
   update is boring. Pre-`0.3.0` hardening already tightened admin auth to fail closed unless a
-  local dev override is explicitly enabled, rejected external language-switch redirects, and added
-  French shop-copy coverage tests for every active source.
+  local dev override is explicitly enabled, rejected external language-switch redirects, added
+  French shop-copy coverage tests for every active source, made internal timing headers opt-in,
+  consolidated duplicated chunk refresh response handling, added a parsed-listing boundary type,
+  and added drift tests for Worker source config and local SQLite versus migration schema.
 
   Readiness checklist before tagging `0.3.0`:
 
@@ -582,11 +584,40 @@ Proposed release slices:
   cookies, Cloudflare analytics/logs, and data retention; decide whether cookie consent or Global
   Privacy Control handling is needed for the current analytics posture; and consider a 503
   maintenance page pattern.
-- Later structural hardening: split the oversized source-ingestion module into source definitions,
-  shared parser helpers, and parser-specific modules; introduce a typed parsed-listing contract;
-  reduce duplicated source/chunk configuration between Python and the Worker; add schema drift
-  checks between local SQLite initialization and D1 migrations; and split the monolithic app test
-  file as those refactors land.
+- Later structural hardening and readability:
+  - separate public shop concepts from crawl source concepts. `ShopDefinition` should own public shop
+    metadata such as name, website, address, location, shipping summary, and display copy;
+    `SourceDefinition` should own parser type, listing URLs, crawl priority, refresh/chunk behavior,
+    and source-specific ingestion notes, linked by `shop_slug`.
+  - introduce shop/listing view models such as `ShopCard`, `ShopDetail`, `ListingCard`, and
+    `ListingDetail` so templates render prepared display data instead of raw DB rows plus many helper
+    calls.
+  - move shop-facing helpers into a coherent `mcm/shops.py` module or `mcm/shops/` package: address
+    lines, map URLs, map eligibility, display text, and any shop-specific template registration.
+  - split `repository.py` by concern, likely into listings, shops, favourites, filters, admin, and
+    saved-search modules, while keeping current query behavior stable.
+  - split the oversized source-ingestion module into source definitions, shared parser helpers, and
+    parser-family modules such as Shopify, Showroom/Wix, Square, Cargo, and Squarespace; carry the
+    parsed-listing contract deeper into parser-specific helpers.
+  - split route registration out of `app.py` into public listing/shop routes, favourites routes,
+    admin routes, and cron/ops routes while keeping `create_app()` as the thin app factory.
+  - move Jinja global registration closer to feature modules so shop helpers, listing helpers, and
+    i18n helpers are registered from the modules that own them.
+  - reduce raw `dict[str, Any]` boundaries by adding typed shapes for shop rows, listing rows, and
+    filter state where those shapes cross module or template boundaries.
+  - split the monolithic app test file into route, shop, refresh, source parser, repository, i18n,
+    and schema tests as those modules split.
+  - add parser fixture tests under `tests/fixtures/sources/<source>/` so important source parsers can
+    be tested as fixture input to expected `ParsedListing` output.
+  - add D1 bridge unit tests and make the coverage goal explicit before tagging broader public
+    releases; current coverage gaps are concentrated in source parsers and `mcm/d1.py`.
+  - make migrations the schema source of truth, or generate local SQLite initialization from the same
+    schema path, so local SQLite and D1 migration SQL cannot drift.
+  - add a concise `docs/architecture.md` with a "where does this belong?" table for contributors:
+    shop display copy, crawler behavior, DB queries, refresh orchestration, route glue, templates,
+    frontend components, and deployment/ops.
+  - reduce duplicated source/chunk configuration between Python and the Worker beyond the current
+    drift test.
 - Later `0.3.x`: broader marketplace strategy and monetization experiments only after source
   quality, trust, and editorial foundations are strong enough.
 - Later `0.3.x` or `0.4.x`: revisit agent-readiness only after the public web/SEO surface is stable:

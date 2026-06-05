@@ -238,6 +238,9 @@ npm run prod:health
 `scripts/check-production.sh`. Override them with `MCM_BASE_URL`, `MCM_APEX_URL`, `MCM_WWW_URL`, and
 `MCM_D1_DATABASE` when checking a different deployment.
 
+Internal timing headers are off by default. For temporary diagnostics, set
+`MCM_EXPOSE_TIMING_HEADERS=1`; request timings are still written to logs when the headers are off.
+
 Admin routes fail closed when `MCM_ADMIN_TOKEN` is unset. For local development only, set
 `MCM_ALLOW_OPEN_ADMIN=1` if you need to inspect admin pages without a token. In production, set
 `MCM_ADMIN_TOKEN` and authenticate with HTTP Basic auth using any username and the token as the

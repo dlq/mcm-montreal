@@ -56,6 +56,7 @@ export class McmContainer extends Container {
       D1_BRIDGE_URL: env.D1_BRIDGE_URL || DEFAULT_D1_BRIDGE_URL,
       D1_BRIDGE_TOKEN: env.D1_BRIDGE_TOKEN || "",
       MCM_ADMIN_TOKEN: env.MCM_ADMIN_TOKEN || "",
+      MCM_EXPOSE_TIMING_HEADERS: env.MCM_EXPOSE_TIMING_HEADERS || "",
     };
   }
 
@@ -648,7 +649,9 @@ async function fetchContainer(request, env) {
     }),
   );
   const headers = new Headers(response.headers);
-  headers.set("X-MCM-Worker-Container-Fetch-Ms", String(elapsedMs));
+  if (env.MCM_EXPOSE_TIMING_HEADERS === "1") {
+    headers.set("X-MCM-Worker-Container-Fetch-Ms", String(elapsedMs));
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

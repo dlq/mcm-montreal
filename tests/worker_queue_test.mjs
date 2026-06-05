@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
-async function loadWorker() {
+async function loadWorkerModule() {
   const source = await readFile(new URL("../src/worker.js", import.meta.url), "utf8");
   const module = new vm.SourceTextModule(source, {
     initializeImportMeta(meta) {
@@ -19,7 +19,7 @@ async function loadWorker() {
     return containerModule;
   });
   await module.evaluate();
-  return module.namespace.default;
+  return module.namespace;
 }
 
 function makeQueue() {
@@ -172,7 +172,14 @@ function makeMessage(body, attempts = 1) {
   };
 }
 
-const worker = await loadWorker();
+const workerModule = await loadWorkerModule();
+const worker = workerModule.default;
+
+{
+  const container = new workerModule.McmContainer({}, { MCM_EXPOSE_TIMING_HEADERS: "1" });
+
+  assert.equal(container.envVars.MCM_EXPOSE_TIMING_HEADERS, "1");
+}
 
 {
   const db = makeDb([
@@ -529,6 +536,25 @@ const worker = await loadWorker();
   assert.equal(containerRequests.length, 2);
   assert.equal(containerStartCalls.length, 1);
   assert.deepEqual(containerStartCalls[0].ports, [8080]);
+}
+
+{
+  const { env } = makeEnv(new Response("ok", { status: 200 }));
+  const response = await worker.fetch(new Request("https://montreal-mcm.test/"), env);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("X-MCM-Worker-Container-Fetch-Ms"), null);
+}
+
+{
+  const { env } = makeEnvWithSecrets(
+    { MCM_EXPOSE_TIMING_HEADERS: "1" },
+    new Response("ok", { status: 200 }),
+  );
+  const response = await worker.fetch(new Request("https://montreal-mcm.test/"), env);
+
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("X-MCM-Worker-Container-Fetch-Ms"), /^\d+$/);
 }
 
 {

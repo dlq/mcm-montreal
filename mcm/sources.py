@@ -9,7 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, NotRequired, Required, TypedDict
 
 from bs4 import BeautifulSoup
 
@@ -45,6 +45,35 @@ class SourceDefinition:
     style_focus: str
     listing_urls: tuple[str, ...]
     parser: str
+
+
+class ParsedListing(TypedDict, total=False):
+    """Normalized listing payload emitted by source parsers and ingested by refresh."""
+
+    source_listing_url: Required[str]
+    title: Required[str]
+    source_listing_key: NotRequired[str]
+    price_raw: NotRequired[str]
+    price_value: NotRequired[float | None]
+    currency: NotRequired[str]
+    primary_image_url: NotRequired[str]
+    additional_image_urls: NotRequired[list[str]]
+    availability_status: NotRequired[str]
+    shipping_scope: NotRequired[str]
+    ships_to_montreal: NotRequired[int]
+    shipping_note: NotRequired[str]
+    category: NotRequired[str]
+    subcategory: NotRequired[str]
+    designer: NotRequired[str]
+    maker: NotRequired[str]
+    era: NotRequired[str]
+    materials: NotRequired[str]
+    dimensions_text: NotRequired[str]
+    condition_text: NotRequired[str]
+    location_text: NotRequired[str]
+    source_description: NotRequired[str]
+    ingest_source_type: NotRequired[str]
+    parse_confidence: NotRequired[float]
 
 
 SOURCE_DEFINITIONS = [
@@ -345,7 +374,7 @@ SHOWROOM_OVERRIDES: dict[str, dict[str, str]] = {
 }
 
 
-def fetch_source_listings(source: SourceDefinition) -> tuple[list[dict[str, Any]], str | None]:
+def fetch_source_listings(source: SourceDefinition) -> tuple[list[ParsedListing], str | None]:
     try:
         if source.parser == "shopify_collection":
             return _fetch_shopify_collection(source), None
@@ -367,7 +396,7 @@ def fetch_source_listings(source: SourceDefinition) -> tuple[list[dict[str, Any]
 def fetch_showroom_entry_listings(
     source: SourceDefinition,
     entry_url: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[ParsedListing], str | None]:
     try:
         if source.parser != "showroom":
             raise ValueError(f"Source does not use the Showroom parser: {source.slug}")
@@ -381,7 +410,7 @@ def fetch_showroom_entry_listings(
 def fetch_le_centerpiece_entry_listings(
     source: SourceDefinition,
     entry_url: str,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[ParsedListing], str | None]:
     try:
         if source.slug != "le-centerpiece" or source.parser != "shopify_collection":
             raise ValueError(f"Source does not use the Le Centerpiece parser: {source.slug}")
@@ -397,7 +426,7 @@ def fetch_chez_lamothe_page_listings(
     page: int,
     *,
     per_page: int = 15,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[ParsedListing], str | None]:
     try:
         if source.slug != "chez-lamothe" or source.parser != "square_storefront":
             raise ValueError(f"Source does not use the Chez Lamothe parser: {source.slug}")
@@ -415,7 +444,7 @@ def fetch_shopify_collection_page_listings(
     *,
     per_page: int = 100,
     include_sold_out: bool = True,
-) -> tuple[list[dict[str, Any]], str | None]:
+) -> tuple[list[ParsedListing], str | None]:
     try:
         if source.parser != "shopify_collection":
             raise ValueError(f"Source does not use the Shopify collection parser: {source.slug}")

@@ -98,6 +98,8 @@ Optional Worker variables:
 - `D1_BRIDGE_URL`: override the default Worker-to-D1 bridge URL injected into the container
 - `APEX_HOSTNAME`: override the apex hostname used for redirects
 - `WWW_HOSTNAME`: override the `www` hostname redirected to the apex hostname
+- `MCM_EXPOSE_TIMING_HEADERS`: set to `1` only for temporary diagnostics if response timing headers
+  are needed; request timings are logged even when these headers are off
 
 ## Deploy
 

@@ -5,6 +5,7 @@ import os
 import secrets
 import sys
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from functools import wraps
 from pathlib import Path
@@ -129,6 +130,25 @@ def saved_search_name(filters: dict[str, str]) -> str:
     return " / ".join(parts)[:120] or "Default browse"
 
 
+def require_scheduled_request() -> None:
+    if request.headers.get("X-Cloudflare-Scheduled") != "1":
+        abort(404)
+
+
+def chunk_refresh_payload(chunk: Any) -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "source": chunk.result.source_slug,
+        "chunk": chunk.chunk_index,
+        "entry_url": chunk.entry_url,
+        "listings": chunk.result.listings_found,
+        "new": chunk.result.new_count,
+        "hidden": chunk.result.hidden_count,
+        "warning": chunk.result.error,
+        "refreshed_at": datetime.now(UTC).isoformat(),
+    }
+
+
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app = Flask(
         __name__,
@@ -141,6 +161,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app.config["D1_BRIDGE_TOKEN"] = os.environ.get("D1_BRIDGE_TOKEN", "")
     app.config["MCM_ADMIN_TOKEN"] = os.environ.get("MCM_ADMIN_TOKEN", "")
     app.config["MCM_ALLOW_OPEN_ADMIN"] = os.environ.get("MCM_ALLOW_OPEN_ADMIN", "") == "1"
+    app.config["MCM_EXPOSE_TIMING_HEADERS"] = os.environ.get("MCM_EXPOSE_TIMING_HEADERS", "") == "1"
     if test_config:
         app.config.update(test_config)
     app.jinja_env.globals["freshness_label"] = freshness_label
@@ -167,13 +188,14 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         started_at = getattr(g, "request_started_at", None)
         if started_at is not None:
             elapsed_ms = (time.perf_counter() - started_at) * 1000
-            response.headers["X-MCM-App-Ms"] = f"{elapsed_ms:.1f}"
             db = getattr(g, "db", None)
             d1_query_count = getattr(db, "query_count", None)
             d1_query_ms = getattr(db, "total_query_ms", None)
-            if d1_query_count is not None and d1_query_ms is not None:
-                response.headers["X-MCM-D1-Queries"] = str(d1_query_count)
-                response.headers["X-MCM-D1-Ms"] = f"{d1_query_ms:.1f}"
+            if app.config.get("MCM_EXPOSE_TIMING_HEADERS"):
+                response.headers["X-MCM-App-Ms"] = f"{elapsed_ms:.1f}"
+                if d1_query_count is not None and d1_query_ms is not None:
+                    response.headers["X-MCM-D1-Queries"] = str(d1_query_count)
+                    response.headers["X-MCM-D1-Ms"] = f"{d1_query_ms:.1f}"
             app.logger.info(
                 "request_timing path=%s status=%s app_ms=%.1f d1_queries=%s d1_ms=%s",
                 request.path,
@@ -343,101 +365,42 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "checked_at": datetime.now(UTC).isoformat(),
         }, 200
 
+    def cron_refresh_chunk(
+        refresh_chunk: Callable[[Any, int], Any],
+        chunk_index: int,
+    ) -> tuple[dict[str, Any], int]:
+        require_scheduled_request()
+        try:
+            chunk = refresh_chunk(g.db, chunk_index)
+        except ValueError:
+            abort(404)
+        return chunk_refresh_payload(chunk), 502 if chunk.result.error else 200
+
     @app.post("/cron/refresh")
     def cron_refresh() -> Any:
-        if request.headers.get("X-Cloudflare-Scheduled") != "1":
-            abort(404)
+        require_scheduled_request()
         refresh_all_sources(g.db)
         return {"status": "ok", "refreshed_at": datetime.now(UTC).isoformat()}
 
     @app.post("/cron/refresh/showroom-montreal/chunk/<int:chunk_index>")
     def cron_refresh_showroom_chunk(chunk_index: int) -> Any:
-        if request.headers.get("X-Cloudflare-Scheduled") != "1":
-            abort(404)
-        try:
-            chunk = refresh_showroom_chunk(g.db, chunk_index)
-        except ValueError:
-            abort(404)
-        payload = {
-            "status": "ok",
-            "source": chunk.result.source_slug,
-            "chunk": chunk.chunk_index,
-            "entry_url": chunk.entry_url,
-            "listings": chunk.result.listings_found,
-            "new": chunk.result.new_count,
-            "hidden": chunk.result.hidden_count,
-            "warning": chunk.result.error,
-            "refreshed_at": datetime.now(UTC).isoformat(),
-        }
-        return payload, 502 if chunk.result.error else 200
+        return cron_refresh_chunk(refresh_showroom_chunk, chunk_index)
 
     @app.post("/cron/refresh/le-centerpiece/chunk/<int:chunk_index>")
     def cron_refresh_le_centerpiece_chunk(chunk_index: int) -> Any:
-        if request.headers.get("X-Cloudflare-Scheduled") != "1":
-            abort(404)
-        try:
-            chunk = refresh_le_centerpiece_chunk(g.db, chunk_index)
-        except ValueError:
-            abort(404)
-        payload = {
-            "status": "ok",
-            "source": chunk.result.source_slug,
-            "chunk": chunk.chunk_index,
-            "entry_url": chunk.entry_url,
-            "listings": chunk.result.listings_found,
-            "new": chunk.result.new_count,
-            "hidden": chunk.result.hidden_count,
-            "warning": chunk.result.error,
-            "refreshed_at": datetime.now(UTC).isoformat(),
-        }
-        return payload, 502 if chunk.result.error else 200
+        return cron_refresh_chunk(refresh_le_centerpiece_chunk, chunk_index)
 
     @app.post("/cron/refresh/chez-lamothe/chunk/<int:chunk_index>")
     def cron_refresh_chez_lamothe_chunk(chunk_index: int) -> Any:
-        if request.headers.get("X-Cloudflare-Scheduled") != "1":
-            abort(404)
-        try:
-            chunk = refresh_chez_lamothe_chunk(g.db, chunk_index)
-        except ValueError:
-            abort(404)
-        payload = {
-            "status": "ok",
-            "source": chunk.result.source_slug,
-            "chunk": chunk.chunk_index,
-            "entry_url": chunk.entry_url,
-            "listings": chunk.result.listings_found,
-            "new": chunk.result.new_count,
-            "hidden": chunk.result.hidden_count,
-            "warning": chunk.result.error,
-            "refreshed_at": datetime.now(UTC).isoformat(),
-        }
-        return payload, 502 if chunk.result.error else 200
+        return cron_refresh_chunk(refresh_chez_lamothe_chunk, chunk_index)
 
     @app.post("/cron/refresh/mostly-danish/chunk/<int:chunk_index>")
     def cron_refresh_mostly_danish_chunk(chunk_index: int) -> Any:
-        if request.headers.get("X-Cloudflare-Scheduled") != "1":
-            abort(404)
-        try:
-            chunk = refresh_mostly_danish_chunk(g.db, chunk_index)
-        except ValueError:
-            abort(404)
-        payload = {
-            "status": "ok",
-            "source": chunk.result.source_slug,
-            "chunk": chunk.chunk_index,
-            "entry_url": chunk.entry_url,
-            "listings": chunk.result.listings_found,
-            "new": chunk.result.new_count,
-            "hidden": chunk.result.hidden_count,
-            "warning": chunk.result.error,
-            "refreshed_at": datetime.now(UTC).isoformat(),
-        }
-        return payload, 502 if chunk.result.error else 200
+        return cron_refresh_chunk(refresh_mostly_danish_chunk, chunk_index)
 
     @app.post("/cron/reconcile/<source_slug>")
     def cron_reconcile_chunked_source(source_slug: str) -> Any:
-        if request.headers.get("X-Cloudflare-Scheduled") != "1":
-            abort(404)
+        require_scheduled_request()
         try:
             result = reconcile_chunked_source(
                 g.db,
@@ -457,8 +420,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.post("/cron/refresh/<source_slug>")
     def cron_refresh_source(source_slug: str) -> Any:
-        if request.headers.get("X-Cloudflare-Scheduled") != "1":
-            abort(404)
+        require_scheduled_request()
         try:
             result = refresh_source_by_slug(g.db, source_slug)
         except ValueError:
