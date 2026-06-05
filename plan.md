@@ -613,9 +613,10 @@ Proposed release slices:
     releases; current coverage gaps are concentrated in source parsers and `mcm/d1.py`.
   - make migrations the schema source of truth, or generate local SQLite initialization from the same
     schema path, so local SQLite and D1 migration SQL cannot drift.
-  - add a concise `docs/architecture.md` with a "where does this belong?" table for contributors:
+  - keep `docs/architecture.md` updated as a contributor-facing "where does this belong?" guide for
     shop display copy, crawler behavior, DB queries, refresh orchestration, route glue, templates,
-    frontend components, and deployment/ops.
+    frontend components, and deployment/ops. A first pass now exists; revise it as the planned
+    module splits happen.
   - reduce duplicated source/chunk configuration between Python and the Worker beyond the current
     drift test.
 - Later `0.3.x`: broader marketplace strategy and monetization experiments only after source

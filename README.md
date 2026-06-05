@@ -103,6 +103,7 @@ via CDN, and a little native JavaScript. Core Python code lives in `mcm/`, templ
 
 For more detail, see:
 
+- [docs/architecture.md](docs/architecture.md)
 - [mcm/README.md](mcm/README.md)
 - [templates/README.md](templates/README.md)
 - [docs/operations.md](docs/operations.md)
