@@ -17,9 +17,9 @@
     "format": "uv run ruff format . && uv run djlint templates --reformat && biome check --write static src"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.6",
-    "@cloudflare/containers": "^0.3.3",
-    "playwright": "^1.59.1",
-    "wrangler": "^4.87.0"
+    "@biomejs/biome": "^2.4.16",
+    "@cloudflare/containers": "^0.3.7",
+    "playwright": "^1.60.0",
+    "wrangler": "^4.98.0"
   }
 }

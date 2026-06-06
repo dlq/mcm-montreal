@@ -1,8 +1,8 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-06-01
-Current line: `0.2.x`
+Updated: 2026-06-06
+Current line: `0.3.x`
 
 ## Purpose
 
@@ -77,8 +77,9 @@ data.
 - Release tag `0.2.5`: installable web-app baseline with app manifest, install icons, mobile
   app metadata, root-scoped service worker, offline fallback, mobile safe-area spacing, first-pass
   touch-target sizing, and the peach shop-card colour placeholder
-- Release tag `0.2.6`: accessibility baseline, branded 404 page, and final `0.2.x`
-  discovery/source cleanup with Mostly Danish weighting kept explicit in the curated feed
+- Release tag `0.2.6`: accessibility baseline, branded 404 page, final `0.2.x` discovery/source
+  cleanup, Mostly Danish weighting kept explicit in the curated feed, and stabilization.
+- Release tag `0.3.0`: dependency/tooling maintenance and release-hygiene baseline.
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
@@ -543,10 +544,11 @@ be considered.
 Proposed release slices:
 
 - `0.3.0`: dependency/tooling maintenance and release hygiene. Update npm tooling
-  (`wrangler` `4.90.0` to `4.96.0`, `@cloudflare/containers` `0.3.3` to `0.3.6`,
+  (`wrangler` `4.90.0` to `4.98.0`, `@cloudflare/containers` `0.3.3` to `0.3.7`,
   `@biomejs/biome` `2.4.13` to `2.4.16`, `playwright` `1.59.1` to `1.60.0`) and
   Python dependencies (`Flask` `3.1.0` to `3.1.3`, `beautifulsoup4` `4.13.4` to
-  `4.14.3`, `ruff` `0.15.12` to `0.15.15`, plus safe transitive lockfile updates).
+  `4.14.3`, `ruff` `0.15.12` to `0.15.16`, `djlint` `1.36.4` to `1.39.0`, plus safe
+  transitive lockfile updates).
   Run the full local checks, worker tests, production dry run, and deploy only after the toolchain
   update is boring. Pre-`0.3.0` hardening already tightened admin auth to fail closed unless a
   local dev override is explicitly enabled, rejected external language-switch redirects, added
