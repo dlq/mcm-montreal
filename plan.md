@@ -572,7 +572,8 @@ Proposed release slices:
   Website Spec accessibility baseline gaps that are practical for this app. In progress: mobile
   listing detail identity now appears before the gallery, mobile filter actions are easier to reach
   in the open drawer, HTMX listing results expose clearer live/busy state, and reduced-motion CSS
-  has an initial guard.
+  has an initial guard. Listing image frames now have loading, unavailable, and missing-image states,
+  and shop map links now have larger touch targets with an explicit labelled keyboard target.
 - `0.3.2`: editorial and SEO foundations. Decide canonical indexable page types, add sitemap and
   canonical URL policy, robots.txt, meta descriptions, Open Graph/Twitter metadata, JSON-LD
   structured data, hreflang or an explicit language URL policy, localized head metadata, and begin
@@ -747,10 +748,14 @@ Live design audit notes from 2026-05-20:
   Push tied to the existing durable owner key before adding email capture or real accounts.
 - Listing image frames need a more intentional loading/unavailable state so slow, blocked, or
   missing source images do not create large blank wells.
+  - Addressed locally for `0.3.1` with shared listing image frame states, lazy-image load/error
+    reconciliation after DOM/HTMX swaps, and localized fallbacks for unavailable or pending images.
 - Shop index cards are becoming text-heavy at three columns; simplify card metadata before adding
   black-and-white shop maps.
 - Continue tightening shop map and direction UX as the address dataset improves, especially for
   addressless sources and provider parity on detail pages.
+  - Addressed locally for `0.3.1` by enlarging Google/Apple Maps touch targets and giving compact
+    shop maps an explicit keyboard target labelled with the shop/address.
 - Strengthen interactive hierarchy for primary filter actions and favourite saved states without
   abandoning the restrained visual style.
 - Continue WCAG-oriented accessibility review beyond the first `0.2.6` pass, especially color

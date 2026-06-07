@@ -77,6 +77,11 @@ class ShopCardMap extends HTMLElement {
       return;
     }
     this.dataset.ready = "true";
+    this.setAttribute("role", "button");
+    this.tabIndex = 0;
+    if (this.dataset.label && !this.getAttribute("aria-label")) {
+      this.setAttribute("aria-label", this.dataset.label);
+    }
     this.renderWhenLeafletIsReady();
     this.addEventListener("click", (event) => {
       if (event.target.closest("a")) {
@@ -293,10 +298,13 @@ function refreshShopCardAlignment() {
 }
 
 function showImageFallback(image) {
-  if (!(image instanceof HTMLImageElement) || !image.dataset.imageFallback) {
+  if (!(image instanceof HTMLImageElement) || !image.hasAttribute("data-image-fallback")) {
     return;
   }
 
+  const frame = image.closest(".listing-image-frame");
+  frame?.classList.remove("image-is-loading");
+  frame?.classList.add("image-has-error");
   image.classList.add("hidden");
   const fallback = image.nextElementSibling;
   if (fallback?.classList.contains("image-fallback")) {
@@ -305,12 +313,32 @@ function showImageFallback(image) {
   }
 }
 
+function markImageLoaded(image) {
+  if (!(image instanceof HTMLImageElement) || !image.hasAttribute("data-image-fallback")) {
+    return;
+  }
+
+  const frame = image.closest(".listing-image-frame");
+  frame?.classList.remove("image-is-loading", "image-has-error");
+}
+
 function showFailedImageFallbacks(root = document) {
   root.querySelectorAll("img[data-image-fallback]").forEach((image) => {
     if (image.complete && image.naturalWidth === 0) {
       showImageFallback(image);
+      return;
+    }
+    if (image.complete) {
+      markImageLoaded(image);
     }
   });
+}
+
+function refreshImageFallbacks(root = document) {
+  showFailedImageFallbacks(root);
+  window.setTimeout(() => showFailedImageFallbacks(root), 150);
+  window.setTimeout(() => showFailedImageFallbacks(root), 750);
+  window.setTimeout(() => showFailedImageFallbacks(root), 1500);
 }
 
 document.addEventListener(
@@ -321,15 +349,26 @@ document.addEventListener(
   true,
 );
 
+document.addEventListener(
+  "load",
+  (event) => {
+    markImageLoaded(event.target);
+  },
+  true,
+);
+
 document.addEventListener("DOMContentLoaded", () => {
-  showFailedImageFallbacks();
+  refreshImageFallbacks();
   refreshShopCardAlignment();
 });
 
 document.body.addEventListener("htmx:afterSwap", (event) => {
-  showFailedImageFallbacks(event.target);
+  refreshImageFallbacks(event.target);
   refreshShopCardAlignment();
 });
 
-window.addEventListener("load", refreshShopCardAlignment);
+window.addEventListener("load", () => {
+  refreshImageFallbacks();
+  refreshShopCardAlignment();
+});
 window.addEventListener("resize", refreshShopCardAlignment);

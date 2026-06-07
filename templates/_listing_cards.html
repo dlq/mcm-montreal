@@ -6,7 +6,7 @@
        class="block"
        tabindex="-1"
        aria-hidden="true">
-      <div class="film-frame listing-thumb aspect-[4/3] overflow-hidden">
+      <div class="film-frame listing-thumb listing-image-frame {% if listing.primary_image_url %}image-is-loading{% else %}image-is-empty{% endif %} aspect-[4/3] overflow-hidden">
         {% if listing.primary_image_url %}
           <img src="{{ listing.primary_image_url }}"
                alt="{{ listing.title }}"
@@ -14,11 +14,11 @@
                onerror="this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex')"
                loading="lazy"
                decoding="async">
-          <div class="image-fallback hidden h-full items-center justify-center text-sm text-ink/45">
+          <div class="image-fallback hidden h-full items-center justify-center text-sm">
             {{ t("listing.image_unavailable") }}
           </div>
         {% else %}
-          <div class="flex h-full items-center justify-center text-sm text-ink/45">
+          <div class="image-fallback flex h-full items-center justify-center text-sm">
             {{ t("listing.image_pending") }}
           </div>
         {% endif %}
