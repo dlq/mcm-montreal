@@ -566,11 +566,11 @@ Proposed release slices:
   - deploy only after checks pass, then run `npm run prod:health`
   - confirm production admin routes still fail closed and manual refresh still works
 
-- `0.3.1`: UI quality and accessibility polish. Focus on mobile listing detail ordering, filter
+- `0.3.1`: UI quality and accessibility polish. Done. Covered mobile listing detail ordering, filter
   drawer ergonomics, unavailable/loading image states, HTMX dynamic-update accessibility, deeper
   assistive-technology traversal, touch target checks, reduced-motion behavior, and any remaining
-  Website Spec accessibility baseline gaps that are practical for this app. In progress: mobile
-  listing detail identity now appears before the gallery, mobile filter actions are easier to reach
+  Website Spec accessibility baseline gaps that are practical for this app. Mobile listing detail
+  identity now appears before the gallery, mobile filter actions are easier to reach
   in the open drawer, HTMX listing results expose clearer live/busy state, and reduced-motion CSS
   has an initial guard. Listing image frames now have loading, unavailable, and missing-image states,
   and shop map provider links now have larger touch targets while the decorative map surface remains
