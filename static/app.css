@@ -105,17 +105,18 @@ textarea:focus-visible,
   color: var(--subtle-readable);
   display: inline-flex;
   align-items: center;
-  min-width: 1.5rem;
-  min-height: 2.4rem;
-  padding-bottom: 0.25rem;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.15rem 0 0.25rem;
 }
 
-.text-ink\/40,
-.text-ink\/45,
-.text-ink\/50,
-.text-ink\/55,
-.text-ink\/60,
-.text-ink\/65 {
+body .text-ink\/40,
+body .text-ink\/45,
+body .text-ink\/50,
+body .text-ink\/55,
+body .text-ink\/60,
+body .text-ink\/65 {
   color: var(--muted-readable);
 }
 
@@ -142,6 +143,7 @@ input,
 select,
 textarea {
   background-color: var(--paper-light);
+  min-height: 2.75rem;
 }
 
 input:focus,
@@ -184,8 +186,8 @@ textarea:focus {
   font-weight: 800;
   letter-spacing: 0.09em;
   line-height: 1.2;
-  min-height: 2rem;
-  padding: 0.25rem 0;
+  min-height: 2.75rem;
+  padding: 0.3rem 0;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
@@ -202,7 +204,8 @@ textarea:focus {
   display: inline-flex;
   font-weight: 800;
   letter-spacing: 0.09em;
-  min-height: 1.5rem;
+  min-height: 2.75rem;
+  padding: 0.25rem 0;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
@@ -218,7 +221,8 @@ textarea:focus {
   display: inline-flex;
   font-weight: 800;
   letter-spacing: 0.09em;
-  min-height: 1.5rem;
+  min-height: 2.75rem;
+  padding: 0.25rem 0;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
@@ -296,7 +300,8 @@ textarea:focus {
   display: inline-flex;
   font-weight: 800;
   letter-spacing: 0.09em;
-  min-height: 1.5rem;
+  min-height: 2.75rem;
+  padding: 0.25rem 0;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
@@ -314,7 +319,8 @@ textarea:focus {
   font-weight: 800;
   letter-spacing: 0.09em;
   line-height: 1.2;
-  min-height: 2rem;
+  min-height: 2.75rem;
+  padding: 0.3rem 0;
   text-underline-offset: 0.24em;
   text-transform: uppercase;
 }
@@ -359,8 +365,11 @@ textarea:focus {
 }
 
 .item-title-card {
+  align-items: flex-start;
+  display: inline-flex;
   font-size: 1.125rem;
   line-height: 1.375;
+  min-height: 2.75rem;
 }
 
 .item-title-detail {
@@ -389,7 +398,7 @@ textarea:focus {
 }
 
 .image-fallback {
-  color: rgba(28, 28, 26, 0.5);
+  color: var(--muted-readable);
   line-height: 1.35;
   padding: 1rem;
   text-align: center;
@@ -447,6 +456,7 @@ img[data-image-fallback].hidden {
 }
 
 .listing-card-since {
+  color: var(--muted-readable);
   font-size: 0.72rem;
   line-height: 1.25rem;
 }
@@ -555,6 +565,20 @@ img[data-image-fallback].hidden {
   align-items: center;
   display: inline-flex;
   min-height: 1.5rem;
+}
+
+.shop-detail-rail .shop-detail-map-links a[href],
+.shop-detail-rail dd > a[href],
+.listing-detail-panel dd > a[href],
+.listing-detail-panel a.detail-primary-action[href],
+.listing-detail-panel a.detail-secondary-action[href] {
+  min-height: 2.75rem;
+}
+
+.shop-card-title-link {
+  align-items: center;
+  display: inline-flex;
+  min-height: 2.75rem;
 }
 
 .shop-detail-map-links a:hover {

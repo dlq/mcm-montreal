@@ -574,6 +574,8 @@ Proposed release slices:
   in the open drawer, HTMX listing results expose clearer live/busy state, and reduced-motion CSS
   has an initial guard. Listing image frames now have loading, unavailable, and missing-image states,
   and shop map links now have larger touch targets with an explicit labelled keyboard target.
+  Primary controls and sampled text now pass a local touch-target and contrast sweep across the
+  listings, shops, favourites, listing detail, and shop detail pages.
 - `0.3.2`: editorial and SEO foundations. Decide canonical indexable page types, add sitemap and
   canonical URL policy, robots.txt, meta descriptions, Open Graph/Twitter metadata, JSON-LD
   structured data, hreflang or an explicit language URL policy, localized head metadata, and begin
@@ -758,11 +760,15 @@ Live design audit notes from 2026-05-20:
     shop maps an explicit keyboard target labelled with the shop/address.
 - Strengthen interactive hierarchy for primary filter actions and favourite saved states without
   abandoning the restrained visual style.
+  - Addressed locally for `0.3.1` by increasing primary navigation, filter controls, load-more
+    actions, detail actions, and card title links to reliable touch targets.
 - Continue WCAG-oriented accessibility review beyond the first `0.2.6` pass, especially color
   contrast, mobile listing-detail ordering, filter drawer ergonomics, and screen-reader behavior on
   dynamic HTMX updates.
   - Initial `0.3.1` dynamic-update pass added atomic live status for listing counts/filter summaries
     and busy-state exposure on the HTMX listing grid.
+  - Initial `0.3.1` contrast pass raised muted text overrides and image/listing metadata colors so
+    sampled foreground/background combinations meet contrast requirements.
 - Run a deeper assistive-technology pass in `0.3.x`, including VoiceOver/NVDA-style traversal,
   modal/drawer expectations for the mobile filter UI, map attribution/provider-link behavior, and
   whether listing cards should become a single larger accessible link without compromising favourite
