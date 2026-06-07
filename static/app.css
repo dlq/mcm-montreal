@@ -169,6 +169,14 @@ textarea:focus {
   transform: rotate(45deg);
 }
 
+.filter-actions {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
 .filter-apply-button {
   color: var(--accent-blue);
   display: inline-flex;
@@ -311,6 +319,27 @@ textarea:focus {
   text-transform: uppercase;
 }
 
+@media (max-width: 1023px) {
+  .filter-drawer form[data-filter-form] {
+    padding-bottom: 0.75rem;
+  }
+
+  .filter-drawer .filter-actions {
+    background: var(--paper);
+    border-top: 1px solid rgba(28, 28, 26, 0.08);
+    bottom: 0;
+    margin: 0.5rem -0.25rem -1rem;
+    padding: 0.75rem 0.25rem calc(0.75rem + env(safe-area-inset-bottom));
+    position: sticky;
+    z-index: 20;
+  }
+
+  .filter-drawer .filter-apply-button,
+  .filter-drawer .saved-search-button {
+    min-height: 2.5rem;
+  }
+}
+
 .saved-search-button:hover {
   color: var(--accent-green-strong);
   text-decoration-line: underline;
@@ -371,6 +400,21 @@ img[data-image-fallback].hidden {
   transform: scale(1.01);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+  }
+
+  .listing-card:hover img {
+    transform: none;
+  }
+}
+
 .listing-card-date {
   flex: 0 0 6.25rem;
 }
@@ -408,6 +452,17 @@ img[data-image-fallback].hidden {
 .listing-detail-panel {
   background: var(--paper-light);
   padding: 1.1rem;
+}
+
+@media (max-width: 1023px) {
+  .listing-detail-mobile-summary {
+    padding: 0.95rem;
+  }
+
+  .listing-detail-mobile-summary .item-title-detail {
+    font-size: clamp(1.6rem, 7.5vw, 2.15rem);
+    line-height: 1.08;
+  }
 }
 
 .shop-card-metadata,

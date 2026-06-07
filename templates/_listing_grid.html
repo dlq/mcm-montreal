@@ -3,7 +3,8 @@
     {% set active_filter_parts = filter_summary_parts(filters) if filters is defined else [] %}
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-ink/60"
          role="status"
-         aria-live="polite">
+         aria-live="polite"
+         aria-atomic="true">
       <span>{{ listing_count_text(listing_total_count|default(listings|length) ) }}</span>
       {% if active_filter_parts %}
         {% for filter_part in active_filter_parts %}

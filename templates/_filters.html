@@ -2,9 +2,10 @@
 {% set id_prefix = filter_id_prefix|default("") %}
 <aside class="{{ panel_class }}">
   <listing-filters data-default-summary="{{ t('filters.default_summary') }}">
-    <form class="space-y-6"
+    <form id="{{ id_prefix }}listing-filter-form"
+          class="space-y-6"
           data-filter-form
-          hx-get="{{ url_for('listings') }}"
+          hx-get="{{ url_for("listings") }}"
           hx-target="#listing-grid"
           hx-push-url="true">
       <div>
@@ -166,19 +167,18 @@
           </div>
         </div>
       </div>
-      <div>
-        <button class="filter-apply-button text-sm font-semibold" type="submit">
-          {{ t("filters.apply") }}
+    </form>
+    <div class="filter-actions">
+      <button class="filter-apply-button text-sm font-semibold"
+              type="submit"
+              form="{{ id_prefix }}listing-filter-form">{{ t("filters.apply") }}</button>
+      <form data-save-search-form
+            method="post"
+            action="{{ url_for('create_saved_search') }}">
+        <button class="saved-search-button text-sm font-semibold" type="submit">
+          {{ t("saved_searches.save_current") }}
         </button>
-      </div>
-    </form>
-    <form class="mt-1"
-          data-save-search-form
-          method="post"
-          action="{{ url_for('create_saved_search') }}">
-      <button class="saved-search-button text-sm font-semibold" type="submit">
-        {{ t("saved_searches.save_current") }}
-      </button>
-    </form>
+      </form>
+    </div>
   </listing-filters>
 </aside>

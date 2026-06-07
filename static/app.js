@@ -52,6 +52,25 @@ class ListingFilters extends HTMLElement {
   }
 }
 
+document.body.addEventListener("htmx:beforeRequest", (event) => {
+  if (event.detail.target?.id === "listing-grid") {
+    event.detail.target.setAttribute("aria-busy", "true");
+  }
+});
+
+document.body.addEventListener("htmx:afterSettle", (event) => {
+  if (event.detail.target?.id === "listing-grid") {
+    event.detail.target.setAttribute("aria-busy", "false");
+    const activeForm = event.detail.requestConfig?.elt?.closest(
+      ".filter-drawer form[data-filter-form]",
+    );
+    const mobileDrawer = activeForm?.closest(".filter-drawer");
+    if (mobileDrawer && window.matchMedia("(max-width: 1023px)").matches) {
+      mobileDrawer.open = false;
+    }
+  }
+});
+
 class ShopCardMap extends HTMLElement {
   connectedCallback() {
     if (this.dataset.ready) {

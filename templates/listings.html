@@ -18,7 +18,7 @@
     {% set filter_id_prefix = "" %}
     {% include "_filters.html" %}
     <div class="order-1 lg:order-2">
-      <div id="listing-grid">{% include "_listing_grid.html" %}</div>
+      <div id="listing-grid" aria-busy="false">{% include "_listing_grid.html" %}</div>
     </div>
   </section>
 {% endblock %}

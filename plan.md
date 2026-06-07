@@ -569,7 +569,10 @@ Proposed release slices:
 - `0.3.1`: UI quality and accessibility polish. Focus on mobile listing detail ordering, filter
   drawer ergonomics, unavailable/loading image states, HTMX dynamic-update accessibility, deeper
   assistive-technology traversal, touch target checks, reduced-motion behavior, and any remaining
-  Website Spec accessibility baseline gaps that are practical for this app.
+  Website Spec accessibility baseline gaps that are practical for this app. In progress: mobile
+  listing detail identity now appears before the gallery, mobile filter actions are easier to reach
+  in the open drawer, HTMX listing results expose clearer live/busy state, and reduced-motion CSS
+  has an initial guard.
 - `0.3.2`: editorial and SEO foundations. Decide canonical indexable page types, add sitemap and
   canonical URL policy, robots.txt, meta descriptions, Open Graph/Twitter metadata, JSON-LD
   structured data, hreflang or an explicit language URL policy, localized head metadata, and begin
@@ -732,8 +735,12 @@ Live design audit notes from 2026-05-20:
 
 - On mobile listing detail pages, item identity appears too late because the large gallery and
   thumbnails push title, price, favourite action, and metadata below the first viewport.
+  - Addressed locally for `0.3.1` by adding a compact mobile-only listing identity block before the
+    gallery while preserving the desktop sticky detail panel.
 - The mobile filter drawer is long enough that apply/reset controls are not immediately visible,
   making filtering feel heavier than it is.
+  - Addressed locally for `0.3.1` by moving filter actions into a shared action block and making
+    that block sticky within the mobile drawer.
 - Iterate on the installable web-app/PWA baseline from `0.2.5`: notification readiness, richer
   offline behavior, and any iOS/Android standalone-mode polish that emerges from real use.
 - Revisit saved-search alerts as part of the installable web-app/PWA work. Prefer anonymous Web
@@ -749,6 +756,8 @@ Live design audit notes from 2026-05-20:
 - Continue WCAG-oriented accessibility review beyond the first `0.2.6` pass, especially color
   contrast, mobile listing-detail ordering, filter drawer ergonomics, and screen-reader behavior on
   dynamic HTMX updates.
+  - Initial `0.3.1` dynamic-update pass added atomic live status for listing counts/filter summaries
+    and busy-state exposure on the HTMX listing grid.
 - Run a deeper assistive-technology pass in `0.3.x`, including VoiceOver/NVDA-style traversal,
   modal/drawer expectations for the mobile filter UI, map attribution/provider-link behavior, and
   whether listing cards should become a single larger accessible link without compromising favourite
