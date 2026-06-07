@@ -167,6 +167,10 @@ textarea:focus {
   display: none;
 }
 
+.filter-drawer:not([open]) > div {
+  display: none;
+}
+
 .filter-drawer[open] summary span:last-child {
   transform: rotate(45deg);
 }

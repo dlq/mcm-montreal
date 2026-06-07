@@ -67,6 +67,7 @@ document.body.addEventListener("htmx:afterSettle", (event) => {
     const mobileDrawer = activeForm?.closest(".filter-drawer");
     if (mobileDrawer && window.matchMedia("(max-width: 1023px)").matches) {
       mobileDrawer.open = false;
+      event.detail.target?.focus({ preventScroll: true });
     }
   }
 });

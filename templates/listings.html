@@ -3,11 +3,12 @@
 {% block content %}
   <h1 class="sr-only">{{ t("nav.listings") }}</h1>
   <details class="filter-drawer mb-6 border-y border-ink/10 py-4 lg:hidden">
-    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold">
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold"
+             aria-controls="mobile-filter-panel">
       <span>{{ t("filters.mobile_summary") }}</span>
       <span class="text-xl leading-none text-ink/45" aria-hidden="true">+</span>
     </summary>
-    <div class="mt-5">
+    <div id="mobile-filter-panel" class="mt-5">
       {% set filter_panel_class = "block" %}
       {% set filter_id_prefix = "mobile-" %}
       {% include "_filters.html" %}
@@ -18,7 +19,7 @@
     {% set filter_id_prefix = "" %}
     {% include "_filters.html" %}
     <div class="order-1 lg:order-2">
-      <div id="listing-grid" aria-busy="false">{% include "_listing_grid.html" %}</div>
+      <div id="listing-grid" aria-busy="false" tabindex="-1">{% include "_listing_grid.html" %}</div>
     </div>
   </section>
 {% endblock %}

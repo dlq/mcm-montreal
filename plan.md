@@ -575,7 +575,9 @@ Proposed release slices:
   has an initial guard. Listing image frames now have loading, unavailable, and missing-image states,
   and shop map links now have larger touch targets with an explicit labelled keyboard target.
   Primary controls and sampled text now pass a local touch-target and contrast sweep across the
-  listings, shops, favourites, listing detail, and shop detail pages.
+  listings, shops, favourites, listing detail, and shop detail pages. Mobile filter Apply now closes
+  the drawer and moves focus to the updated listing results instead of leaving focus in hidden
+  controls.
 - `0.3.2`: editorial and SEO foundations. Decide canonical indexable page types, add sitemap and
   canonical URL policy, robots.txt, meta descriptions, Open Graph/Twitter metadata, JSON-LD
   structured data, hreflang or an explicit language URL policy, localized head metadata, and begin
@@ -744,6 +746,8 @@ Live design audit notes from 2026-05-20:
   making filtering feel heavier than it is.
   - Addressed locally for `0.3.1` by moving filter actions into a shared action block and making
     that block sticky within the mobile drawer.
+  - Follow-up `0.3.1` pass explicitly hides collapsed drawer controls, links the summary to the
+    drawer panel, and moves focus to the refreshed listing results after mobile Apply.
 - Iterate on the installable web-app/PWA baseline from `0.2.5`: notification readiness, richer
   offline behavior, and any iOS/Android standalone-mode polish that emerges from real use.
 - Revisit saved-search alerts as part of the installable web-app/PWA work. Prefer anonymous Web
@@ -773,6 +777,8 @@ Live design audit notes from 2026-05-20:
   modal/drawer expectations for the mobile filter UI, map attribution/provider-link behavior, and
   whether listing cards should become a single larger accessible link without compromising favourite
   controls.
+  - Initial `0.3.1` traversal checks found no unnamed sampled buttons/links; keep the current
+    listing-card structure of one focusable title link plus a separate favourite control for now.
 - Revisit third-party Leaflet attribution links in maps during the `0.3.x` accessibility pass. They
   remain visually required attribution today, but they are tiny interactive anchors that should be
   reviewed against target-size and keyboard expectations without weakening source attribution.
