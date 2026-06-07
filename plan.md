@@ -573,7 +573,8 @@ Proposed release slices:
   listing detail identity now appears before the gallery, mobile filter actions are easier to reach
   in the open drawer, HTMX listing results expose clearer live/busy state, and reduced-motion CSS
   has an initial guard. Listing image frames now have loading, unavailable, and missing-image states,
-  and shop map links now have larger touch targets with an explicit labelled keyboard target.
+  and shop map provider links now have larger touch targets while the decorative map surface remains
+  pointer-clickable only.
   Primary controls and sampled text now pass a local touch-target and contrast sweep across the
   listings, shops, favourites, listing detail, and shop detail pages. Mobile filter Apply now closes
   the drawer and moves focus to the updated listing results instead of leaving focus in hidden
@@ -760,8 +761,8 @@ Live design audit notes from 2026-05-20:
   black-and-white shop maps.
 - Continue tightening shop map and direction UX as the address dataset improves, especially for
   addressless sources and provider parity on detail pages.
-  - Addressed locally for `0.3.1` by enlarging Google/Apple Maps touch targets and giving compact
-    shop maps an explicit keyboard target labelled with the shop/address.
+  - Addressed locally for `0.3.1` by enlarging Google/Apple Maps touch targets and keeping those
+    provider links as the keyboard path for compact shop maps.
 - Strengthen interactive hierarchy for primary filter actions and favourite saved states without
   abandoning the restrained visual style.
   - Addressed locally for `0.3.1` by increasing primary navigation, filter controls, load-more
@@ -782,6 +783,9 @@ Live design audit notes from 2026-05-20:
 - Revisit third-party Leaflet attribution links in maps during the `0.3.x` accessibility pass. They
   remain visually required attribution today, but they are tiny interactive anchors that should be
   reviewed against target-size and keyboard expectations without weakening source attribution.
+  - Resolved for `0.3.1`: attribution remains visible, attribution anchors are removed from tab
+    order, and the compact map itself is not a nested keyboard target because Google/Apple Maps
+    provider links already provide the accessible action.
 
 ### Analytics And Monitoring
 

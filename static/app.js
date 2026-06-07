@@ -78,23 +78,11 @@ class ShopCardMap extends HTMLElement {
       return;
     }
     this.dataset.ready = "true";
-    this.setAttribute("role", "button");
-    this.tabIndex = 0;
-    if (this.dataset.label && !this.getAttribute("aria-label")) {
-      this.setAttribute("aria-label", this.dataset.label);
-    }
     this.renderWhenLeafletIsReady();
     this.addEventListener("click", (event) => {
       if (event.target.closest("a")) {
         return;
       }
-      this.openDirections();
-    });
-    this.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") {
-        return;
-      }
-      event.preventDefault();
       this.openDirections();
     });
   }
