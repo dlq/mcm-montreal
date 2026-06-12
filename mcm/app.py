@@ -11,6 +11,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse
+from xml.sax.saxutils import escape as xml_escape
 
 from flask import (
     Flask,
@@ -79,6 +80,7 @@ from .repository import (
     list_location_filter_values,
     list_saved_searches,
     list_shops,
+    list_sitemap_listings,
     query_listings,
     save_search,
     toggle_favourite_listing,
@@ -89,6 +91,7 @@ from .repository import (
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.environ.get("MCM_DATABASE", BASE_DIR / "data" / "mcm.db"))
 LISTING_PAGE_SIZE = 48
+DEFAULT_PUBLIC_BASE_URL = "https://montrealmcm.ca"
 
 
 def static_asset_version(filename: str) -> int:
@@ -97,6 +100,16 @@ def static_asset_version(filename: str) -> int:
         return int(path.stat().st_mtime)
     except OSError:
         return 0
+
+
+def normalized_public_base_url(value: str) -> str:
+    cleaned = value.strip().rstrip("/")
+    return cleaned or DEFAULT_PUBLIC_BASE_URL
+
+
+def absolute_public_url(base_url: str, path: str) -> str:
+    clean_path = path if path.startswith("/") else f"/{path}"
+    return f"{normalized_public_base_url(base_url)}{clean_path}"
 
 
 def saved_search_query_string(filters: dict[str, str]) -> str:
@@ -162,6 +175,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     app.config["MCM_ADMIN_TOKEN"] = os.environ.get("MCM_ADMIN_TOKEN", "")
     app.config["MCM_ALLOW_OPEN_ADMIN"] = os.environ.get("MCM_ALLOW_OPEN_ADMIN", "") == "1"
     app.config["MCM_EXPOSE_TIMING_HEADERS"] = os.environ.get("MCM_EXPOSE_TIMING_HEADERS", "") == "1"
+    app.config["MCM_PUBLIC_BASE_URL"] = normalized_public_base_url(
+        os.environ.get("MCM_PUBLIC_BASE_URL", DEFAULT_PUBLIC_BASE_URL)
+    )
     if test_config:
         app.config.update(test_config)
     app.jinja_env.globals["freshness_label"] = freshness_label
@@ -174,7 +190,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.before_request
     def open_request_resources() -> None:
         g.request_started_at = time.perf_counter()
-        if request.endpoint in {"static", "service_worker", "web_manifest"}:
+        if request.endpoint in {"static", "service_worker", "web_manifest", "robots_txt"}:
             return
         g.db = get_db(app)
         load_anonymous_identity(app, g.db)
@@ -182,7 +198,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.after_request
     def persist_request_resources(response: Response) -> Response:
-        if request.endpoint in {"static", "service_worker", "web_manifest"}:
+        if request.endpoint in {"static", "service_worker", "web_manifest", "robots_txt"}:
             return response
         response = persist_anonymous_identity(response)
         started_at = getattr(g, "request_started_at", None)
@@ -214,9 +230,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.context_processor
     def inject_globals() -> dict[str, Any]:
+        canonical_url = absolute_public_url(app.config["MCM_PUBLIC_BASE_URL"], request.path)
         return {
             "favourite_counts": favourite_counts(),
             "lang": g.lang,
+            "canonical_url": canonical_url,
             "t": translator_for(g.lang),
             "status_label": status_label,
             "category_list_text": category_list_text,
@@ -343,6 +361,66 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         response.headers["Cache-Control"] = "no-cache"
         response.headers["Service-Worker-Allowed"] = "/"
         return response
+
+    @app.get("/robots.txt")
+    def robots_txt() -> Response:
+        sitemap_url = absolute_public_url(app.config["MCM_PUBLIC_BASE_URL"], "/sitemap.xml")
+        return Response(
+            f"User-agent: *\nAllow: /\nSitemap: {sitemap_url}\n",
+            content_type="text/plain; charset=utf-8",
+        )
+
+    @app.get("/sitemap.xml")
+    def sitemap_xml() -> Response:
+        static_paths = ["/", "/shops"]
+        urls = [
+            {"loc": absolute_public_url(app.config["MCM_PUBLIC_BASE_URL"], path), "lastmod": ""}
+            for path in static_paths
+        ]
+        urls.extend(
+            {
+                "loc": absolute_public_url(
+                    app.config["MCM_PUBLIC_BASE_URL"], f"/shops/{shop['slug']}"
+                ),
+                "lastmod": "",
+            }
+            for shop in list_shops(g.db)
+        )
+        urls.extend(
+            {
+                "loc": absolute_public_url(
+                    app.config["MCM_PUBLIC_BASE_URL"],
+                    f"/listing/{public_item_number(int(listing['id']))}",
+                ),
+                "lastmod": str(
+                    listing.get("last_checked_at")
+                    or listing.get("last_seen_at")
+                    or listing.get("first_seen_at")
+                    or ""
+                )[:10],
+            }
+            for listing in list_sitemap_listings(g.db)
+        )
+        url_entries = "\n".join(
+            "\n".join(
+                (
+                    "  <url>",
+                    f"    <loc>{xml_escape(url['loc'])}</loc>",
+                    f"    <lastmod>{xml_escape(url['lastmod'])}</lastmod>"
+                    if url["lastmod"]
+                    else "",
+                    "  </url>",
+                )
+            )
+            for url in urls
+        )
+        xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            f"{url_entries}\n"
+            "</urlset>\n"
+        )
+        return Response(xml, content_type="application/xml; charset=utf-8")
 
     @app.get("/offline")
     def offline() -> str:

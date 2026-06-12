@@ -368,6 +368,27 @@ def list_shops(db: sqlite3.Connection) -> list[dict[str, Any]]:
     return annotate_shop_rows(rows)
 
 
+def list_sitemap_listings(db: sqlite3.Connection, *, limit: int = 5000) -> list[dict[str, Any]]:
+    rows = db.execute(
+        f"""
+        SELECT
+            l.id,
+            l.last_checked_at,
+            l.last_seen_at,
+            l.first_seen_at
+        FROM listings l
+        JOIN shops s ON s.id = l.source_shop_id
+        WHERE s.active = 1
+          AND l.is_active = 1
+          AND {EFFECTIVE_AVAILABILITY_SQL} != 'removed'
+        ORDER BY l.last_checked_at DESC, l.id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def get_shop(db: sqlite3.Connection, shop_id: int) -> dict[str, Any] | None:
     row = db.execute("SELECT * FROM shops WHERE id = ? AND active = 1", (shop_id,)).fetchone()
     return annotate_shop_row(row) if row else None

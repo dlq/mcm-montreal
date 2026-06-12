@@ -1,7 +1,7 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-06-06
+Updated: 2026-06-12
 Current line: `0.3.x`
 
 ## Purpose
@@ -52,6 +52,8 @@ The live `0.1.x` MVP includes:
 - durable anonymous favourites, saved shops, and saved searches
 - bilingual synonym-expanded listing search with weighted default ranking
 - listing detail history for recorded price and availability changes
+- first-pass public discovery metadata: canonical URLs, `robots.txt`, `sitemap.xml`, and
+  page-specific meta descriptions/Open Graph tags for core listing and shop pages
 
 The local development app remains Flask + SQLite at `data/mcm.db`.
 
@@ -579,10 +581,13 @@ Proposed release slices:
   listings, shops, favourites, listing detail, and shop detail pages. Mobile filter Apply now closes
   the drawer and moves focus to the updated listing results instead of leaving focus in hidden
   controls.
-- `0.3.2`: editorial and SEO foundations. Decide canonical indexable page types, add sitemap and
-  canonical URL policy, robots.txt, meta descriptions, Open Graph/Twitter metadata, JSON-LD
-  structured data, hreflang or an explicit language URL policy, localized head metadata, and begin
-  useful Montreal-specific category/shop/location content.
+- `0.3.2`: editorial and SEO foundations. In progress. Canonical indexable page types now start
+  with listings, shops, shop detail pages, and active listing detail pages. The app now serves
+  `robots.txt` and `sitemap.xml`, uses `https://montrealmcm.ca` as the canonical public host, strips
+  query strings from canonical URLs, and renders first-pass meta descriptions/Open Graph metadata
+  for listings and shops. Still remaining: Twitter metadata if needed, JSON-LD structured data,
+  hreflang or an explicit language URL policy, localized head metadata, and useful
+  Montreal-specific category/shop/location content.
 - `0.3.3`: normalized design data. Introduce canonical creator/designer/maker entities, alias
   handling, source evidence, and admin review before adding public entity pages.
 - `0.3.4`: analytics, monitoring, and operational visibility. Review Cloudflare Analytics after

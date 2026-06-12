@@ -10,9 +10,22 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Montreal MCM">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>
-      {% block title %}Montreal MCM{% endblock %}
-    </title>
+    {% set meta_description_content %}
+      {% block meta_description %}{{ t("site.tagline") }}{% endblock %}
+    {% endset %}
+    {% set og_type_content %}
+      {% block og_type %}website{% endblock %}
+    {% endset %}
+    <title>{% block title %}Montreal MCM{% endblock %}</title>
+    <meta name="description"
+          content="{{ meta_description_content|striptags|trim }}">
+    <link rel="canonical" href="{{ canonical_url }}">
+    <meta property="og:site_name" content="Montreal MCM">
+    <meta property="og:title" content="{{ self.title() |striptags|trim }}">
+    <meta property="og:description"
+          content="{{ meta_description_content|striptags|trim }}">
+    <meta property="og:url" content="{{ canonical_url }}">
+    <meta property="og:type" content="{{ og_type_content|striptags|trim }}">
     <link rel="icon"
           type="image/svg+xml"
           href="{{ url_for('static', filename='favicon.svg') }}">

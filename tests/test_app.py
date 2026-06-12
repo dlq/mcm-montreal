@@ -406,6 +406,48 @@ class AppTests(unittest.TestCase):
         self.assertEqual(offline_fr_response.status_code, 200)
         self.assertIn("hors ligne", offline_fr_response.text)
 
+    def test_public_discovery_routes_expose_crawlable_urls(self) -> None:
+        robots_response = self.client.get("/robots.txt")
+        self.assertEqual(robots_response.status_code, 200)
+        self.assertEqual(robots_response.content_type, "text/plain; charset=utf-8")
+        self.assertIn("User-agent: *", robots_response.text)
+        self.assertIn("Allow: /", robots_response.text)
+        self.assertIn("Sitemap: https://montrealmcm.ca/sitemap.xml", robots_response.text)
+
+        sitemap_response = self.client.get("/sitemap.xml")
+        self.assertEqual(sitemap_response.status_code, 200)
+        self.assertEqual(sitemap_response.content_type, "application/xml; charset=utf-8")
+        self.assertIn("<loc>https://montrealmcm.ca/</loc>", sitemap_response.text)
+        self.assertIn("<loc>https://montrealmcm.ca/shops</loc>", sitemap_response.text)
+        self.assertIn("<loc>https://montrealmcm.ca/shops/morceau</loc>", sitemap_response.text)
+        self.assertIn(
+            f"<loc>https://montrealmcm.ca/listing/{public_item_number(self.listing_id)}</loc>",
+            sitemap_response.text,
+        )
+        self.assertNotIn("/admin", sitemap_response.text)
+        self.assertNotIn("/favourites", sitemap_response.text)
+
+    def test_pages_include_canonical_and_description_metadata(self) -> None:
+        home_response = self.client.get("/?q=teak&price_max=1000")
+        self.assertEqual(home_response.status_code, 200)
+        self.assertIn('rel="canonical"', home_response.text)
+        self.assertIn('href="https://montrealmcm.ca/"', home_response.text)
+        self.assertIn('name="description"', home_response.text)
+        self.assertIn("Montreal-first discovery", home_response.text)
+
+        listing_response = self.client.get(f"/listing/{public_item_number(self.listing_id)}")
+        self.assertEqual(listing_response.status_code, 200)
+        self.assertIn(
+            f'href="https://montrealmcm.ca/listing/{public_item_number(self.listing_id)}"',
+            listing_response.text,
+        )
+        self.assertIn("Sample Chair from Morceau", listing_response.text)
+
+        shop_response = self.client.get("/shops/morceau")
+        self.assertEqual(shop_response.status_code, 200)
+        self.assertIn('href="https://montrealmcm.ca/shops/morceau"', shop_response.text)
+        self.assertIn("Browse current listings from Morceau", shop_response.text)
+
     def test_sold_out_filter_requires_available_to_sold_history(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)
