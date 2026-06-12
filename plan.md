@@ -916,13 +916,23 @@ Mitigation:
 ### D1 Bridge Performance
 
 The current production bridge preserves the Flask app but adds HTTP calls between the container and
-Worker D1 binding.
+Worker D1 binding. Live anonymous homepage performance is acceptable after the `0.2.x` lazy identity
+change, but the remaining server cost is still mostly D1 bridge time rather than CSS/JS asset
+processing.
 
 Mitigation:
 
 - measure public page timings
-- batch bridge calls where practical
-- cache read-heavy public responses if needed
+- keep internal timing headers/logs available for public pages so app time, D1 time, D1 query count,
+  and Worker/container fetch time can be compared during real incidents
+- reduce D1 bridge round trips on the anonymous homepage by combining count, first-page listing, and
+  filter/sidebar queries where practical
+- keep HTMX lazy-load batches lean: they should only fetch listing rows, count/pagination state, and
+  favourite state when needed
+- consider short-lived caching for anonymous, read-heavy public responses after varying dimensions
+  are explicit: language, filters, sort, offset, and cookie/favourite state
+- defer asset bundling/minification work such as Lightning CSS until asset payloads become the
+  bottleneck or until removing CDN Tailwind becomes a security/privacy goal
 - keep the option open to move selected read paths into Worker-native code later
 
 ## Bottom Line

@@ -3,13 +3,13 @@
 <aside class="{{ panel_class }}">
   <listing-filters data-default-summary="{{ t('filters.default_summary') }}">
     <form id="{{ id_prefix }}listing-filter-form"
-          class="space-y-6"
+          class="space-y-4"
           data-filter-form
           hx-get="{{ url_for("listings") }}"
           hx-target="#listing-grid"
           hx-push-url="true">
       <div>
-        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+        <label class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                for="{{ id_prefix }}q">{{ t("filters.search") }}</label>
         <input class="w-full bg-transparent px-0 py-2 text-sm"
                id="{{ id_prefix }}q"
@@ -20,7 +20,7 @@
       <div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+            <label class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                    for="{{ id_prefix }}price_min">{{ t("filters.min_price") }}</label>
             <input class="w-full bg-transparent px-0 py-2 text-sm"
                    id="{{ id_prefix }}price_min"
@@ -30,7 +30,7 @@
                    placeholder="{{ t('filters.no_min_price') }}">
           </div>
           <div>
-            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+            <label class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                    for="{{ id_prefix }}price_max">{{ t("filters.max_price") }}</label>
             <input class="w-full bg-transparent px-0 py-2 text-sm"
                    id="{{ id_prefix }}price_max"
@@ -41,9 +41,9 @@
           </div>
         </div>
       </div>
-      <div class="space-y-5">
+      <div class="space-y-4">
         <div>
-          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+          <label class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                  for="{{ id_prefix }}shop">{{ t("filters.shop") }}</label>
           <select class="w-full bg-transparent px-0 py-2 text-sm"
                   id="{{ id_prefix }}shop"
@@ -58,7 +58,7 @@
           </select>
         </div>
         <div>
-          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+          <label class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                  for="{{ id_prefix }}category">{{ t("filters.category") }}</label>
           <select class="w-full bg-transparent px-0 py-2 text-sm"
                   id="{{ id_prefix }}category"
@@ -73,7 +73,7 @@
           </select>
         </div>
         <div>
-          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+          <label class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                  for="{{ id_prefix }}material">{{ t("filters.material") }}</label>
           <select class="w-full bg-transparent px-0 py-2 text-sm"
                   id="{{ id_prefix }}material"
@@ -88,7 +88,7 @@
           </select>
         </div>
         <div>
-          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+          <label class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                  for="{{ id_prefix }}designer">{{ t("filters.designer") }}</label>
           <select class="w-full bg-transparent px-0 py-2 text-sm"
                   id="{{ id_prefix }}designer"
@@ -103,7 +103,7 @@
           </select>
         </div>
         <div>
-          <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+          <label class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                  for="{{ id_prefix }}location">{{ t("filters.location") }}</label>
           <select class="w-full bg-transparent px-0 py-2 text-sm"
                   id="{{ id_prefix }}location"
@@ -121,7 +121,7 @@
       <div>
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+            <label class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                    for="{{ id_prefix }}availability">{{ t("filters.availability") }}</label>
             <select class="w-full bg-transparent px-0 py-2 text-sm"
                     id="{{ id_prefix }}availability"
@@ -140,7 +140,7 @@
             </select>
           </div>
           <div>
-            <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
+            <label class="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-ink/45"
                    for="{{ id_prefix }}sort">{{ t("filters.sort") }}</label>
             <select class="w-full bg-transparent px-0 py-2 text-sm"
                     id="{{ id_prefix }}sort"
