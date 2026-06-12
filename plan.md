@@ -581,13 +581,15 @@ Proposed release slices:
   listings, shops, favourites, listing detail, and shop detail pages. Mobile filter Apply now closes
   the drawer and moves focus to the updated listing results instead of leaving focus in hidden
   controls.
-- `0.3.2`: editorial and SEO foundations. In progress. Canonical indexable page types now start
-  with listings, shops, shop detail pages, and active listing detail pages. The app now serves
-  `robots.txt` and `sitemap.xml`, uses `https://montrealmcm.ca` as the canonical public host, strips
-  query strings from canonical URLs, and renders first-pass meta descriptions/Open Graph metadata
-  for listings and shops. Still remaining: Twitter metadata if needed, JSON-LD structured data,
-  hreflang or an explicit language URL policy, localized head metadata, and useful
-  Montreal-specific category/shop/location content.
+- `0.3.2`: editorial and SEO foundations. Done for the technical foundation. Canonical indexable
+  page types now include listings, shops, shop detail pages, active listing detail pages, and
+  category landing pages for categories with current inventory. The app serves `robots.txt` and
+  `sitemap.xml`, uses `https://montrealmcm.ca` as the canonical public host, strips query strings
+  from canonical URLs, renders localized meta descriptions/Open Graph/Twitter metadata, exposes
+  `?lang=en` / `?lang=fr` hreflang alternates with an `x-default` canonical alternate, and adds
+  JSON-LD for the site, listing collections, shop pages, and product-like listing detail pages.
+  Deeper hand-written buyer guides, richer shop profiles, and future designer/material/entity pages
+  should happen as later editorial/entity work rather than block the `0.3.2` slice.
 - `0.3.3`: normalized design data. Introduce canonical creator/designer/maker entities, alias
   handling, source evidence, and admin review before adding public entity pages.
 - `0.3.4`: analytics, monitoring, and operational visibility. Review Cloudflare Analytics after
@@ -652,18 +654,13 @@ Questions to settle:
 
 Likely work:
 
-- editorial guides for Montreal MCM buying
-- category landing pages
-- shop profile improvements
-- indexable designer/material/category pages once data quality supports them
-- structured metadata
-- sitemap and canonical URL policy
-- `robots.txt` with sitemap discovery and explicit crawler stance
-- page-specific meta descriptions and social previews for listings, shops, category pages, and
-  editorial pages
-- JSON-LD for the site, shop pages, breadcrumbs, and carefully selected listing/product-like pages
-- `hreflang` or a consciously documented alternative if language stays query-param based for now
-- localized metadata so French pages do not carry English-only title/description/social fields
+- Done in `0.3.2`: category landing pages, structured metadata, sitemap and canonical URL policy,
+  `robots.txt` with sitemap discovery, page-specific social metadata for core public pages, JSON-LD
+  for the site/shop/listing/category surfaces, `hreflang` alternates for the current query-param
+  language model, and localized metadata so French pages do not carry English-only
+  title/description/social fields.
+- Later editorial work: Montreal MCM buying guides, richer shop profile copy, and indexable
+  designer/material pages once normalized entity data supports them.
 
 ### Public Launch And Promotion
 

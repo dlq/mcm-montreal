@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 import sys
 import time
@@ -110,6 +111,108 @@ def normalized_public_base_url(value: str) -> str:
 def absolute_public_url(base_url: str, path: str) -> str:
     clean_path = path if path.startswith("/") else f"/{path}"
     return f"{normalized_public_base_url(base_url)}{clean_path}"
+
+
+def category_slug(value: str) -> str:
+    normalized = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return normalized
+
+
+def category_from_slug(slug: str) -> str | None:
+    categories = {category_slug(category): category for category in LAUNCH_CATEGORIES}
+    return categories.get(slug)
+
+
+def language_alternate_urls(base_url: str, path: str) -> dict[str, str]:
+    return {
+        "en": absolute_public_url(base_url, f"{path}?lang=en"),
+        "fr": absolute_public_url(base_url, f"{path}?lang=fr"),
+        "x-default": absolute_public_url(base_url, path),
+    }
+
+
+def base_structured_data(base_url: str) -> dict[str, Any]:
+    return {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Montreal MCM",
+        "url": normalized_public_base_url(base_url),
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": absolute_public_url(base_url, "/?q={search_term_string}"),
+            "query-input": "required name=search_term_string",
+        },
+    }
+
+
+def collection_structured_data(
+    base_url: str, path: str, name: str, description: str
+) -> dict[str, Any]:
+    return {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": name,
+        "description": description,
+        "url": absolute_public_url(base_url, path),
+        "isPartOf": {"@type": "WebSite", "name": "Montreal MCM"},
+    }
+
+
+def shop_structured_data(base_url: str, shop: dict[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "@context": "https://schema.org",
+        "@type": "Store",
+        "name": shop["name"],
+        "description": shop_text(shop, "description"),
+        "url": absolute_public_url(base_url, f"/shops/{shop['slug']}"),
+        "sameAs": shop["website"],
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": shop["city"],
+            "addressRegion": shop["province"],
+            "addressCountry": shop["country"],
+        },
+    }
+    if shop.get("street_address"):
+        payload["address"]["streetAddress"] = shop["street_address"]
+        payload["address"]["postalCode"] = shop["postal_code"]
+    if shop.get("latitude") and shop.get("longitude"):
+        payload["geo"] = {
+            "@type": "GeoCoordinates",
+            "latitude": shop["latitude"],
+            "longitude": shop["longitude"],
+        }
+    return payload
+
+
+def listing_structured_data(
+    base_url: str,
+    listing: dict[str, Any],
+    shop: dict[str, Any],
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": listing["title"],
+        "description": listing.get("source_description") or listing["title"],
+        "url": absolute_public_url(base_url, f"/listing/{public_item_number(int(listing['id']))}"),
+        "image": listing["primary_image_url"] or None,
+        "brand": {"@type": "Brand", "name": listing["shop_name"]},
+        "category": category_label(listing["category_override"] or listing["category"]),
+        "offers": {
+            "@type": "Offer",
+            "url": listing["source_listing_url"],
+            "priceCurrency": listing["currency"] or "CAD",
+            "availability": "https://schema.org/InStock",
+            "seller": {"@type": "Store", "name": shop["name"]},
+        },
+    }
+    if listing["price_value"] is not None:
+        payload["offers"]["price"] = float(listing["price_value"])
+    availability = listing["availability_override"] or listing["availability_status"]
+    if availability == "sold_out":
+        payload["offers"]["availability"] = "https://schema.org/OutOfStock"
+    return {key: value for key, value in payload.items() if value is not None}
 
 
 def saved_search_query_string(filters: dict[str, str]) -> str:
@@ -231,14 +334,20 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.context_processor
     def inject_globals() -> dict[str, Any]:
         canonical_url = absolute_public_url(app.config["MCM_PUBLIC_BASE_URL"], request.path)
+        alternate_language_urls = language_alternate_urls(
+            app.config["MCM_PUBLIC_BASE_URL"], request.path
+        )
         return {
             "favourite_counts": favourite_counts(),
             "lang": g.lang,
             "canonical_url": canonical_url,
+            "alternate_language_urls": alternate_language_urls,
+            "og_locale": "fr_CA" if g.lang == "fr" else "en_CA",
             "t": translator_for(g.lang),
             "status_label": status_label,
             "category_list_text": category_list_text,
             "category_label": category_label,
+            "category_slug": category_slug,
             "condition_label": condition_label,
             "date_text": date_text,
             "era_label": era_label,
@@ -299,6 +408,79 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         context = {}
         if not (request.headers.get("HX-Request") and offset):
             context = listing_context(filters)
+            page_description = translator_for(g.lang)("site.tagline")
+            context["page_description"] = page_description
+            context["structured_data"] = [
+                base_structured_data(app.config["MCM_PUBLIC_BASE_URL"]),
+                collection_structured_data(
+                    app.config["MCM_PUBLIC_BASE_URL"],
+                    "/",
+                    "Montreal MCM",
+                    page_description,
+                ),
+            ]
+        return render_template(
+            template,
+            listings=rows,
+            listing_total_count=listing_total_count,
+            has_more_listings=has_more_listings,
+            next_page_url=next_page_url,
+            filters=filters,
+            **context,
+        )
+
+    @app.get("/categories/<slug>")
+    def category_detail(slug: str) -> str:
+        category = category_from_slug(slug)
+        if category is None:
+            abort(404)
+        filters = build_listing_filters({"category": category})
+        offset = max(request.args.get("offset", default=0, type=int) or 0, 0)
+        listing_total_count = count_listings(g.db, filters, include_inactive=False)
+        rows = query_listings(
+            g.db,
+            filters,
+            include_inactive=False,
+            limit=LISTING_PAGE_SIZE,
+            offset=offset,
+        )
+        next_offset = offset + len(rows)
+        has_more_listings = next_offset < listing_total_count
+        next_page_url = ""
+        if has_more_listings:
+            next_args = request.args.copy()
+            next_args["offset"] = str(next_offset)
+            next_page_url = (
+                f"{url_for('category_detail', slug=slug)}?{urlencode(next_args, doseq=True)}"
+            )
+        template = (
+            "_listing_cards.html"
+            if request.headers.get("HX-Request") and offset
+            else "listings.html"
+        )
+        context = {}
+        if not (request.headers.get("HX-Request") and offset):
+            context = listing_context(filters)
+            category_name = category_label(category)
+            page_title = translator_for(g.lang)("meta.category_title", category=category_name)
+            page_description = translator_for(g.lang)(
+                "meta.category_description", category=category_name
+            )
+            context.update(
+                {
+                    "page_title": page_title,
+                    "page_description": page_description,
+                    "structured_data": [
+                        base_structured_data(app.config["MCM_PUBLIC_BASE_URL"]),
+                        collection_structured_data(
+                            app.config["MCM_PUBLIC_BASE_URL"],
+                            f"/categories/{slug}",
+                            page_title,
+                            page_description,
+                        ),
+                    ],
+                }
+            )
         return render_template(
             template,
             listings=rows,
@@ -377,6 +559,16 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             {"loc": absolute_public_url(app.config["MCM_PUBLIC_BASE_URL"], path), "lastmod": ""}
             for path in static_paths
         ]
+        urls.extend(
+            {
+                "loc": absolute_public_url(
+                    app.config["MCM_PUBLIC_BASE_URL"],
+                    f"/categories/{category_slug(category)}",
+                ),
+                "lastmod": "",
+            }
+            for category in list_filter_values(g.db, "category")
+        )
         urls.extend(
             {
                 "loc": absolute_public_url(
@@ -536,11 +728,28 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             shop=shop,
             price_events=list_listing_price_events(g.db, int(listing["id"])),
             availability_events=list_listing_availability_events(g.db, int(listing["id"])),
+            structured_data=[
+                listing_structured_data(app.config["MCM_PUBLIC_BASE_URL"], listing, shop)
+            ],
         )
 
     @app.get("/shops")
     def shops() -> str:
-        return render_template("shops.html", shops=list_shops(g.db))
+        page_description = translator_for(g.lang)("meta.shops_description")
+        return render_template(
+            "shops.html",
+            shops=list_shops(g.db),
+            page_description=page_description,
+            structured_data=[
+                base_structured_data(app.config["MCM_PUBLIC_BASE_URL"]),
+                collection_structured_data(
+                    app.config["MCM_PUBLIC_BASE_URL"],
+                    "/shops",
+                    translator_for(g.lang)("nav.shops"),
+                    page_description,
+                ),
+            ],
+        )
 
     @app.get("/shops/<slug>")
     def shop_detail(slug: str) -> str:
@@ -578,6 +787,11 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             listing_total_count=listing_total_count,
             has_more_listings=has_more_listings,
             next_page_url=next_page_url,
+            structured_data=[
+                shop_structured_data(app.config["MCM_PUBLIC_BASE_URL"], shop),
+            ]
+            if template == "shop_detail.html"
+            else [],
         )
 
     @app.get("/favourites")

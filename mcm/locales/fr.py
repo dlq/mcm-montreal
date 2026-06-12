@@ -25,6 +25,23 @@ TRANSLATIONS_FR = {
         "actualisez la page pour continuer à parcourir l'inventaire actuel."
     ),
     "offline.retry": "Réessayer",
+    "meta.category_title": "{category} à Montréal",
+    "meta.category_description": (
+        "Parcourez les annonces actuelles de {category} à Montréal provenant de boutiques vintage "
+        "et de revente mid-century modern suivies par Montreal MCM."
+    ),
+    "meta.listing_description": (
+        "{title} chez {shop}, {price}. Montreal MCM suit du mobilier mid-century modern vintage "
+        "et de revente provenant de boutiques locales et canadiennes."
+    ),
+    "meta.shop_description": (
+        "Parcourez les annonces actuelles de {shop} sur Montreal MCM, avec contexte de boutique, "
+        "notes de lieu et trouvailles de mobilier mid-century modern vintage."
+    ),
+    "meta.shops_description": (
+        "Parcourez les boutiques de mobilier mid-century modern vintage et de revente suivies par "
+        "Montreal MCM, y compris des vendeurs locaux et des boutiques canadiennes qui livrent ici."
+    ),
     "lang.en": "English",
     "lang.fr": "Français",
     "filters.browse": "Parcourir",

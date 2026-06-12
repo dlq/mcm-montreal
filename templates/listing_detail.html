@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ listing.title }} | Montreal MCM{% endblock %}
 {% block meta_description %}
-  {{ listing.title }} from {{ listing.shop_name }}
-  {% if listing.price_raw %}, {{ price_text(listing) }}{% endif %}
-  . Montreal MCM tracks vintage and resale mid-century modern furniture from local and Canadian shops.
+  {{ t("meta.listing_description", title=listing.title, shop=listing.shop_name, price=price_text(listing) ) }}
 {% endblock %}
 {% block og_type %}product{% endblock %}
 {% block content %}

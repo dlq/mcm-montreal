@@ -24,6 +24,23 @@ TRANSLATIONS_EN = {
         "a network connection. Reconnect and refresh to continue browsing current inventory."
     ),
     "offline.retry": "Try again",
+    "meta.category_title": "{category} in Montreal",
+    "meta.category_description": (
+        "Browse current {category} in Montreal from vintage and resale mid-century modern shops "
+        "tracked by Montreal MCM."
+    ),
+    "meta.listing_description": (
+        "{title} from {shop}, {price}. Montreal MCM tracks vintage and resale mid-century modern "
+        "furniture from local and Canadian shops."
+    ),
+    "meta.shop_description": (
+        "Browse current listings from {shop} on Montreal MCM, with shop context, location notes, "
+        "and vintage mid-century modern furniture finds."
+    ),
+    "meta.shops_description": (
+        "Browse vintage and resale mid-century modern furniture shops tracked by Montreal MCM, "
+        "including Montreal-local sellers and Canadian shops that ship here."
+    ),
     "lang.en": "English",
     "lang.fr": "Français",
     "filters.browse": "Browse",

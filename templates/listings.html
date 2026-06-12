@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{{ t("nav.listings") }} | Montreal MCM{% endblock %}
-{% block meta_description %}{{ t("site.tagline") }}{% endblock %}
+{% block title %}{{ page_title|default(t("nav.listings") ) }} | Montreal MCM{% endblock %}
+{% block meta_description %}{{ page_description|default(t("site.tagline") ) }}{% endblock %}
 {% block content %}
-  <h1 class="sr-only">{{ t("nav.listings") }}</h1>
+  <h1 class="sr-only">{{ page_title|default(t("nav.listings") ) }}</h1>
   <details class="filter-drawer mb-6 border-y border-ink/10 py-4 lg:hidden">
     <summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold"
              aria-controls="mobile-filter-panel">

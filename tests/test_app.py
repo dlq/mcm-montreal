@@ -448,6 +448,49 @@ class AppTests(unittest.TestCase):
         self.assertIn('href="https://montrealmcm.ca/shops/morceau"', shop_response.text)
         self.assertIn("Browse current listings from Morceau", shop_response.text)
 
+    def test_localized_social_and_language_metadata_render(self) -> None:
+        response = self.client.get("/?lang=fr")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('name="twitter:card"', response.text)
+        self.assertIn('property="og:locale" content="fr_CA"', response.text)
+        self.assertIn('hreflang="en"', response.text)
+        self.assertIn('href="https://montrealmcm.ca/?lang=en"', response.text)
+        self.assertIn('hreflang="fr"', response.text)
+        self.assertIn('href="https://montrealmcm.ca/?lang=fr"', response.text)
+        self.assertIn("Découverte montréalaise", response.text)
+
+    def test_structured_data_renders_for_core_public_pages(self) -> None:
+        home_response = self.client.get("/")
+        self.assertEqual(home_response.status_code, 200)
+        self.assertIn('type="application/ld+json"', home_response.text)
+        self.assertIn('"@type": "WebSite"', home_response.text)
+        self.assertIn('"@type": "CollectionPage"', home_response.text)
+
+        listing_response = self.client.get(f"/listing/{public_item_number(self.listing_id)}")
+        self.assertEqual(listing_response.status_code, 200)
+        self.assertIn('"@type": "Product"', listing_response.text)
+        self.assertIn('"name": "Sample Chair"', listing_response.text)
+        self.assertIn('"price": 250', listing_response.text)
+
+        shop_response = self.client.get("/shops/morceau")
+        self.assertEqual(shop_response.status_code, 200)
+        self.assertIn('"@type": "Store"', shop_response.text)
+        self.assertIn('"name": "Morceau"', shop_response.text)
+
+    def test_category_landing_pages_are_indexable(self) -> None:
+        response = self.client.get("/categories/lounge-chairs")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('href="https://montrealmcm.ca/categories/lounge-chairs"', response.text)
+        self.assertIn("lounge chairs in Montreal", response.text)
+        self.assertIn("Sample Chair", response.text)
+
+        sitemap_response = self.client.get("/sitemap.xml")
+        self.assertEqual(sitemap_response.status_code, 200)
+        self.assertIn(
+            "<loc>https://montrealmcm.ca/categories/lounge-chairs</loc>",
+            sitemap_response.text,
+        )
+
     def test_sold_out_filter_requires_available_to_sold_history(self) -> None:
         with self.app.app_context():
             db = get_db(self.app)

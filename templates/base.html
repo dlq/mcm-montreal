@@ -26,6 +26,16 @@
           content="{{ meta_description_content|striptags|trim }}">
     <meta property="og:url" content="{{ canonical_url }}">
     <meta property="og:type" content="{{ og_type_content|striptags|trim }}">
+    <meta property="og:locale" content="{{ og_locale }}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ self.title() |striptags|trim }}">
+    <meta name="twitter:description"
+          content="{{ meta_description_content|striptags|trim }}">
+    {% for alternate_lang, alternate_url in alternate_language_urls.items() %}
+      <link rel="alternate"
+            hreflang="{{ alternate_lang }}"
+            href="{{ alternate_url }}">
+    {% endfor %}
     <link rel="icon"
           type="image/svg+xml"
           href="{{ url_for('static', filename='favicon.svg') }}">
@@ -57,7 +67,11 @@
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <link rel="stylesheet"
           href="{{ url_for('static', filename='app.css', v=static_asset_version('app.css') ) }}">
-    {% block extra_head %}{% endblock %}
+    {% if structured_data %}
+      <script type="application/ld+json">{{ structured_data|tojson }}</script>
+    {% endif %}
+    {% block extra_head %}
+    {% endblock %}
   </head>
   <body class="min-h-screen bg-oat text-ink">
     <a class="skip-link" href="#main-content">{{ t("a11y.skip_to_content") }}</a>
