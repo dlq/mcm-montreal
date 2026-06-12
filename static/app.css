@@ -202,7 +202,7 @@ textarea:focus {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
-  margin-top: 0.65rem;
+  margin-top: 0.85rem;
 }
 
 .filter-apply-button {
