@@ -301,9 +301,14 @@ Current facts:
 
 - Cloudflare zone analytics can report daily unique IPs, page views, requests, bytes, and related
   request dimensions.
-- The app does not currently store first-party visitor analytics.
+- The app stores first-party aggregate page views in `analytics_page_views`. These are daily counts
+  by page type, path key, and language, recorded from a same-origin browser beacon when JavaScript
+  runs.
 - Cloudflare zone `uniques` are daily unique IP counts, not verified human visitors or all-time
   distinct people.
+- First-party page views are closer to human browsing activity than Cloudflare edge requests because
+  they require page JavaScript to run, but they are still aggregate page-load counts, not verified
+  unique people.
 - Dwell time is not available from the current HTTP analytics view because Cloudflare only sees
   requests, not how long a browser tab remains open.
 
@@ -314,18 +319,23 @@ Current decision:
 - Treat Cloudflare dashboard metrics as directional product signals, not precise human counts:
   Web Analytics and HTTP Traffic have different collection paths, time windows, bot handling, and
   metric definitions.
+- Keep first-party analytics privacy-preserving: no third-party analytics script, no raw IPs, no
+  user agents, no referers, and no per-user analytics identity in the initial implementation.
 
 Questions to settle:
 
 - Which Cloudflare Web Analytics engagement metrics are actually useful for product decisions after
   enough traffic accumulates?
-- Should we avoid deeper third-party analytics and add a tiny first-party event endpoint only if
-  audience signals become product-critical?
+- What admin/reporting view is useful for the aggregate page-view table: daily totals, top page
+  types, top listing/detail paths, and before/after promotion comparisons?
+- Should outbound source clicks, saved-search usage, and install/PWA signals be tracked as similarly
+  aggregate first-party events?
 
 Likely work:
 
 - review Cloudflare Web Analytics and HTTP Traffic dashboards after a few weeks of real traffic
-- document which metrics are worth checking during release reviews
+- compare Cloudflare HTTP metrics against `analytics_page_views` after enough production rows exist
+- add a compact operations/admin query for daily first-party page views and top paths
 - verify what engagement metrics are actually exposed before making product decisions from them
 
 ### Durable Anonymous Identity
@@ -592,8 +602,9 @@ Proposed release slices:
   should happen as later editorial/entity work rather than block the `0.3.2` slice.
 - `0.3.3`: normalized design data. Introduce canonical creator/designer/maker entities, alias
   handling, source evidence, and admin review before adding public entity pages.
-- `0.3.4`: analytics, monitoring, and operational visibility. Review Cloudflare Analytics after
-  enough usage, decide whether first-party outbound-click/feature metrics are needed, and decide
+- `0.3.4`: analytics, monitoring, and operational visibility. Use the new first-party aggregate page
+  view table alongside Cloudflare Analytics, add a compact admin/operations readout for daily usage
+  and top paths, decide whether first-party outbound-click/feature metrics are needed, and decide
   whether external uptime or alert delivery is justified.
 - `0.3.5`: security, privacy, and resilience hardening. Add practical response headers such as HSTS,
   `X-Content-Type-Options`, frame protection, `Referrer-Policy`, and `Permissions-Policy`; decide
@@ -793,8 +804,10 @@ Live design audit notes from 2026-05-20:
 
 Questions to settle:
 
-- Is Cloudflare Web Analytics enough for product usage questions, or does the app need a small
-  first-party analytics endpoint for outbound source clicks, saved-search usage, and refresh health?
+- What readout should sit on top of the first-party aggregate page-view table for release reviews
+  and promotion checks?
+- Does the app need first-party aggregate event collection for outbound source clicks, saved-search
+  usage, install/PWA behavior, and refresh health?
 - Is external uptime or alert delivery needed beyond Cloudflare dashboard visibility and existing
   refresh-job records?
 - Which metrics are useful enough to collect without creating privacy or maintenance cost?
@@ -802,6 +815,10 @@ Questions to settle:
 Likely work:
 
 - review Cloudflare Web Analytics after enough production usage has accumulated
+- compare Cloudflare HTTP analytics with first-party page-view aggregates after production has
+  accumulated enough rows
+- add first-party usage readouts for daily page views, page type mix, top listing paths, top shop
+  paths, and top category paths
 - decide whether to add first-party event collection for outbound source clicks and high-level
   feature usage
 - decide whether external uptime/alerting belongs in operations before source count or traffic grows

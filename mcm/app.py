@@ -131,6 +131,80 @@ def language_alternate_urls(base_url: str, path: str) -> dict[str, str]:
     }
 
 
+def analytics_page_type(path: str) -> str:
+    clean_path = (path or "/").split("?", 1)[0] or "/"
+    if clean_path == "/":
+        return "home"
+    if clean_path == "/shops":
+        return "shops"
+    if clean_path == "/favourites":
+        return "favourites"
+    if clean_path.startswith("/listing/"):
+        return "listing"
+    if clean_path.startswith("/shops/"):
+        return "shop"
+    if clean_path.startswith("/categories/"):
+        return "category"
+    return "other"
+
+
+def analytics_path_key(path: str) -> str:
+    clean_path = (path or "/").split("?", 1)[0] or "/"
+    return clean_path if clean_path.startswith("/") else f"/{clean_path}"
+
+
+def should_track_analytics_path(path: str) -> bool:
+    clean_path = analytics_path_key(path)
+    blocked_prefixes = (
+        "/admin",
+        "/analytics",
+        "/cron",
+        "/healthz",
+        "/internal",
+        "/readyz",
+        "/static",
+    )
+    blocked_paths = {"/manifest.webmanifest", "/robots.txt", "/service-worker.js", "/sitemap.xml"}
+    return clean_path not in blocked_paths and not clean_path.startswith(blocked_prefixes)
+
+
+def request_origin_is_allowed() -> bool:
+    origin = request.headers.get("Origin", "")
+    if not origin:
+        return True
+    origin_host = urlparse(origin).hostname or ""
+    request_host = request.host.split(":", 1)[0]
+    return origin_host in {
+        request_host,
+        "localhost",
+        "127.0.0.1",
+        "montrealmcm.ca",
+        "www.montrealmcm.ca",
+        "montreal-mcm.dalaque.workers.dev",
+    }
+
+
+def record_analytics_pageview(db: Any, path: str, lang: str) -> None:
+    if not should_track_analytics_path(path):
+        return
+    now = datetime.now(UTC)
+    clean_lang = normalize_lang(lang)
+    page_type = analytics_page_type(path)
+    path_key = analytics_path_key(path)
+    db.execute(
+        """
+        INSERT INTO analytics_page_views (
+            view_date, page_type, path_key, lang, views, updated_at
+        ) VALUES (?, ?, ?, ?, 1, ?)
+        ON CONFLICT(view_date, page_type, path_key, lang) DO UPDATE SET
+            views = analytics_page_views.views + 1,
+            updated_at = excluded.updated_at
+        """,
+        (now.date().isoformat(), page_type, path_key, clean_lang, now.isoformat()),
+    )
+    db.commit()
+
+
 def base_structured_data(base_url: str) -> dict[str, Any]:
     return {
         "@context": "https://schema.org",
@@ -296,6 +370,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if request.endpoint in {"static", "service_worker", "web_manifest", "robots_txt"}:
             return
         g.db = get_db(app)
+        if request.endpoint == "analytics_pageview":
+            g.lang = resolved_language()
+            return
         load_anonymous_identity(app, g.db)
         g.lang = resolved_language()
 
@@ -367,6 +444,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "lang_url_en": language_url("en"),
             "lang_url_fr": language_url("fr"),
             "now_iso": datetime.now(UTC).isoformat(),
+            "analytics_page_type": analytics_page_type(request.path),
+            "analytics_path_key": analytics_path_key(request.path),
         }
 
     def listing_context(filters: dict[str, str]) -> dict[str, Any]:
@@ -513,6 +592,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/saved-searches")
     def saved_searches() -> Any:
         return redirect(url_for("favourites"))
+
+    @app.post("/analytics/pageview")
+    def analytics_pageview() -> tuple[str, int]:
+        if not request_origin_is_allowed():
+            return "", 204
+        payload = request.get_json(silent=True) or {}
+        path = payload.get("path") if isinstance(payload, dict) else ""
+        lang = payload.get("lang") if isinstance(payload, dict) else ""
+        if isinstance(path, str) and path:
+            record_analytics_pageview(g.db, path, lang if isinstance(lang, str) else "")
+        return "", 204
 
     @app.post("/saved-searches/<int:saved_search_id>/delete")
     def remove_saved_search(saved_search_id: int) -> Any:

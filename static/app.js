@@ -72,6 +72,25 @@ document.body.addEventListener("htmx:afterSettle", (event) => {
   }
 });
 
+function sendPageviewAnalytics() {
+  if (navigator.webdriver || typeof navigator.sendBeacon !== "function") {
+    return;
+  }
+
+  const analyticsPageType = document.body.dataset.analyticsPageType;
+  const pathKey = document.body.dataset.analyticsPathKey || window.location.pathname;
+  if (!analyticsPageType || analyticsPageType === "other") {
+    return;
+  }
+
+  const payload = JSON.stringify({
+    path: pathKey,
+    lang: document.documentElement.lang || "",
+  });
+  const body = new Blob([payload], { type: "application/json" });
+  navigator.sendBeacon("/analytics/pageview", body);
+}
+
 class ShopCardMap extends HTMLElement {
   connectedCallback() {
     if (this.dataset.ready) {
@@ -347,6 +366,7 @@ document.addEventListener(
 );
 
 document.addEventListener("DOMContentLoaded", () => {
+  sendPageviewAnalytics();
   refreshImageFallbacks();
   refreshShopCardAlignment();
 });

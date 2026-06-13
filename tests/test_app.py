@@ -346,6 +346,87 @@ class AppTests(unittest.TestCase):
         self.assertIn("/static/app.css?v=", response.text)
         self.assertIn("/static/app.js?v=", response.text)
 
+    def test_base_template_exposes_pageview_analytics_metadata(self) -> None:
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('data-analytics-page-type="home"', response.text)
+        self.assertIn('data-analytics-path-key="/"', response.text)
+
+    def test_analytics_pageview_records_daily_aggregate(self) -> None:
+        response = self.client.post(
+            "/analytics/pageview",
+            json={"path": "/", "lang": "en"},
+            headers={"Origin": "http://localhost"},
+        )
+
+        self.assertEqual(response.status_code, 204)
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                row = db.execute(
+                    """
+                    SELECT view_date, page_type, path_key, lang, views
+                    FROM analytics_page_views
+                    """
+                ).fetchone()
+            finally:
+                db.close()
+
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual(row["view_date"], datetime.now(UTC).date().isoformat())
+        self.assertEqual(row["page_type"], "home")
+        self.assertEqual(row["path_key"], "/")
+        self.assertEqual(row["lang"], "en")
+        self.assertEqual(row["views"], 1)
+
+    def test_analytics_pageview_increments_existing_aggregate(self) -> None:
+        for _ in range(2):
+            response = self.client.post("/analytics/pageview", json={"path": "/shops"})
+            self.assertEqual(response.status_code, 204)
+
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                row = db.execute(
+                    """
+                    SELECT page_type, path_key, views
+                    FROM analytics_page_views
+                    WHERE path_key = '/shops'
+                    """
+                ).fetchone()
+            finally:
+                db.close()
+
+        self.assertIsNotNone(row)
+        assert row is not None
+        self.assertEqual(row["page_type"], "shops")
+        self.assertEqual(row["views"], 2)
+
+    def test_analytics_pageview_skips_internal_routes(self) -> None:
+        for path in ["/healthz", "/admin", "/cron/refresh", "/internal/d1/query", "/static/app.js"]:
+            response = self.client.post("/analytics/pageview", json={"path": path})
+            self.assertEqual(response.status_code, 204, path)
+
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                count = db.execute("SELECT COUNT(*) AS count FROM analytics_page_views").fetchone()[
+                    "count"
+                ]
+            finally:
+                db.close()
+
+        self.assertEqual(count, 0)
+
+    def test_static_script_sends_pageview_beacon(self) -> None:
+        script = (PROJECT_ROOT / "static" / "app.js").read_text()
+
+        self.assertIn("navigator.sendBeacon", script)
+        self.assertIn("/analytics/pageview", script)
+        self.assertIn("analyticsPageType", script)
+
     def test_primary_navigation_has_accessibility_landmarks(self) -> None:
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)

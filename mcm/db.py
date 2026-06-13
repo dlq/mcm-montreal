@@ -186,6 +186,15 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             updated_at TEXT NOT NULL,
             UNIQUE(owner_key, query_string)
         );
+        CREATE TABLE IF NOT EXISTS analytics_page_views (
+            view_date TEXT NOT NULL,
+            page_type TEXT NOT NULL,
+            path_key TEXT NOT NULL,
+            lang TEXT NOT NULL DEFAULT '',
+            views INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (view_date, page_type, path_key, lang)
+        );
         CREATE INDEX IF NOT EXISTS idx_listing_availability_events_listing
             ON listing_availability_events(listing_id, observed_at);
         CREATE INDEX IF NOT EXISTS idx_listing_availability_events_transition
@@ -207,6 +216,8 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             ON anonymous_favourite_shops(shop_id);
         CREATE INDEX IF NOT EXISTS idx_anonymous_saved_searches_owner
             ON anonymous_saved_searches(owner_key, updated_at);
+        CREATE INDEX IF NOT EXISTS idx_analytics_page_views_type_date
+            ON analytics_page_views(page_type, view_date);
         """
     )
     ensure_shop_address_columns(db)
