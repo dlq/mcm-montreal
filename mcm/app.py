@@ -63,15 +63,18 @@ from .refresh import (
     refresh_source_by_slug,
 )
 from .repository import (
+    add_listing_design_entity_evidence,
     admin_sources,
     build_listing_filters,
     count_listings,
+    create_design_entity,
     delete_saved_search,
     favourite_counts,
     find_duplicate_candidates,
     get_listing,
     get_shop,
     get_shop_by_slug,
+    list_design_entity_candidates,
     list_failures,
     list_favourite_listings,
     list_favourite_shops,
@@ -935,6 +938,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             failures=list_failures(g.db),
             listings=query_listings(g.db, {"sort": "recent_check"}, include_inactive=True)[:40],
             duplicates=find_duplicate_candidates(g.db),
+            design_entity_candidates=list_design_entity_candidates(g.db),
         )
 
     @app.post("/admin/refresh")
@@ -959,6 +963,40 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not listing:
             abort(404)
         return render_template("admin_listing.html", listing=listing, categories=LAUNCH_CATEGORIES)
+
+    @app.post("/admin/listings/<int:listing_id>/design-entity")
+    @admin_required(app)
+    def admin_listing_design_entity_update(listing_id: int) -> Any:
+        listing = get_listing(g.db, listing_id)
+        if not listing:
+            abort(404)
+        canonical_name = request.form.get("canonical_name", "").strip()
+        if not canonical_name:
+            return redirect(url_for("admin_listing", listing_id=listing_id))
+        evidence_role = request.form.get("evidence_role", "").strip()
+        source_text = str(
+            listing.get("designer") if evidence_role == "designer" else listing.get("maker") or ""
+        )
+        if not source_text:
+            source_text = str(listing.get("designer") or listing.get("maker") or "")
+        aliases = [
+            alias.strip() for alias in request.form.get("aliases", "").splitlines() if alias.strip()
+        ]
+        entity_id = create_design_entity(
+            g.db,
+            canonical_name=canonical_name,
+            entity_type=request.form.get("entity_type", "creator").strip(),
+            aliases=aliases,
+            notes=request.form.get("notes", "").strip(),
+        )
+        add_listing_design_entity_evidence(
+            g.db,
+            listing_id=listing_id,
+            entity_id=entity_id,
+            evidence_role=evidence_role,
+            source_text=source_text,
+        )
+        return redirect(url_for("admin_listing", listing_id=listing_id))
 
     @app.post("/admin/listings/<int:listing_id>")
     @admin_required(app)

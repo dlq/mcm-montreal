@@ -600,8 +600,10 @@ Proposed release slices:
   JSON-LD for the site, listing collections, shop pages, and product-like listing detail pages.
   Deeper hand-written buyer guides, richer shop profiles, and future designer/material/entity pages
   should happen as later editorial/entity work rather than block the `0.3.2` slice.
-- `0.3.3`: normalized design data. Introduce canonical creator/designer/maker entities, alias
-  handling, source evidence, and admin review before adding public entity pages.
+- `0.3.3`: normalized design data. In progress. The first data-quality/admin slice adds canonical
+  creator/designer/maker entities, aliases, listing-level source evidence, admin review from listing
+  inspection, and alias-aware discovery. Public entity pages remain deferred until reviewed data
+  quality is high enough.
 - `0.3.4`: analytics, monitoring, and operational visibility. Use the new first-party aggregate page
   view table alongside Cloudflare Analytics, add a compact admin/operations readout for daily usage
   and top paths, decide whether first-party outbound-click/feature metrics are needed, and decide
@@ -697,17 +699,28 @@ Likely work:
 
 Questions to settle:
 
-- When do `designer` and `maker` need to become canonical entities?
-- Should aliases and source evidence be admin-reviewed?
-- Is this necessary for search quality, SEO, alerts, or all three?
+- Which raw designer/maker candidates are worth reviewing first, based on frequency and user value?
+- Should canonical entities eventually distinguish people, firms, manufacturers, product lines, and
+  brands more strictly than the current `entity_type` field?
+- What quality bar should normalized creator data meet before public entity pages are added?
 
 Likely work:
 
-- `creators` or `design_entities` model
-- aliases and canonical display names
-- source evidence and confidence
-- admin review for ambiguous designer/maker extraction
-- entity pages only after quality is high enough
+- use the new admin design-entity review queue to normalize frequent raw designer/maker candidates
+- add richer admin list/search for existing canonical entities if the table grows beyond quick
+  listing-level review
+- compare filter/search behavior before and after entity review to make sure canonical aliases are
+  improving discovery
+- keep entity pages deferred until enough reviewed creators have aliases, evidence, and clean
+  canonical names
+
+Completed in first `0.3.3` slice:
+
+- added `design_entities`, `design_entity_aliases`, and `listing_design_entity_evidence`
+- preserved raw listing `designer` / `maker` as source evidence rather than overwriting source data
+- added admin listing workflow for saving a canonical creator from parsed source designer/maker text
+- added an admin candidate queue for unreviewed designer/maker strings
+- made designer/maker filters and search use reviewed aliases from normalized design entities
 
 ### Broader Marketplace Strategy
 

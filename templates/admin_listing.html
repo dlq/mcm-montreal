@@ -43,6 +43,15 @@
             </dd>
           </div>
           <div>
+            <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("admin.source_design_evidence") }}</dt>
+            <dd class="mt-1">
+              {{ listing.designer or t("listing.not_parsed") }}
+              {% if listing.maker %}
+                <span class="text-ink/45">/</span> {{ listing.maker }}
+              {% endif %}
+            </dd>
+          </div>
+          <div>
             <dt class="text-xs uppercase tracking-[0.2em] text-ink/50">{{ t("admin.last_seen") }}</dt>
             <dd class="mt-1">
               {{ listing.last_seen_at }}
@@ -112,5 +121,64 @@
         </div>
       </form>
     </div>
+    <form class="border-t border-ink/10 pt-5"
+          method="post"
+          action="{{ url_for('admin_listing_design_entity_update', listing_id=listing.id) }}">
+      <h2 class="text-xl font-semibold tracking-tight">{{ t("admin.canonical_creator") }}</h2>
+      <p class="mt-2 text-sm leading-6 text-ink/60">{{ t("admin.canonical_creator_help") }}</p>
+      <div class="mt-5 grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="mb-1 block text-sm font-medium" for="canonical_name">
+            {{ t("admin.canonical_name") }}
+          </label>
+          <input class="w-full border border-ink/15 bg-white px-4 py-3"
+                 id="canonical_name"
+                 name="canonical_name"
+                 value="{{ listing.designer or listing.maker }}">
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium" for="entity_type">
+            {{ t("admin.entity_type") }}
+          </label>
+          <select class="w-full border border-ink/15 bg-white px-4 py-3"
+                  id="entity_type"
+                  name="entity_type">
+            {% for entity_type in ["creator", "designer", "maker", "brand"] %}
+              <option value="{{ entity_type }}">{{ entity_type }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium" for="evidence_role">
+            {{ t("admin.evidence_role") }}
+          </label>
+          <select class="w-full border border-ink/15 bg-white px-4 py-3"
+                  id="evidence_role"
+                  name="evidence_role">
+            <option value="designer" {% if listing.designer %}selected{% endif %}>designer</option>
+            <option value="maker"
+                    {% if not listing.designer and listing.maker %}selected{% endif %}>maker</option>
+            <option value="creator">creator</option>
+          </select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium" for="aliases">{{ t("admin.aliases") }}</label>
+          <textarea class="min-h-24 w-full border border-ink/15 bg-white px-4 py-3"
+                    id="aliases"
+                    name="aliases">{{ listing.designer or listing.maker }}</textarea>
+        </div>
+        <div class="md:col-span-2">
+          <label class="mb-1 block text-sm font-medium" for="design_entity_notes">
+            {{ t("admin.notes") }}
+          </label>
+          <textarea class="min-h-24 w-full border border-ink/15 bg-white px-4 py-3"
+                    id="design_entity_notes"
+                    name="notes"></textarea>
+        </div>
+      </div>
+      <button class="button-primary mt-5 px-5 py-3 text-sm" type="submit">
+        {{ t("admin.save_canonical_creator") }}
+      </button>
+    </form>
   </section>
 {% endblock %}

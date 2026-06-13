@@ -22,7 +22,13 @@ from mcm.refresh import (
     refresh_all_sources,
     refresh_source_by_slug,
 )
-from mcm.repository import list_filter_values, query_listings, sanitize_availability
+from mcm.repository import (
+    create_design_entity,
+    list_design_entity_candidates,
+    list_filter_values,
+    query_listings,
+    sanitize_availability,
+)
 from mcm.seed_data import SEED_LISTINGS
 from mcm.sources import (
     SOURCE_DEFINITIONS,
@@ -2242,6 +2248,120 @@ class AppTests(unittest.TestCase):
                 )
             finally:
                 db.close()
+
+    def test_design_entity_aliases_normalize_designer_filter_and_search(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                shop = db.execute("SELECT id FROM shops WHERE slug = 'morceau'").fetchone()
+                self.assertIsNotNone(shop)
+                db.execute(
+                    """
+                    INSERT INTO listings (
+                        source_shop_id, source_listing_url, source_listing_key, title,
+                        normalized_title, price_raw, price_value, currency, primary_image_url,
+                        additional_image_urls, availability_status, shipping_scope,
+                        ships_to_montreal, shipping_note, last_seen_at, last_checked_at,
+                        first_seen_at, category, subcategory, designer, maker, era, materials,
+                        dimensions_text, width, depth, height, condition_text, location_text,
+                        source_description, ingest_source_type, parse_confidence,
+                        dedupe_group_id, is_active, is_featured, manual_notes,
+                        availability_override, category_override
+                    ) VALUES (
+                        ?, 'https://example.com/vodder', 'vodder-alias', 'Vodder Credenza',
+                        'vodder credenza', '$1', 1, 'CAD', '', '[]', 'available', 'canada', 1,
+                        '', '2026-05-29T00:00:00+00:00', '2026-05-29T00:00:00+00:00',
+                        '2026-05-29T00:00:00+00:00', 'storage', '', 'A. Vodder', '',
+                        '', 'rosewood', '', NULL, NULL, NULL, '', 'Montreal, QC', '', 'test',
+                        1.0, '', 1, 0, '', '', ''
+                    )
+                    """,
+                    (shop["id"],),
+                )
+                create_design_entity(
+                    db,
+                    canonical_name="Arne Vodder",
+                    entity_type="creator",
+                    aliases=["A. Vodder", "Arne Vodder"],
+                    notes="Known Danish designer alias.",
+                )
+
+                values = list_filter_values(db, "designer")
+                self.assertIn("Arne Vodder", values)
+                self.assertNotIn("A. Vodder", values)
+
+                filtered = query_listings(
+                    db,
+                    {
+                        "designer": "Arne Vodder",
+                        "availability": "available",
+                        "sort": "newest",
+                    },
+                    include_inactive=False,
+                )
+                self.assertEqual(["Vodder Credenza"], [listing["title"] for listing in filtered])
+
+                searched = query_listings(
+                    db,
+                    {"q": "Arne Vodder", "availability": "available", "sort": "curated"},
+                    include_inactive=False,
+                )
+                self.assertIn("Vodder Credenza", [listing["title"] for listing in searched])
+            finally:
+                db.close()
+
+    def test_admin_listing_can_create_design_entity_from_source_evidence(self) -> None:
+        response = self.client.get(f"/admin/listings/{self.listing_id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Source designer / maker", response.text)
+        self.assertIn("Canonical creator", response.text)
+        self.assertIn("Test Designer", response.text)
+
+        response = self.client.post(
+            f"/admin/listings/{self.listing_id}/design-entity",
+            data={
+                "canonical_name": "Test Designer Studio",
+                "entity_type": "creator",
+                "aliases": "Test Designer\nT. Designer",
+                "evidence_role": "designer",
+                "notes": "Reviewed from listing source text.",
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                row = db.execute(
+                    """
+                    SELECT de.canonical_name, dea.alias, ldee.source_text, ldee.evidence_role
+                    FROM design_entities de
+                    JOIN design_entity_aliases dea ON dea.entity_id = de.id
+                    JOIN listing_design_entity_evidence ldee ON ldee.entity_id = de.id
+                    WHERE ldee.listing_id = ?
+                    ORDER BY dea.alias
+                    """,
+                    (self.listing_id,),
+                ).fetchall()
+            finally:
+                db.close()
+
+        self.assertEqual({"Test Designer Studio"}, {entry["canonical_name"] for entry in row})
+        self.assertIn("Test Designer", {entry["alias"] for entry in row})
+        self.assertIn("T. Designer", {entry["alias"] for entry in row})
+        self.assertEqual({"Test Designer"}, {entry["source_text"] for entry in row})
+        self.assertEqual({"designer"}, {entry["evidence_role"] for entry in row})
+
+    def test_design_entity_candidates_surface_unreviewed_source_names(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                candidates = list_design_entity_candidates(db)
+            finally:
+                db.close()
+
+        self.assertIn("Test Designer", [candidate["source_text"] for candidate in candidates])
 
     def test_worker_refresh_source_config_matches_python_sources(self) -> None:
         worker_source = (PROJECT_ROOT / "src" / "worker.js").read_text()

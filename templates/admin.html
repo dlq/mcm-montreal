@@ -107,6 +107,21 @@
             {% endfor %}
           </div>
         </div>
+        <div class="border-t border-ink/10 pt-5">
+          <h2 class="text-xl font-semibold tracking-tight">{{ t("admin.design_entity_review") }}</h2>
+          <div class="mt-4 space-y-3">
+            {% for candidate in design_entity_candidates %}
+              <div class="border-b border-ink/10 py-4 text-sm">
+                <p class="font-medium">{{ candidate.source_text }}</p>
+                <p class="mt-1 text-xs uppercase tracking-[0.2em] text-ink/50">
+                  {{ candidate.source_role }} · {{ candidate.listing_count }} listings
+                </p>
+              </div>
+            {% else %}
+              <p class="text-sm text-ink/60">{{ t("admin.no_design_entity_candidates") }}</p>
+            {% endfor %}
+          </div>
+        </div>
       </div>
     </div>
   </section>

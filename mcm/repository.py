@@ -136,7 +136,7 @@ def query_listings(
     limit: int | None = None,
     offset: int = 0,
 ) -> list[dict[str, Any]]:
-    clauses, params = listing_query_parts(filters, include_inactive)
+    clauses, params = listing_query_parts(db, filters, include_inactive)
     sort = sanitize_sort(filters.get("sort", "curated"))
     order_by = {
         "curated": CURATED_SOURCE_ORDER_SQL,
@@ -181,7 +181,7 @@ def count_listings(
     filters: dict[str, str],
     include_inactive: bool,
 ) -> int:
-    clauses, params = listing_query_parts(filters, include_inactive)
+    clauses, params = listing_query_parts(db, filters, include_inactive)
     row = db.execute(
         f"""
         SELECT COUNT(*) AS count
@@ -195,6 +195,7 @@ def count_listings(
 
 
 def listing_query_parts(
+    db: sqlite3.Connection,
     filters: dict[str, str],
     include_inactive: bool,
 ) -> tuple[list[str], list[Any]]:
@@ -205,7 +206,7 @@ def listing_query_parts(
         clauses.append(f"{EFFECTIVE_AVAILABILITY_SQL} != 'removed'")
         clauses.append(f"({EFFECTIVE_AVAILABILITY_SQL} != 'sold_out' OR {PROVEN_SOLD_OUT_SQL})")
     if filters.get("q"):
-        search_clause, search_params = search_query_clause(filters["q"])
+        search_clause, search_params = search_query_clause(db, filters["q"])
         if search_clause:
             clauses.append(search_clause)
             params.extend(search_params)
@@ -222,7 +223,7 @@ def listing_query_parts(
         clauses.append("l.materials LIKE ?")
         params.append(f"%{filters['material']}%")
     if filters.get("designer"):
-        aliases = designer_filter_query_values(filters["designer"])
+        aliases = design_entity_filter_query_values(db, filters["designer"])
         if not aliases:
             clauses.append("0=1")
             return clauses, params
@@ -250,20 +251,30 @@ def listing_query_parts(
     return clauses, params
 
 
-def search_query_clause(query: str) -> tuple[str, list[str]]:
+def search_query_clause(db: sqlite3.Connection, query: str) -> tuple[str, list[str]]:
     groups = search_term_groups(query)
-    if not groups:
+    entity_aliases = design_entity_filter_query_values(db, query)
+    if not groups and not entity_aliases:
         return "", []
     clauses = []
     params: list[str] = []
-    for group in groups:
-        term_clauses = []
-        for term in group:
-            for field in SEARCH_FIELDS:
-                term_clauses.append(f"{field} LIKE ?")
-                params.append(f"%{term}%")
-        clauses.append(f"({' OR '.join(term_clauses)})")
-    return f"({' AND '.join(clauses)})", params
+    if groups:
+        group_clauses = []
+        for group in groups:
+            term_clauses = []
+            for term in group:
+                for field in SEARCH_FIELDS:
+                    term_clauses.append(f"{field} LIKE ?")
+                    params.append(f"%{term}%")
+            group_clauses.append(f"({' OR '.join(term_clauses)})")
+        clauses.append(f"({' AND '.join(group_clauses)})")
+    if entity_aliases:
+        entity_clauses = []
+        for alias in entity_aliases:
+            entity_clauses.append("(l.designer LIKE ? OR l.maker LIKE ?)")
+            params.extend([f"%{alias}%", f"%{alias}%"])
+        clauses.append(f"({' OR '.join(entity_clauses)})")
+    return f"({' OR '.join(clauses)})", params
 
 
 def search_term_groups(query: str) -> list[list[str]]:
@@ -438,6 +449,7 @@ def list_location_filter_values(db: sqlite3.Connection) -> list[str]:
 
 
 def list_designer_filter_values(db: sqlite3.Connection) -> list[str]:
+    alias_map = design_entity_alias_map(db)
     rows = db.execute(
         """
         SELECT designer, maker
@@ -456,6 +468,8 @@ def list_designer_filter_values(db: sqlite3.Connection) -> list[str]:
             key = normalized_filter_key(cleaned)
             if not key:
                 continue
+            cleaned = alias_map.get(key, cleaned)
+            key = normalized_filter_key(cleaned)
             payload = candidates.setdefault(key, {"value": cleaned, "count": 0})
             payload["count"] += 1
             if len(cleaned) < len(payload["value"]):
@@ -519,6 +533,197 @@ def designer_filter_query_values(value: str) -> list[str]:
             values.add(canonical)
             values.add(alias_key)
     return sorted(values, key=lambda candidate: (normalized_filter_key(candidate), candidate))
+
+
+def design_entity_filter_query_values(db: sqlite3.Connection, value: str) -> list[str]:
+    values = set(designer_filter_query_values(value))
+    normalized = normalized_filter_key(value)
+    if normalized:
+        rows = db.execute(
+            """
+            SELECT de.canonical_name, dea.alias
+            FROM design_entities de
+            JOIN design_entity_aliases dea ON dea.entity_id = de.id
+            WHERE de.normalized_name = ?
+               OR dea.normalized_alias = ?
+            """,
+            (normalized, normalized),
+        ).fetchall()
+        for row in rows:
+            values.add(str(row["canonical_name"]))
+            values.add(str(row["alias"]))
+        if rows:
+            entity_names = {str(row["canonical_name"]) for row in rows}
+            for entity_name in entity_names:
+                for alias in design_entity_aliases_for_name(db, entity_name):
+                    values.add(alias)
+    return sorted(
+        {
+            value
+            for value in values
+            if clean_designer_filter_value(value) or normalized_filter_key(value)
+        },
+        key=lambda candidate: (normalized_filter_key(candidate), candidate),
+    )
+
+
+def design_entity_aliases_for_name(db: sqlite3.Connection, canonical_name: str) -> list[str]:
+    normalized = normalized_filter_key(canonical_name)
+    rows = db.execute(
+        """
+        SELECT dea.alias
+        FROM design_entities de
+        JOIN design_entity_aliases dea ON dea.entity_id = de.id
+        WHERE de.normalized_name = ?
+        ORDER BY dea.alias
+        """,
+        (normalized,),
+    ).fetchall()
+    return [str(row["alias"]) for row in rows]
+
+
+def design_entity_alias_map(db: sqlite3.Connection) -> dict[str, str]:
+    rows = db.execute(
+        """
+        SELECT dea.normalized_alias, de.canonical_name
+        FROM design_entity_aliases dea
+        JOIN design_entities de ON de.id = dea.entity_id
+        WHERE de.review_status = 'approved'
+        """
+    ).fetchall()
+    return {str(row["normalized_alias"]): str(row["canonical_name"]) for row in rows}
+
+
+def create_design_entity(
+    db: sqlite3.Connection,
+    *,
+    canonical_name: str,
+    entity_type: str = "creator",
+    aliases: list[str] | None = None,
+    notes: str = "",
+) -> int:
+    canonical = canonical_name.strip()
+    if not canonical:
+        raise ValueError("canonical_name is required")
+    normalized = normalized_filter_key(canonical)
+    now = datetime.now(UTC).isoformat()
+    clean_type = (
+        entity_type if entity_type in {"creator", "designer", "maker", "brand"} else "creator"
+    )
+    db.execute(
+        """
+        INSERT INTO design_entities (
+            canonical_name, normalized_name, entity_type, review_status, notes, created_at, updated_at
+        ) VALUES (?, ?, ?, 'approved', ?, ?, ?)
+        ON CONFLICT(normalized_name) DO UPDATE SET
+            canonical_name = excluded.canonical_name,
+            entity_type = excluded.entity_type,
+            notes = excluded.notes,
+            updated_at = excluded.updated_at
+        """,
+        (canonical, normalized, clean_type, notes.strip(), now, now),
+    )
+    row = db.execute(
+        "SELECT id FROM design_entities WHERE normalized_name = ?",
+        (normalized,),
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("Failed to create design entity")
+    entity_id = int(row["id"])
+    for alias in sorted({canonical, *(aliases or [])}, key=normalized_filter_key):
+        alias_text = alias.strip()
+        alias_key = normalized_filter_key(alias_text)
+        if not alias_text or not alias_key:
+            continue
+        db.execute(
+            """
+            INSERT INTO design_entity_aliases (
+                entity_id, alias, normalized_alias, source, created_at
+            ) VALUES (?, ?, ?, 'admin', ?)
+            ON CONFLICT(normalized_alias) DO UPDATE SET
+                entity_id = excluded.entity_id,
+                alias = excluded.alias,
+                source = excluded.source
+            """,
+            (entity_id, alias_text, alias_key, now),
+        )
+    db.commit()
+    return entity_id
+
+
+def add_listing_design_entity_evidence(
+    db: sqlite3.Connection,
+    *,
+    listing_id: int,
+    entity_id: int,
+    evidence_role: str,
+    source_text: str,
+) -> None:
+    clean_source = source_text.strip()
+    if not clean_source:
+        return
+    role = evidence_role if evidence_role in {"designer", "maker", "creator"} else "creator"
+    now = datetime.now(UTC).isoformat()
+    db.execute(
+        """
+        INSERT INTO listing_design_entity_evidence (
+            listing_id, entity_id, evidence_role, source_text, normalized_source_text,
+            confidence, review_status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, 1.0, 'approved', ?, ?)
+        ON CONFLICT(listing_id, entity_id, evidence_role, normalized_source_text) DO UPDATE SET
+            source_text = excluded.source_text,
+            review_status = excluded.review_status,
+            updated_at = excluded.updated_at
+        """,
+        (listing_id, entity_id, role, clean_source, normalized_filter_key(clean_source), now, now),
+    )
+    db.commit()
+
+
+def list_design_entity_candidates(
+    db: sqlite3.Connection, *, limit: int = 20
+) -> list[dict[str, Any]]:
+    rows = db.execute(
+        """
+        SELECT
+            source_text,
+            source_role,
+            COUNT(*) AS listing_count
+        FROM (
+            SELECT designer AS source_text, 'designer' AS source_role
+            FROM listings
+            WHERE designer != ''
+              AND is_active = 1
+            UNION ALL
+            SELECT maker AS source_text, 'maker' AS source_role
+            FROM listings
+            WHERE maker != ''
+              AND is_active = 1
+        )
+        WHERE source_text != ''
+        GROUP BY source_text, source_role
+        ORDER BY listing_count DESC, source_text ASC
+        LIMIT ?
+        """,
+        (limit * 4,),
+    ).fetchall()
+    candidates = []
+    alias_map = design_entity_alias_map(db)
+    for row in rows:
+        source_text = str(row["source_text"])
+        if normalized_filter_key(source_text) in alias_map:
+            continue
+        cleaned = clean_designer_filter_value(source_text)
+        if not cleaned:
+            continue
+        candidates.append(
+            {
+                "source_text": source_text,
+                "source_role": str(row["source_role"]),
+                "listing_count": int(row["listing_count"]),
+            }
+        )
+    return candidates[:limit]
 
 
 def normalized_filter_key(value: str) -> str:
