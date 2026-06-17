@@ -35,7 +35,8 @@ What is already implemented in code:
 - localized parsed price display independent of source language
 - canonical public metadata, sitemap, robots.txt, category landing pages, and JSON-LD foundations
 - first-party aggregate page-view analytics
-- normalized designer/maker/entity review primitives in admin workflows
+- normalized designer/maker/entity admin workflows with canonical entities, aliases, listing-level
+  evidence, candidate approve/reject review, and a searchable canonical-entity index
 - default sans-serif item-title and wordmark styling while the display-font direction is reconsidered
 - admin review tools for refreshes, failures, overrides, and duplicate inspection
 

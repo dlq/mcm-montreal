@@ -82,6 +82,14 @@ data.
 - Release tag `0.2.6`: accessibility baseline, branded 404 page, final `0.2.x` discovery/source
   cleanup, Mostly Danish weighting kept explicit in the curated feed, and stabilization.
 - Release tag `0.3.0`: dependency/tooling maintenance and release-hygiene baseline.
+- Release tag `0.3.1`: UI quality and accessibility polish for mobile listing detail ordering,
+  filter drawer ergonomics, image states, HTMX update state, touch targets, reduced motion, and
+  contrast checks.
+- Release tag `0.3.2`: editorial and SEO technical foundation with category landing pages,
+  canonical metadata, sitemap/robots, localized social metadata, `hreflang`, and JSON-LD.
+- Release tag `0.3.3`: normalized design data admin foundation with canonical creator entities,
+  aliases, listing-level evidence, candidate approve/reject review, searchable entity index, and
+  alias-aware discovery.
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
 - Current named production container instance: `web-d1-v12`
