@@ -1,6 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Montreal MCM">
-  <rect width="512" height="512" fill="#f7f6f2"/>
-  <circle cx="256" cy="256" r="220" fill="#1c1c1a"/>
-  <path fill="#f7f6f2" d="M122 164h56l34 102 34-102h56v192h-42V226l-32 96h-31l-32-96v130h-43V164Zm216 0h62v192h-46V209h-16v-45Z"/>
-  <rect x="136" y="380" width="240" height="12" rx="6" fill="#4d5f4a"/>
+  <rect width="512" height="512" fill="#1c1c1a"/>
+  <text x="256" y="303"
+        fill="#f7f6f2"
+        font-family="Arial Black, Arial, Helvetica, sans-serif"
+        font-size="184"
+        font-weight="900"
+        textLength="392"
+        lengthAdjust="spacingAndGlyphs"
+        text-anchor="middle">MCM</text>
+  <rect x="90" y="348" width="332" height="14" rx="7" fill="#4d5f4a"/>
 </svg>

@@ -1,9 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="MCM">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Montreal MCM">
   <rect width="64" height="64" fill="#1c1c1a"/>
-  <text x="32" y="39"
-        fill="#ffffff"
-        font-family="Arial, Helvetica, sans-serif"
-        font-size="20"
-        font-weight="700"
-        text-anchor="middle">MCM</text>
+  <text x="32" y="45"
+        fill="#f7f6f2"
+        font-family="Arial Black, Arial, Helvetica, sans-serif"
+        font-size="44"
+        font-weight="900"
+        text-anchor="middle">M</text>
+  <rect x="15" y="50" width="34" height="3" rx="1.5" fill="#4d5f4a"/>
 </svg>
