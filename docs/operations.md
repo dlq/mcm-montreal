@@ -252,6 +252,23 @@ npm run deploy
   Cloudflare registry pushes are healthy again, so the image includes the Flask fail-fast guard in
   production.
 
+### 2026-06-17 0.3.3 Release State
+
+- `0.3.3` is tagged and pushed to `main`.
+- D1 migration `0013_design_entity_candidate_reviews.sql` was applied successfully to production.
+- The full pre-deploy check set passed: `uv run python -m unittest tests.test_app`,
+  `npm run test:worker`, `npm run lint`, and `npm run deploy:dry-run`.
+- Three full `npm run deploy` attempts built the `mcm-montreal==0.3.3` container image locally but
+  failed while pushing layers to Cloudflare's managed registry with closed-connection or
+  `tls: bad record MAC` errors.
+- Production health remained good after the failed rollout attempts: `/healthz`, homepage,
+  apex domain, `www` redirect, admin no-auth, and external cron checks passed through
+  `npm run prod:health`.
+- Cloudflare still reported the MCM container application image as
+  `registry.cloudflare.com/69e18e0e0020ea19ff9f8bbfd035c20c/montreal-mcm-mcmcontainer:0430b2dc`
+  with `updated_at` `2026-06-13T18:28:11.656Z`, so the new Python/template container image is not
+  live yet. Retry a normal full `npm run deploy` before treating `0.3.3` as deployed.
+
 ## Admin Access
 
 Admin routes are public only when `MCM_ADMIN_TOKEN` is unset, which should be local development only.
