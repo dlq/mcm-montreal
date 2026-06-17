@@ -227,6 +227,18 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             updated_at TEXT NOT NULL,
             UNIQUE(listing_id, entity_id, evidence_role, normalized_source_text)
         );
+        CREATE TABLE IF NOT EXISTS design_entity_candidate_reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_role TEXT NOT NULL,
+            source_text TEXT NOT NULL,
+            normalized_source_text TEXT NOT NULL,
+            review_status TEXT NOT NULL,
+            entity_id INTEGER,
+            notes TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE(source_role, normalized_source_text)
+        );
         CREATE INDEX IF NOT EXISTS idx_listing_availability_events_listing
             ON listing_availability_events(listing_id, observed_at);
         CREATE INDEX IF NOT EXISTS idx_listing_availability_events_transition
@@ -256,6 +268,8 @@ def ensure_schema(db: sqlite3.Connection) -> None:
             ON listing_design_entity_evidence(listing_id, evidence_role);
         CREATE INDEX IF NOT EXISTS idx_listing_design_entity_evidence_entity
             ON listing_design_entity_evidence(entity_id);
+        CREATE INDEX IF NOT EXISTS idx_design_entity_candidate_reviews_status
+            ON design_entity_candidate_reviews(review_status, source_role);
         """
     )
     ensure_shop_address_columns(db)

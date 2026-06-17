@@ -2371,6 +2371,154 @@ class AppTests(unittest.TestCase):
 
         self.assertIn("Test Designer", [candidate["source_text"] for candidate in candidates])
 
+    def test_admin_can_bulk_approve_design_entity_candidate(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                shop = db.execute("SELECT id FROM shops WHERE slug = 'morceau'").fetchone()
+                self.assertIsNotNone(shop)
+                db.execute(
+                    """
+                    INSERT INTO listings (
+                        source_shop_id, source_listing_url, source_listing_key, title,
+                        normalized_title, price_raw, price_value, currency, primary_image_url,
+                        additional_image_urls, availability_status, shipping_scope,
+                        ships_to_montreal, shipping_note, last_seen_at, last_checked_at,
+                        first_seen_at, category, subcategory, designer, maker, era, materials,
+                        dimensions_text, width, depth, height, condition_text, location_text,
+                        source_description, ingest_source_type, parse_confidence,
+                        dedupe_group_id, is_active, is_featured, manual_notes,
+                        availability_override, category_override
+                    ) VALUES (
+                        ?, 'https://example.com/listing-two', 'sample-key-two', 'Second Sample Chair',
+                        'second sample chair', '$300', 300, 'CAD', '', '[]',
+                        'available', 'canada', 1, 'Ships to Montreal',
+                        '2026-05-06T00:00:00+00:00', '2026-05-06T00:00:00+00:00',
+                        '2026-05-06T00:00:00+00:00', 'lounge chairs', '', 'Test Designer',
+                        '', '1960s', 'teak', '', NULL, NULL, NULL, 'Good', 'Montreal, QC',
+                        'Sample description', 'test', 1.0, '', 1, 0, '', '', ''
+                    )
+                    """,
+                    (shop["id"],),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.post(
+            "/admin/design-entity-candidates",
+            data={
+                "action": "approve",
+                "source_text": "Test Designer",
+                "source_role": "designer",
+                "canonical_name": "Test Designer Studio",
+                "entity_type": "creator",
+                "aliases": "T. Designer",
+                "notes": "Reviewed from bulk candidate queue.",
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Test Designer Studio", response.text)
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                evidence = db.execute(
+                    """
+                    SELECT de.canonical_name, ldee.source_text, ldee.evidence_role, COUNT(*) AS count
+                    FROM listing_design_entity_evidence ldee
+                    JOIN design_entities de ON de.id = ldee.entity_id
+                    WHERE ldee.source_text = 'Test Designer'
+                    GROUP BY de.canonical_name, ldee.source_text, ldee.evidence_role
+                    """
+                ).fetchone()
+                aliases = db.execute(
+                    """
+                    SELECT alias
+                    FROM design_entity_aliases
+                    WHERE normalized_alias IN ('test designer', 't designer')
+                    ORDER BY alias
+                    """
+                ).fetchall()
+            finally:
+                db.close()
+
+        self.assertIsNotNone(evidence)
+        assert evidence is not None
+        self.assertEqual("Test Designer Studio", evidence["canonical_name"])
+        self.assertEqual("designer", evidence["evidence_role"])
+        self.assertEqual(2, evidence["count"])
+        self.assertEqual(["T. Designer", "Test Designer"], [row["alias"] for row in aliases])
+
+    def test_admin_can_reject_design_entity_candidate(self) -> None:
+        response = self.client.post(
+            "/admin/design-entity-candidates",
+            data={
+                "action": "reject",
+                "source_text": "Test Designer",
+                "source_role": "designer",
+                "notes": "Parser artifact, not a real creator.",
+            },
+            follow_redirects=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                candidates = list_design_entity_candidates(db)
+                review = db.execute(
+                    """
+                    SELECT review_status, notes
+                    FROM design_entity_candidate_reviews
+                    WHERE normalized_source_text = 'test designer'
+                      AND source_role = 'designer'
+                    """
+                ).fetchone()
+            finally:
+                db.close()
+
+        self.assertNotIn("Test Designer", [candidate["source_text"] for candidate in candidates])
+        self.assertIsNotNone(review)
+        assert review is not None
+        self.assertEqual("rejected", review["review_status"])
+        self.assertEqual("Parser artifact, not a real creator.", review["notes"])
+
+    def test_admin_design_entity_index_lists_and_searches_entities(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                entity_id = create_design_entity(
+                    db,
+                    canonical_name="Test Designer Studio",
+                    entity_type="creator",
+                    aliases=["Test Designer", "T. Designer"],
+                    notes="Reviewed canonical record.",
+                )
+                db.execute(
+                    """
+                    INSERT INTO listing_design_entity_evidence (
+                        listing_id, entity_id, evidence_role, source_text,
+                        normalized_source_text, confidence, review_status,
+                        created_at, updated_at
+                    ) VALUES (?, ?, 'designer', 'Test Designer', 'test designer', 1.0,
+                        'approved', '2026-06-17T00:00:00+00:00', '2026-06-17T00:00:00+00:00')
+                    """,
+                    (self.listing_id, entity_id),
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.get("/admin/design-entities?q=t.%20designer")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Canonical design entities", response.text)
+        self.assertIn("Test Designer Studio", response.text)
+        self.assertIn("T. Designer", response.text)
+        self.assertIn("1 listing", response.text)
+
     def test_worker_refresh_source_config_matches_python_sources(self) -> None:
         worker_source = (PROJECT_ROOT / "src" / "worker.js").read_text()
         source_slugs_match = re.search(

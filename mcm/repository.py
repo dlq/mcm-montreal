@@ -680,6 +680,98 @@ def add_listing_design_entity_evidence(
     db.commit()
 
 
+def review_design_entity_candidate(
+    db: sqlite3.Connection,
+    *,
+    source_text: str,
+    source_role: str,
+    review_status: str,
+    entity_id: int | None = None,
+    notes: str = "",
+) -> None:
+    clean_text = source_text.strip()
+    normalized = normalized_filter_key(clean_text)
+    if not clean_text or not normalized:
+        return
+    clean_role = source_role if source_role in {"designer", "maker"} else "designer"
+    clean_status = review_status if review_status in {"approved", "rejected"} else "rejected"
+    now = datetime.now(UTC).isoformat()
+    db.execute(
+        """
+        INSERT INTO design_entity_candidate_reviews (
+            source_role, source_text, normalized_source_text, review_status, entity_id,
+            notes, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(source_role, normalized_source_text) DO UPDATE SET
+            source_text = excluded.source_text,
+            review_status = excluded.review_status,
+            entity_id = excluded.entity_id,
+            notes = excluded.notes,
+            updated_at = excluded.updated_at
+        """,
+        (
+            clean_role,
+            clean_text,
+            normalized,
+            clean_status,
+            entity_id,
+            notes.strip(),
+            now,
+            now,
+        ),
+    )
+    db.commit()
+
+
+def approve_design_entity_candidate(
+    db: sqlite3.Connection,
+    *,
+    source_text: str,
+    source_role: str,
+    canonical_name: str,
+    entity_type: str = "creator",
+    aliases: list[str] | None = None,
+    notes: str = "",
+) -> tuple[int, int]:
+    clean_text = source_text.strip()
+    clean_role = source_role if source_role in {"designer", "maker"} else "designer"
+    entity_aliases = [clean_text, *(aliases or [])]
+    entity_id = create_design_entity(
+        db,
+        canonical_name=canonical_name,
+        entity_type=entity_type,
+        aliases=entity_aliases,
+        notes=notes,
+    )
+    field = "designer" if clean_role == "designer" else "maker"
+    rows = db.execute(
+        f"""
+        SELECT id
+        FROM listings
+        WHERE is_active = 1
+          AND {field} = ?
+        """,
+        (clean_text,),
+    ).fetchall()
+    for row in rows:
+        add_listing_design_entity_evidence(
+            db,
+            listing_id=int(row["id"]),
+            entity_id=entity_id,
+            evidence_role=clean_role,
+            source_text=clean_text,
+        )
+    review_design_entity_candidate(
+        db,
+        source_text=clean_text,
+        source_role=clean_role,
+        review_status="approved",
+        entity_id=entity_id,
+        notes=notes,
+    )
+    return entity_id, len(rows)
+
+
 def list_design_entity_candidates(
     db: sqlite3.Connection, *, limit: int = 20
 ) -> list[dict[str, Any]]:
@@ -709,9 +801,23 @@ def list_design_entity_candidates(
     ).fetchall()
     candidates = []
     alias_map = design_entity_alias_map(db)
+    reviewed_rows = db.execute(
+        """
+        SELECT source_role, normalized_source_text
+        FROM design_entity_candidate_reviews
+        WHERE review_status IN ('approved', 'rejected')
+        """
+    ).fetchall()
+    reviewed = {
+        (str(row["source_role"]), str(row["normalized_source_text"])) for row in reviewed_rows
+    }
     for row in rows:
         source_text = str(row["source_text"])
-        if normalized_filter_key(source_text) in alias_map:
+        source_role = str(row["source_role"])
+        normalized = normalized_filter_key(source_text)
+        if normalized in alias_map:
+            continue
+        if (source_role, normalized) in reviewed:
             continue
         cleaned = clean_designer_filter_value(source_text)
         if not cleaned:
@@ -719,11 +825,64 @@ def list_design_entity_candidates(
         candidates.append(
             {
                 "source_text": source_text,
-                "source_role": str(row["source_role"]),
+                "source_role": source_role,
                 "listing_count": int(row["listing_count"]),
             }
         )
     return candidates[:limit]
+
+
+def list_design_entities(
+    db: sqlite3.Connection, *, query: str = "", limit: int = 100
+) -> list[dict[str, Any]]:
+    entity_rows = db.execute(
+        """
+        SELECT
+            de.id,
+            de.canonical_name,
+            de.entity_type,
+            de.review_status,
+            de.notes,
+            COUNT(DISTINCT ldee.id) AS evidence_count,
+            COUNT(DISTINCT ldee.listing_id) AS listing_count
+        FROM design_entities de
+        LEFT JOIN listing_design_entity_evidence ldee ON ldee.entity_id = de.id
+        GROUP BY de.id
+        ORDER BY de.canonical_name
+        """
+    ).fetchall()
+    alias_rows = db.execute(
+        """
+        SELECT entity_id, alias
+        FROM design_entity_aliases
+        ORDER BY alias
+        """
+    ).fetchall()
+    aliases_by_entity: dict[int, list[str]] = {}
+    for row in alias_rows:
+        aliases_by_entity.setdefault(int(row["entity_id"]), []).append(str(row["alias"]))
+
+    query_key = normalized_filter_key(query)
+    entities = []
+    for row in entity_rows:
+        entity_id = int(row["id"])
+        aliases = aliases_by_entity.get(entity_id, [])
+        searchable = [str(row["canonical_name"]), *aliases]
+        if query_key and not any(query_key in normalized_filter_key(value) for value in searchable):
+            continue
+        entities.append(
+            {
+                "id": entity_id,
+                "canonical_name": str(row["canonical_name"]),
+                "entity_type": str(row["entity_type"]),
+                "review_status": str(row["review_status"]),
+                "notes": str(row["notes"]),
+                "aliases": aliases,
+                "evidence_count": int(row["evidence_count"]),
+                "listing_count": int(row["listing_count"]),
+            }
+        )
+    return entities[:limit]
 
 
 def normalized_filter_key(value: str) -> str:

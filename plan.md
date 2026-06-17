@@ -609,9 +609,10 @@ Proposed release slices:
   JSON-LD for the site, listing collections, shop pages, and product-like listing detail pages.
   Deeper hand-written buyer guides, richer shop profiles, and future designer/material/entity pages
   should happen as later editorial/entity work rather than block the `0.3.2` slice.
-- `0.3.3`: normalized design data. The first data-quality/admin slice adds canonical
+- `0.3.3`: normalized design data. Done for the admin/data-quality foundation. This slice adds canonical
   creator/designer/maker entities, aliases, listing-level source evidence, admin review from listing
-  inspection, and alias-aware discovery. Public entity pages remain deferred until reviewed data
+  inspection, an admin candidate queue with bulk approve/reject handling, a searchable canonical
+  entity index, and alias-aware discovery. Public entity pages remain deferred until reviewed data
   quality is high enough. A follow-up production ops fix on 2026-06-17 made durable anonymous
   favourite identity stable across container restarts by passing `MCM_SECRET_KEY` into the container
   and rotating traffic to `web-d1-v12`. The fix was deployed through the Worker-only
@@ -735,6 +736,18 @@ Completed in first `0.3.3` slice:
 - added admin listing workflow for saving a canonical creator from parsed source designer/maker text
 - added an admin candidate queue for unreviewed designer/maker strings
 - made designer/maker filters and search use reviewed aliases from normalized design entities
+
+Completed in final `0.3.3` admin/data-quality slice:
+
+- added `design_entity_candidate_reviews` so rejected parser artifacts and approved raw strings do
+  not keep resurfacing in the candidate queue
+- added bulk candidate approval from the admin dashboard so one reviewed raw designer/maker string
+  can create or update a canonical entity and attach evidence to all matching active listings
+- added candidate rejection for obvious junk or parser artifacts
+- added a searchable admin canonical-entity index showing aliases, evidence counts, listing counts,
+  review status, and notes
+- kept public designer/material/entity pages deferred until enough reviewed canonical data exists to
+  make those pages useful rather than thin programmatic SEO
 
 ### Broader Marketplace Strategy
 

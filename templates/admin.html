@@ -108,7 +108,13 @@
           </div>
         </div>
         <div class="border-t border-ink/10 pt-5">
-          <h2 class="text-xl font-semibold tracking-tight">{{ t("admin.design_entity_review") }}</h2>
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 class="text-xl font-semibold tracking-tight">{{ t("admin.design_entity_review") }}</h2>
+            <a class="text-sm font-semibold underline decoration-ink/25 underline-offset-4"
+               href="{{ url_for('admin_design_entities') }}">
+              {{ t("admin.view_design_entities") }}
+            </a>
+          </div>
           <div class="mt-4 space-y-3">
             {% for candidate in design_entity_candidates %}
               <div class="border-b border-ink/10 py-4 text-sm">
@@ -116,6 +122,44 @@
                 <p class="mt-1 text-xs uppercase tracking-[0.2em] text-ink/50">
                   {{ candidate.source_role }} · {{ candidate.listing_count }} listings
                 </p>
+                <div class="mt-4 grid gap-3 lg:grid-cols-[1fr,auto]">
+                  <form class="grid gap-3 md:grid-cols-2"
+                        method="post"
+                        action="{{ url_for('admin_design_entity_candidate_update') }}">
+                    <input type="hidden" name="action" value="approve">
+                    <input type="hidden" name="source_text" value="{{ candidate.source_text }}">
+                    <input type="hidden" name="source_role" value="{{ candidate.source_role }}">
+                    <input class="border border-ink/15 bg-white px-3 py-2"
+                           name="canonical_name"
+                           value="{{ candidate.source_text }}"
+                           aria-label="{{ t('admin.canonical_name') }}">
+                    <select class="border border-ink/15 bg-white px-3 py-2"
+                            name="entity_type"
+                            aria-label="{{ t('admin.entity_type') }}">
+                      {% for entity_type in ["creator", "designer", "maker", "brand"] %}
+                        <option value="{{ entity_type }}">{{ entity_type }}</option>
+                      {% endfor %}
+                    </select>
+                    <textarea class="min-h-20 border border-ink/15 bg-white px-3 py-2 md:col-span-2"
+                              name="aliases"
+                              aria-label="{{ t('admin.aliases') }}">{{ candidate.source_text }}</textarea>
+                    <textarea class="min-h-20 border border-ink/15 bg-white px-3 py-2 md:col-span-2"
+                              name="notes"
+                              aria-label="{{ t('admin.notes') }}"></textarea>
+                    <button class="button-primary px-4 py-2 text-sm md:w-fit" type="submit">
+                      {{ t("admin.approve_candidate") }}
+                    </button>
+                  </form>
+                  <form method="post"
+                        action="{{ url_for('admin_design_entity_candidate_update') }}">
+                    <input type="hidden" name="action" value="reject">
+                    <input type="hidden" name="source_text" value="{{ candidate.source_text }}">
+                    <input type="hidden" name="source_role" value="{{ candidate.source_role }}">
+                    <input type="hidden" name="notes" value="">
+                    <button class="min-h-11 border border-ink/15 px-4 py-2 text-sm font-semibold"
+                            type="submit">{{ t("admin.reject_candidate") }}</button>
+                  </form>
+                </div>
               </div>
             {% else %}
               <p class="text-sm text-ink/60">{{ t("admin.no_design_entity_candidates") }}</p>

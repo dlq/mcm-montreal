@@ -65,6 +65,7 @@ from .refresh import (
 from .repository import (
     add_listing_design_entity_evidence,
     admin_sources,
+    approve_design_entity_candidate,
     build_listing_filters,
     count_listings,
     create_design_entity,
@@ -74,6 +75,7 @@ from .repository import (
     get_listing,
     get_shop,
     get_shop_by_slug,
+    list_design_entities,
     list_design_entity_candidates,
     list_failures,
     list_favourite_listings,
@@ -86,6 +88,7 @@ from .repository import (
     list_shops,
     list_sitemap_listings,
     query_listings,
+    review_design_entity_candidate,
     save_search,
     toggle_favourite_listing,
     toggle_favourite_shop,
@@ -945,6 +948,51 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             duplicates=find_duplicate_candidates(g.db),
             design_entity_candidates=list_design_entity_candidates(g.db),
         )
+
+    @app.get("/admin/design-entities")
+    @admin_required(app)
+    def admin_design_entities() -> str:
+        query = request.args.get("q", "").strip()
+        return render_template(
+            "admin_design_entities.html",
+            entities=list_design_entities(g.db, query=query),
+            query=query,
+        )
+
+    @app.post("/admin/design-entity-candidates")
+    @admin_required(app)
+    def admin_design_entity_candidate_update() -> Any:
+        source_text = request.form.get("source_text", "").strip()
+        source_role = request.form.get("source_role", "").strip()
+        action = request.form.get("action", "").strip()
+        if not source_text or source_role not in {"designer", "maker"}:
+            return redirect(url_for("admin_dashboard"))
+        if action == "approve":
+            canonical_name = request.form.get("canonical_name", "").strip() or source_text
+            aliases = [
+                alias.strip()
+                for alias in request.form.get("aliases", "").splitlines()
+                if alias.strip()
+            ]
+            approve_design_entity_candidate(
+                g.db,
+                source_text=source_text,
+                source_role=source_role,
+                canonical_name=canonical_name,
+                entity_type=request.form.get("entity_type", "creator").strip(),
+                aliases=aliases,
+                notes=request.form.get("notes", "").strip(),
+            )
+            return redirect(url_for("admin_design_entities", q=canonical_name))
+        if action == "reject":
+            review_design_entity_candidate(
+                g.db,
+                source_text=source_text,
+                source_role=source_role,
+                review_status="rejected",
+                notes=request.form.get("notes", "").strip(),
+            )
+        return redirect(url_for("admin_dashboard"))
 
     @app.post("/admin/refresh")
     @admin_required(app)
