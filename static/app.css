@@ -2,6 +2,7 @@
   --paper: #fbf4ec;
   --paper-light: #fffaf5;
   --paper-card: #f8edde;
+  --listing-card-radius: 0.375rem;
   --accent-blue: #2f647f;
   --accent-blue-strong: #224d63;
   --accent-green: #4d6548;
@@ -273,6 +274,7 @@ textarea:focus {
 
 .listing-card-body {
   background: var(--paper-light);
+  border-radius: 0 0 var(--listing-card-radius) var(--listing-card-radius);
   padding: 1rem;
 }
 
@@ -409,6 +411,7 @@ textarea:focus {
 
 .listing-image-frame {
   background: var(--paper-light);
+  border-radius: var(--listing-card-radius) var(--listing-card-radius) 0 0;
   position: relative;
 }
 
