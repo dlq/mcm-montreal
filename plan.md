@@ -614,10 +614,10 @@ Proposed release slices:
   inspection, and alias-aware discovery. Public entity pages remain deferred until reviewed data
   quality is high enough. A follow-up production ops fix on 2026-06-17 made durable anonymous
   favourite identity stable across container restarts by passing `MCM_SECRET_KEY` into the container
-  and rotating traffic to `web-d1-v12`. The Worker-only deploy succeeded with version
-  `8c270e9d-8c8a-4a36-9486-66aec55b8e3c`; full container image rollout is still pending because
-  Cloudflare's managed registry returned repeated `tls: bad record MAC` errors while pushing image
-  layers.
+  and rotating traffic to `web-d1-v12`. The fix was deployed through the Worker-only
+  `npx wrangler deploy --containers-rollout none` path; full container image rollout is still
+  pending because Cloudflare's managed registry returned repeated `tls: bad record MAC` errors while
+  pushing image layers.
 - `0.3.4`: analytics, monitoring, and operational visibility. Use the new first-party aggregate page
   view table alongside Cloudflare Analytics, add a compact admin/operations readout for daily usage
   and top paths, decide whether first-party outbound-click/feature metrics are needed, and decide

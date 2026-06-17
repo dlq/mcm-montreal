@@ -233,8 +233,8 @@ npm run deploy
 - Full container deploy dry-run passed, but three full deploy attempts failed during Cloudflare
   registry layer pushes with `tls: bad record MAC`.
 - `npx wrangler deploy --containers-rollout none` successfully deployed the Worker-side fix and
-  rotation. Active deployed Worker version after the rotation is
-  `8c270e9d-8c8a-4a36-9486-66aec55b8e3c`.
+  rotation. Later docs-only Worker deploys may supersede the version id without changing the
+  runtime app/container behavior.
 - `npm run prod:health` passed after deployment, and an isolated live favourites
   save/read/remove workflow succeeded with a long-lived `mcm_anonymous_id` cookie.
 - A future Python/template/container-image change should use a normal full `npm run deploy` once
