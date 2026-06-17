@@ -5,6 +5,17 @@ const CONTAINER_PORT = 8080;
 const DEFAULT_APEX_HOSTNAME = "montrealmcm.ca";
 const DEFAULT_WWW_HOSTNAME = "www.montrealmcm.ca";
 const DEFAULT_D1_BRIDGE_URL = "https://montreal-mcm.dalaque.workers.dev/internal/d1/query";
+const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Montreal MCM">
+  <rect width="64" height="64" fill="#1c1c1a"/>
+  <text x="32" y="45"
+        fill="#f7f6f2"
+        font-family="Arial Black, Arial, Helvetica, sans-serif"
+        font-size="44"
+        font-weight="900"
+        text-anchor="middle">M</text>
+  <rect x="15" y="50" width="34" height="3" rx="1.5" fill="#4d5f4a"/>
+</svg>
+`;
 const REFRESH_CRON = "23 9 * * *";
 const REFRESH_MONITOR_CRON = "23 11 * * *";
 const SOURCE_SLUGS = [
@@ -96,6 +107,9 @@ export default {
     if (url.pathname.startsWith("/cron/")) {
       return new Response("Not found", { status: 404 });
     }
+    if (url.pathname === "/static/favicon.svg") {
+      return staticSvgResponse(FAVICON_SVG);
+    }
     return fetchContainer(request, env);
   },
 
@@ -123,6 +137,15 @@ export default {
     }
   },
 };
+
+function staticSvgResponse(svg) {
+  return new Response(svg, {
+    headers: {
+      "content-type": "image/svg+xml; charset=utf-8",
+      "cache-control": "public, max-age=300",
+    },
+  });
+}
 
 async function queryD1(request, env) {
   const authorization = request.headers.get("authorization") || "";
