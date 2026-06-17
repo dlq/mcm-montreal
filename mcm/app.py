@@ -348,7 +348,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         template_folder=str(BASE_DIR / "templates"),
         static_folder=str(BASE_DIR / "static"),
     )
-    app.config["SECRET_KEY"] = os.environ.get("MCM_SECRET_KEY", f"dev-{secrets.token_hex(16)}")
+    secret_key = os.environ.get("MCM_SECRET_KEY", "")
+    has_configured_secret_key = bool(secret_key)
+    app.config["SECRET_KEY"] = secret_key or f"dev-{secrets.token_hex(16)}"
     app.config["DATABASE"] = str(DB_PATH)
     app.config["D1_BRIDGE_URL"] = os.environ.get("D1_BRIDGE_URL", "")
     app.config["D1_BRIDGE_TOKEN"] = os.environ.get("D1_BRIDGE_TOKEN", "")
@@ -359,7 +361,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         os.environ.get("MCM_PUBLIC_BASE_URL", DEFAULT_PUBLIC_BASE_URL)
     )
     if test_config:
+        has_configured_secret_key = has_configured_secret_key or bool(test_config.get("SECRET_KEY"))
         app.config.update(test_config)
+    if app.config.get("D1_BRIDGE_URL") and not has_configured_secret_key:
+        raise RuntimeError("MCM_SECRET_KEY is required when D1_BRIDGE_URL is configured")
     app.jinja_env.globals["freshness_label"] = freshness_label
     app.jinja_env.globals["json_loads"] = json.loads
 

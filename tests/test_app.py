@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 import tempfile
@@ -179,6 +180,13 @@ class AppTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
+
+    def test_d1_mode_requires_configured_secret_key(self) -> None:
+        with (
+            patch.dict(os.environ, {}, clear=True),
+            self.assertRaisesRegex(RuntimeError, "MCM_SECRET_KEY"),
+        ):
+            create_app({"TESTING": True, "D1_BRIDGE_URL": "https://example.test/internal/d1/query"})
 
     def test_core_routes_return_success(self) -> None:
         for path in [

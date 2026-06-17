@@ -55,6 +55,7 @@ export class McmContainer extends Container {
       APP_PORT: "8080",
       D1_BRIDGE_URL: env.D1_BRIDGE_URL || DEFAULT_D1_BRIDGE_URL,
       D1_BRIDGE_TOKEN: env.D1_BRIDGE_TOKEN || "",
+      MCM_SECRET_KEY: env.MCM_SECRET_KEY || "",
       MCM_ADMIN_TOKEN: env.MCM_ADMIN_TOKEN || "",
       MCM_EXPOSE_TIMING_HEADERS: env.MCM_EXPOSE_TIMING_HEADERS || "",
     };

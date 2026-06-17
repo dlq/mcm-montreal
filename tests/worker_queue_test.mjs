@@ -176,9 +176,13 @@ const workerModule = await loadWorkerModule();
 const worker = workerModule.default;
 
 {
-  const container = new workerModule.McmContainer({}, { MCM_EXPOSE_TIMING_HEADERS: "1" });
+  const container = new workerModule.McmContainer(
+    {},
+    { MCM_EXPOSE_TIMING_HEADERS: "1", MCM_SECRET_KEY: "stable-secret" },
+  );
 
   assert.equal(container.envVars.MCM_EXPOSE_TIMING_HEADERS, "1");
+  assert.equal(container.envVars.MCM_SECRET_KEY, "stable-secret");
 }
 
 {
