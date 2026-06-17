@@ -206,8 +206,10 @@ Use distinct long random values for every secret. `MCM_SECRET_KEY` signs anonymo
 `D1_BRIDGE_TOKEN` protects the private Worker-to-D1 bridge, `MCM_ADMIN_TOKEN` protects admin and
 deep-health routes, and `MCM_MANUAL_REFRESH_TOKEN` protects the operations-only Worker endpoint
 that forces the same per-source refresh path used by cron. Do not commit secret values, and do not
-reuse the admin token as the manual-refresh token. See `docs/operations.md` for the token inventory
-and rotation checklist.
+reuse the admin token as the manual-refresh token. The Worker must pass `MCM_SECRET_KEY` into the
+container so durable anonymous favourites remain recognizable across container restarts. See
+`docs/operations.md` for the token inventory, rotation checklist, and the current production
+deployment state.
 
 Apply D1 migrations:
 
@@ -228,6 +230,12 @@ Deploy:
 npm run deploy:dry-run
 npm run deploy
 ```
+
+If Cloudflare's managed container registry is failing during image layer upload and the change is
+Worker-only or only updates container environment propagation for the already-deployed image,
+`npx wrangler deploy --containers-rollout none` can publish the Worker without rolling the image.
+Document that state and follow up with a normal full deploy before relying on Python/template image
+changes.
 
 Verify production:
 

@@ -1,7 +1,7 @@
 # Montreal MCM Resale Research
 
 Date: 2026-04-26
-Updated: 2026-05-15
+Updated: 2026-06-17
 
 ## Goal
 
@@ -28,11 +28,14 @@ What is already implemented in code:
 - listings feed with filters and sorting
 - listing detail pages
 - shop index and shop detail pages
-- favourites for listings and shops
-- browser-session favourites without a real account flow yet
+- durable anonymous favourites for listings and shops
+- saved shops and saved searches
 - freshness and availability labels
 - bilingual English / French UI
 - localized parsed price display independent of source language
+- canonical public metadata, sitemap, robots.txt, category landing pages, and JSON-LD foundations
+- first-party aggregate page-view analytics
+- normalized designer/maker/entity review primitives in admin workflows
 - default sans-serif item-title and wordmark styling while the display-font direction is reconsidered
 - admin review tools for refreshes, failures, overrides, and duplicate inspection
 
@@ -44,8 +47,26 @@ What is currently live in the source layer:
 4. Le Centerpiece
 5. Maison Singulier
 6. Yardsale Vintage
-7. BOND Vintage
-8. Chez Lamothe
+7. Chez Lamothe
+8. Habitat Mobilier
+9. Green Wall Vintage
+10. Mostly Danish
+
+Production deployment note, checked on 2026-06-17:
+
+- Production runs through Cloudflare Worker `montreal-mcm`, container app
+  `montreal-mcm-mcmcontainer`, and D1 database `montreal-mcm`.
+- Durable anonymous favourites depend on a stable `MCM_SECRET_KEY` secret being passed from the
+  Worker into the Flask container. Commit `fedce73` added the Worker env pass-through and a Flask
+  D1-mode fail-fast guard. Commit `57de715` rotated the named container instance from `web-d1-v11`
+  to `web-d1-v12` so production starts a fresh runtime with the secret available.
+- Full container image deployment on 2026-06-17 repeatedly failed while pushing layers to
+  Cloudflare's managed registry with `tls: bad record MAC`. The Worker-only deploy path
+  `npx wrangler deploy --containers-rollout none` succeeded because the already-deployed Flask
+  image can read `MCM_SECRET_KEY`; the needed live change was in Worker env propagation.
+- Production smoke checks after deploy returned `/healthz` 200, homepage/custom-domain 200,
+  `www` apex redirect 301, admin no-auth 401, external cron 404, and a live isolated favourites
+  save/read/remove workflow succeeded with a 400-day `mcm_anonymous_id` cookie.
 
 This means the research priority is no longer just "what should we build first." It is now also
 "which sources are stable enough to keep refreshing, and what caveats should the parsers carry?"
@@ -90,10 +111,12 @@ Current implementation status:
 
 - Morceau, Showroom Montreal, Montreal Moderne, and Le Centerpiece became the original launch
   sources.
-- Maison Singulier, Yardsale Vintage, BOND Vintage, and Chez Lamothe were added next as the first
-  local expansion sources.
-- Green Wall Vintage, Vintage Home Boutique, Urbano Vintej, Banana Lab, 1stDibs, Chairish, and
-  Pamono remain later candidates rather than current active sources.
+- Maison Singulier, Yardsale Vintage, and Chez Lamothe were added next as the first local expansion
+  sources. BOND Vintage was later removed from the active refresh set.
+- Habitat Mobilier, Green Wall Vintage, and Mostly Danish were added in the regional source
+  expansion. Mostly Danish refreshes gradually across bounded chunks.
+- Vintage Home Boutique, Urbano Vintej, Banana Lab, 1stDibs, Chairish, and Pamono remain later
+  candidates rather than current active sources.
 - Chez Lamothe graduated from manual/later-review to automated ingestion after the Square Online
   storefront API path was verified.
 
@@ -108,10 +131,15 @@ non-local sources.
 
 ### Implemented Local Expansion Set
 
+Implemented in May 2026:
+
 1. Maison Singulier
 2. Yardsale Vintage
 3. BOND Vintage
 4. Chez Lamothe
+
+BOND Vintage was later removed from the active source set because it had no active public listings
+for a sustained period. The current active source set is listed in the project status note above.
 
 Reason:
 
@@ -299,8 +327,8 @@ Implementation findings on 2026-05-18:
 The build has answered the "is this product worth prototyping?" question. The main research questions still worth validating are now:
 
 1. Which active source parsers are stable enough to rely on without frequent seed fallback?
-2. Do Maison Singulier and BOND Vintage keep enough current, non-archive inventory online to remain
-   useful active sources?
+2. Does Maison Singulier keep enough current, non-archive inventory online to remain useful, and
+   should BOND Vintage be reconsidered only if active furniture inventory returns?
 3. Do Yardsale Vintage and Chez Lamothe keep their current public data paths stable enough for
    automated refreshes?
 4. Which sources mix in too much lighting or decor for a furniture-first launch?
@@ -617,8 +645,8 @@ Why:
 - strongest fit with the Montreal-first thesis
 - similar local curation caliber to the current four active sources
 - local pickup or local delivery is enough for these Montreal/agglomeration shops
-- Maison Singulier, Yardsale Vintage, BOND Vintage, and Chez Lamothe now have local automated
-  ingestion paths
+- Maison Singulier, Yardsale Vintage, BOND Vintage, and Chez Lamothe received automated ingestion
+  paths; BOND was later removed from active refresh because it had no active public listings
 - Chez Lamothe should be monitored for Square frontend API path/cache-version changes
 
 ### Phase 3: Regional Road-Trip Direct Shops
@@ -845,12 +873,15 @@ Original launch sources:
 3. Montreal Moderne
 4. Le Centerpiece
 
-Recently added local-first sources:
+Local-first expansion sources added after launch:
 
 1. Maison Singulier
 2. Yardsale Vintage
 3. BOND Vintage
 4. Chez Lamothe
+
+BOND Vintage was later removed from active refresh. The current active source set is tracked in the
+project status note near the top of this file.
 
 ## Showroom Montreal French Parser Evidence
 

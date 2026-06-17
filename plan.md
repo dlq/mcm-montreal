@@ -39,7 +39,7 @@ The live `0.1.x` MVP includes:
 - listings feed with filtering and sorting
 - listing detail pages
 - shop index and shop detail pages
-- browser-session favourite listings and shops
+- durable anonymous favourite listings and shops
 - freshness and availability labels
 - bilingual English / French UI
 - localized parsed price display, first-seen dates, and plural-aware listing counts
@@ -84,6 +84,7 @@ data.
 - Release tag `0.3.0`: dependency/tooling maintenance and release-hygiene baseline.
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
+- Current named production container instance: `web-d1-v12`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
 - Custom domains configured in Wrangler: `montrealmcm.ca`, `www.montrealmcm.ca`
 - `www.montrealmcm.ca` redirects to `montrealmcm.ca` in the Worker.
@@ -93,6 +94,9 @@ data.
 - No R2 bucket is configured for this app.
 - Worker secrets required: `MCM_SECRET_KEY`, `D1_BRIDGE_TOKEN`, `MCM_ADMIN_TOKEN`,
   `MCM_MANUAL_REFRESH_TOKEN`
+- `MCM_SECRET_KEY` is passed from the Worker into the container. Flask refuses D1 mode without an
+  explicitly configured secret so durable anonymous identity cookies cannot silently fall back to a
+  per-process development key.
 - Refresh cron trigger: `23 9 * * *`, which is 09:23 UTC daily. In Montreal/Toronto time that is
   5:23 AM during daylight time and 4:23 AM during standard time.
 - Refresh monitor cron trigger: `23 11 * * *`, which is 11:23 UTC daily. In Montreal/Toronto time
@@ -368,6 +372,11 @@ Completed in `0.2.x`:
   `owner_key` in D1
 - listing and shop favourites moved behind the anonymous owner key
 - old session favourite IDs migrate into the durable favourite tables when the browser returns
+- `MCM_SECRET_KEY` must remain stable and available inside the production container. On 2026-06-17,
+  commit `fedce73` added Worker-to-container secret propagation and a Flask D1-mode fail-fast guard;
+  commit `57de715` rotated production traffic to named container instance `web-d1-v12` so a fresh
+  runtime receives that env var. Existing favourite cookies minted under an older random
+  container-local key may still be orphaned once, but new cookies should survive container restarts.
 
 ### Price And Availability History
 
@@ -600,10 +609,15 @@ Proposed release slices:
   JSON-LD for the site, listing collections, shop pages, and product-like listing detail pages.
   Deeper hand-written buyer guides, richer shop profiles, and future designer/material/entity pages
   should happen as later editorial/entity work rather than block the `0.3.2` slice.
-- `0.3.3`: normalized design data. In progress. The first data-quality/admin slice adds canonical
+- `0.3.3`: normalized design data. The first data-quality/admin slice adds canonical
   creator/designer/maker entities, aliases, listing-level source evidence, admin review from listing
   inspection, and alias-aware discovery. Public entity pages remain deferred until reviewed data
-  quality is high enough.
+  quality is high enough. A follow-up production ops fix on 2026-06-17 made durable anonymous
+  favourite identity stable across container restarts by passing `MCM_SECRET_KEY` into the container
+  and rotating traffic to `web-d1-v12`. The Worker-only deploy succeeded with version
+  `8c270e9d-8c8a-4a36-9486-66aec55b8e3c`; full container image rollout is still pending because
+  Cloudflare's managed registry returned repeated `tls: bad record MAC` errors while pushing image
+  layers.
 - `0.3.4`: analytics, monitoring, and operational visibility. Use the new first-party aggregate page
   view table alongside Cloudflare Analytics, add a compact admin/operations readout for daily usage
   and top paths, decide whether first-party outbound-click/feature metrics are needed, and decide

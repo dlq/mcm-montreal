@@ -42,7 +42,9 @@ Token inventory:
 
 - `MCM_SECRET_KEY`: Flask signing key for durable anonymous identity cookies. Rotating it signs out
   anonymous browser identities and can orphan existing favourites/saved searches unless a migration
-  strategy is added. Rotate only for compromise or a planned identity reset.
+  strategy is added. Rotate only for compromise or a planned identity reset. The Worker must pass
+  this secret into the container through `McmContainer.envVars`; Flask D1 mode fails fast when the
+  secret is missing so production cannot silently mint per-process anonymous identity cookies.
 - `D1_BRIDGE_TOKEN`: private Worker-to-container token used by Flask to call the Worker D1 bridge.
   It is not for humans. Rotate after any suspected exposure, after changing bridge access patterns,
   or during scheduled credential hygiene.
@@ -106,6 +108,25 @@ Optional Worker variables:
 ```bash
 npm run deploy
 ```
+
+For normal deploys, prefer the full deploy above so Worker code and the Cloudflare Container image
+roll forward together. After a successful deploy, run `npm run prod:health` and verify live
+container instances:
+
+```bash
+npx wrangler containers list --json
+npx wrangler containers instances a0332ee8-4188-4133-ab94-266ecfae1c4c --json
+```
+
+The current MCM container application id is `a0332ee8-4188-4133-ab94-266ecfae1c4c`, and the current
+named production instance is `web-d1-v12`.
+
+If the deploy builds locally but fails while pushing layers to Cloudflare's managed registry with a
+transient error such as `tls: bad record MAC`, retry the full deploy first. If the required change is
+Worker-only or only changes container environment variables consumed by the already-deployed image,
+`npx wrangler deploy --containers-rollout none` can deploy the Worker without rebuilding or updating
+the container image. Use this deliberately and document the resulting state, because Python code or
+template changes still require a later successful full container rollout.
 
 ## Health Checks
 
@@ -191,14 +212,34 @@ The `backups/` directory is ignored by git.
 1. Confirm whether `/healthz` or only `/admin/healthz` is failing.
 2. Check Worker and container logs in Cloudflare.
 3. If D1 is failing but `/healthz` works, verify `D1_BRIDGE_TOKEN` and the D1 binding.
-4. Revert to the previous known-good commit and redeploy:
+4. If a deploy is correct but production still appears stale, check the named container instance in
+   `src/worker.js`. Rotating the name, for example from `web-d1-v11` to `web-d1-v12`, forces a fresh
+   container runtime after deployment.
+5. Revert to the previous known-good commit and redeploy:
 
 ```bash
 git revert <bad-commit>
 npm run deploy
 ```
 
-5. Re-run the health checks above.
+6. Re-run the health checks above.
+
+### 2026-06-17 Deployment State
+
+- Commits `fedce73` and `57de715` are pushed to `main`.
+- `fedce73` passes `MCM_SECRET_KEY` from the Worker into the Flask container and adds a Flask
+  D1-mode fail-fast guard for missing `MCM_SECRET_KEY`.
+- `57de715` rotates the named production container instance to `web-d1-v12`.
+- Full container deploy dry-run passed, but three full deploy attempts failed during Cloudflare
+  registry layer pushes with `tls: bad record MAC`.
+- `npx wrangler deploy --containers-rollout none` successfully deployed the Worker-side fix and
+  rotation. Active deployed Worker version after the rotation is
+  `8c270e9d-8c8a-4a36-9486-66aec55b8e3c`.
+- `npm run prod:health` passed after deployment, and an isolated live favourites
+  save/read/remove workflow succeeded with a long-lived `mcm_anonymous_id` cookie.
+- A future Python/template/container-image change should use a normal full `npm run deploy` once
+  Cloudflare registry pushes are healthy again, so the image includes the Flask fail-fast guard in
+  production.
 
 ## Admin Access
 
