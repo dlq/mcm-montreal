@@ -103,6 +103,17 @@ Optional Worker variables:
 - `MCM_EXPOSE_TIMING_HEADERS`: set to `1` only for temporary diagnostics if response timing headers
   are needed; request timings are logged even when these headers are off
 
+If the release adds files under `migrations/`, apply D1 migrations before deploying application code
+that depends on the new schema:
+
+```bash
+npx wrangler d1 migrations apply montreal-mcm --remote
+```
+
+For `0.3.3`, migration `0013_design_entity_candidate_reviews.sql` must be applied before the
+container serving the new admin dashboard code is rolled out, because the admin design-entity queue
+reads `design_entity_candidate_reviews`.
+
 ## Deploy
 
 ```bash
