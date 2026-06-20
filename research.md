@@ -859,6 +859,94 @@ Main takeaway:
 - This pass did not cover `Facebook Marketplace`; treat Facebook Marketplace overlap as unresolved until a logged-in/location-aware manual check is done.
 - That strengthens the case that a Montreal-focused direct-source aggregator could still add real value.
 
+## 2026-06-17 Refresh
+
+Checked on: 2026-06-17
+
+Goal of this refresh:
+
+- confirm whether the 2026-04-26 shortlist still looks current
+- check whether any obvious new Montreal shops should be added
+- verify whether the strongest direct-shop sources still expose usable public listing pages
+
+### Refresh Summary
+
+The 2026-04-26 core thesis still holds.
+
+No clearly better new Montreal shop emerged in this refresh that should displace the current launch shortlist.
+
+The direct-source-first recommendation still looks correct.
+
+### Still Strong
+
+#### Morceau
+
+- The vintage collection remains live and clearly structured.
+- It still exposes public item cards with images, titles, and prices.
+- It still states `INTERNATIONAL SHIPPING AVAILABLE ON ALL ITEMS`.
+- Source checked: https://www.morceau.ca/collections/vintage
+
+#### Showroom Montreal
+
+- The `Nouveautés` page remains live and exposes item names, dimensions, images, and many visible prices.
+- Some listings still use `Contactez nous pour les détails`, so price coverage remains mixed rather than complete.
+- Source checked: https://www.showroommtl.com/nouveaute
+
+#### Montreal Moderne
+
+- The `Nouveautés` page remains live.
+- It still appears to expose current inventory and sold-state behavior directly on-page.
+- Source checked: https://www.montrealmoderne.com/nouveaut%C3%A9s
+
+#### Green Wall Vintage
+
+- Delivery policy remains explicit: `Currently, we are offering delivery across Canada and the United States on all our items.`
+- This remains a valid non-Montreal source for Montreal-bound inventory if the scope includes strong Ontario or regional direct sources.
+- Source checked: https://www.greenwallvintage.ca/pages/delivery
+
+### Mixed / Needs Care
+
+#### Maison Singulier
+
+- It remains clearly Montreal-based.
+- The collections structure is still public and usable.
+- However, the visible `/collections` page is heavily archive-oriented and shows many `Out of stock` items with `$0.00`.
+- That weakens it as a clean current-inventory source unless current/live collections are targeted carefully.
+- Sources checked:
+  - https://maisonsingulier.com/pages/about
+  - https://maisonsingulier.com/collections
+
+#### Chez Lamothe
+
+- It remains worth tracking as a Montreal shop.
+- This refresh did not produce stronger public-web evidence that it should outrank the cleaner first-wave sources.
+- Keep it in the research set, but do not promote it above the clearest public inventory feeds based on this refresh alone.
+
+### New Montreal Shops From This Refresh
+
+No new Montreal shop found in this refresh should be promoted above the current shortlist.
+
+Recent editorial/local-guide coverage continues to reinforce existing names such as:
+
+- Morceau
+- Antiquites Van Horne
+
+But this refresh did not uncover a clearly better new crawl-ready source than the ones already in the document.
+
+### Refresh Conclusion
+
+As of 2026-06-17:
+
+- keep the 2026-04-26 shortlist as the baseline
+- keep `Morceau`, `Showroom Montreal`, and `Montreal Moderne` as the core Montreal-first direct-shop targets
+- keep `Green Wall Vintage` as a strong regional source if the scope includes Canada-friendly non-Montreal shops
+- keep `Maison Singulier` in scope, but treat it as a mixed current-vs-archive source
+- do not expand the launch source list just because of this refresh alone
+
+The main outcome of this refresh is not a new source.
+
+It is increased confidence that the original direct-source-first approach still makes sense on 2026-06-17.
+
 ## Bottom Line
 
 If the goal is to launch quickly with useful Montreal-relevant inventory, the best starting move is:
