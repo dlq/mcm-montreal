@@ -1,7 +1,7 @@
 # Montreal MCM Roadmap
 
 Date: 2026-04-26
-Updated: 2026-06-12
+Updated: 2026-06-20
 Current line: `0.3.x`
 
 ## Purpose
@@ -90,6 +90,8 @@ data.
 - Release tag `0.3.3`: normalized design data admin foundation with canonical creator entities,
   aliases, listing-level evidence, candidate approve/reject review, searchable entity index, and
   alias-aware discovery.
+- Release tag `0.3.4`: backend analytics and operations visibility with first-party aggregate
+  page-view summaries, an admin analytics readout, and explicit telemetry/alerting decisions.
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
 - Current named production container instance: `web-d1-v12`
@@ -627,10 +629,13 @@ Proposed release slices:
   `npx wrangler deploy --containers-rollout none` path; full container image rollout is still
   pending because Cloudflare's managed registry returned repeated `tls: bad record MAC` errors while
   pushing image layers.
-- `0.3.4`: analytics, monitoring, and operational visibility. Use the new first-party aggregate page
-  view table alongside Cloudflare Analytics, add a compact admin/operations readout for daily usage
-  and top paths, decide whether first-party outbound-click/feature metrics are needed, and decide
-  whether external uptime or alert delivery is justified.
+- `0.3.4`: analytics, monitoring, and operational visibility. Done for the backend/admin
+  foundation. The app now has repository helpers over `analytics_page_views`, a protected
+  `/admin/analytics` readout for daily page views, page-type mix, and top paths, plus explicit
+  telemetry decisions for outbound clicks, saved-search usage, install/PWA signals, Cloudflare
+  Analytics comparison, and external uptime alerts. No new client-side event collection was added in
+  this slice; first-party page views remain aggregate daily counts without raw IPs, user agents,
+  referers, or per-user analytics identity.
 - `0.3.5`: security, privacy, and resilience hardening. Add practical response headers such as HSTS,
   `X-Content-Type-Options`, frame protection, `Referrer-Policy`, and `Permissions-Policy`; decide
   whether a CSP is feasible while Tailwind/HTMX/Leaflet are still CDN-loaded; add
@@ -862,14 +867,14 @@ Questions to settle:
 
 Likely work:
 
-- review Cloudflare Web Analytics after enough production usage has accumulated
-- compare Cloudflare HTTP analytics with first-party page-view aggregates after production has
-  accumulated enough rows
-- add first-party usage readouts for daily page views, page type mix, top listing paths, top shop
-  paths, and top category paths
-- decide whether to add first-party event collection for outbound source clicks and high-level
-  feature usage
-- decide whether external uptime/alerting belongs in operations before source count or traffic grows
+- review Cloudflare Web Analytics manually after enough production usage has accumulated; treat it
+  as directional context rather than importing edge metrics into D1
+- use the new first-party admin analytics readout for daily page views, page type mix, and top paths
+  during release and promotion checks
+- keep first-party event collection for outbound source clicks, saved-search usage, and install/PWA
+  signals deferred until there is a concrete product question and a small aggregate event schema
+- keep external uptime/alert delivery deferred while `npm run prod:health`, refresh-job audits, and
+  admin source status are enough for the current traffic/source scale
 - keep analytics privacy-preserving and avoid user accounts unless alerts or trade features require
   stronger identity
 - decide whether Website Spec privacy items imply any new app behavior, especially privacy policy

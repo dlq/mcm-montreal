@@ -13,6 +13,8 @@
       <form method="post" action="{{ url_for('admin_refresh') }}">
         <button class="button-primary px-5 py-3 text-sm" type="submit">{{ t("admin.refresh") }}</button>
       </form>
+      <a class="text-sm font-semibold underline decoration-ink/25 underline-offset-4"
+         href="{{ url_for('admin_analytics') }}">{{ t("admin.analytics_link") }}</a>
     </div>
     <div class="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
       <div class="space-y-6">

@@ -25,6 +25,9 @@ from mcm.refresh import (
 )
 from mcm.repository import (
     create_design_entity,
+    list_analytics_daily_totals,
+    list_analytics_page_type_totals,
+    list_analytics_top_paths,
     list_design_entity_candidates,
     list_filter_values,
     query_listings,
@@ -433,6 +436,110 @@ class AppTests(unittest.TestCase):
                 db.close()
 
         self.assertEqual(count, 0)
+
+    def test_analytics_summary_helpers_aggregate_recent_usage(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.executemany(
+                    """
+                    INSERT INTO analytics_page_views (
+                        view_date, page_type, path_key, lang, views, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    [
+                        ("2026-06-18", "home", "/", "en", 3, "2026-06-18T12:00:00+00:00"),
+                        (
+                            "2026-06-18",
+                            "listing",
+                            "/listing/MCM-0001",
+                            "en",
+                            2,
+                            "2026-06-18T12:00:00+00:00",
+                        ),
+                        (
+                            "2026-06-19",
+                            "shop",
+                            "/shops/morceau",
+                            "fr",
+                            4,
+                            "2026-06-19T12:00:00+00:00",
+                        ),
+                        ("2026-06-10", "home", "/", "en", 20, "2026-06-10T12:00:00+00:00"),
+                    ],
+                )
+                db.commit()
+
+                daily = list_analytics_daily_totals(db, since_date="2026-06-18")
+                page_types = list_analytics_page_type_totals(db, since_date="2026-06-18")
+                top_paths = list_analytics_top_paths(db, since_date="2026-06-18")
+            finally:
+                db.close()
+
+        self.assertEqual(
+            [
+                {"view_date": "2026-06-19", "views": 4, "path_count": 1},
+                {"view_date": "2026-06-18", "views": 5, "path_count": 2},
+            ],
+            daily,
+        )
+        self.assertEqual(
+            [
+                {"page_type": "shop", "views": 4, "path_count": 1},
+                {"page_type": "home", "views": 3, "path_count": 1},
+                {"page_type": "listing", "views": 2, "path_count": 1},
+            ],
+            page_types,
+        )
+        self.assertEqual(
+            [
+                {
+                    "page_type": "shop",
+                    "path_key": "/shops/morceau",
+                    "lang": "fr",
+                    "views": 4,
+                },
+                {"page_type": "home", "path_key": "/", "lang": "en", "views": 3},
+                {
+                    "page_type": "listing",
+                    "path_key": "/listing/MCM-0001",
+                    "lang": "en",
+                    "views": 2,
+                },
+            ],
+            top_paths,
+        )
+
+    def test_admin_analytics_page_shows_usage_summary(self) -> None:
+        with self.app.app_context():
+            db = get_db(self.app)
+            try:
+                db.execute(
+                    """
+                    INSERT INTO analytics_page_views (
+                        view_date, page_type, path_key, lang, views, updated_at
+                    ) VALUES ('2026-06-19', 'shop', '/shops/morceau', 'en', 7,
+                        '2026-06-19T12:00:00+00:00')
+                    """
+                )
+                db.commit()
+            finally:
+                db.close()
+
+        response = self.client.get("/admin/analytics?since=2026-06-18")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Analytics and operations", response.text)
+        self.assertIn("2026-06-19", response.text)
+        self.assertIn("/shops/morceau", response.text)
+        self.assertIn("7", response.text)
+        self.assertIn("Outbound source clicks: deferred", response.text)
+
+    def test_admin_analytics_page_has_empty_state(self) -> None:
+        response = self.client.get("/admin/analytics?since=2026-06-18")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("No page-view rows for this window.", response.text)
 
     def test_static_script_sends_pageview_beacon(self) -> None:
         script = (PROJECT_ROOT / "static" / "app.js").read_text()

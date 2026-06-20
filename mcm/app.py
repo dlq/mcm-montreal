@@ -7,7 +7,7 @@ import secrets
 import sys
 import time
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import wraps
 from pathlib import Path
 from typing import Any
@@ -75,6 +75,9 @@ from .repository import (
     get_listing,
     get_shop,
     get_shop_by_slug,
+    list_analytics_daily_totals,
+    list_analytics_page_type_totals,
+    list_analytics_top_paths,
     list_design_entities,
     list_design_entity_candidates,
     list_failures,
@@ -99,6 +102,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.environ.get("MCM_DATABASE", BASE_DIR / "data" / "mcm.db"))
 LISTING_PAGE_SIZE = 48
 DEFAULT_PUBLIC_BASE_URL = "https://montrealmcm.ca"
+ANALYTICS_EVENT_DECISIONS = (
+    {
+        "label_key": "admin.analytics_decision.outbound_clicks",
+        "status_key": "admin.analytics_decision_status.deferred",
+        "reason_key": "admin.analytics_decision.outbound_clicks_reason",
+    },
+    {
+        "label_key": "admin.analytics_decision.saved_searches",
+        "status_key": "admin.analytics_decision_status.deferred",
+        "reason_key": "admin.analytics_decision.saved_searches_reason",
+    },
+    {
+        "label_key": "admin.analytics_decision.install_signals",
+        "status_key": "admin.analytics_decision_status.deferred",
+        "reason_key": "admin.analytics_decision.install_signals_reason",
+    },
+    {
+        "label_key": "admin.analytics_decision.cloudflare_comparison",
+        "status_key": "admin.analytics_decision_status.manual_review",
+        "reason_key": "admin.analytics_decision.cloudflare_comparison_reason",
+    },
+    {
+        "label_key": "admin.analytics_decision.uptime_alerts",
+        "status_key": "admin.analytics_decision_status.deferred",
+        "reason_key": "admin.analytics_decision.uptime_alerts_reason",
+    },
+)
 
 
 def static_asset_version(filename: str) -> int:
@@ -209,6 +239,15 @@ def record_analytics_pageview(db: Any, path: str, lang: str) -> None:
         (now.date().isoformat(), page_type, path_key, clean_lang, now.isoformat()),
     )
     db.commit()
+
+
+def analytics_since_date(raw_value: str, *, default_days: int = 14) -> str:
+    if raw_value:
+        try:
+            return datetime.strptime(raw_value, "%Y-%m-%d").date().isoformat()
+        except ValueError:
+            pass
+    return (datetime.now(UTC).date() - timedelta(days=default_days - 1)).isoformat()
 
 
 def base_structured_data(base_url: str) -> dict[str, Any]:
@@ -947,6 +986,19 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             listings=query_listings(g.db, {"sort": "recent_check"}, include_inactive=True)[:40],
             duplicates=find_duplicate_candidates(g.db),
             design_entity_candidates=list_design_entity_candidates(g.db),
+        )
+
+    @app.get("/admin/analytics")
+    @admin_required(app)
+    def admin_analytics() -> str:
+        since_date = analytics_since_date(request.args.get("since", "").strip())
+        return render_template(
+            "admin_analytics.html",
+            since_date=since_date,
+            daily_totals=list_analytics_daily_totals(g.db, since_date=since_date),
+            page_type_totals=list_analytics_page_type_totals(g.db, since_date=since_date),
+            top_paths=list_analytics_top_paths(g.db, since_date=since_date),
+            event_decisions=ANALYTICS_EVENT_DECISIONS,
         )
 
     @app.get("/admin/design-entities")

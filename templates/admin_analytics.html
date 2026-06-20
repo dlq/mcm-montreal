@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}{{ t("admin.analytics_title") }} | Montreal MCM{% endblock %}
+{% block content %}
+  <section class="space-y-6">
+    <div class="catalog-band flex flex-col gap-4 pb-6 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-ink/45">{{ t("nav.admin") }}</p>
+        <h1 class="mt-2 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
+          {{ t("admin.analytics_title") }}
+        </h1>
+        <p class="mt-3 text-sm leading-6 text-ink/60">{{ t("admin.analytics_subtitle") }}</p>
+      </div>
+      <a class="text-sm font-semibold underline decoration-ink/25 underline-offset-4"
+         href="{{ url_for('admin_dashboard') }}">{{ t("admin.back_to_dashboard") }}</a>
+    </div>
+    <form class="flex flex-col gap-3 border-t border-ink/10 pt-5 sm:flex-row"
+          method="get"
+          action="{{ url_for('admin_analytics') }}">
+      <label class="sr-only" for="analytics-since">{{ t("admin.analytics_since") }}</label>
+      <input class="min-h-11 border border-ink/15 bg-white px-4 py-3"
+             id="analytics-since"
+             name="since"
+             type="date"
+             value="{{ since_date }}">
+      <button class="button-primary px-5 py-3 text-sm" type="submit">{{ t("admin.update") }}</button>
+    </form>
+    <div class="grid gap-8 xl:grid-cols-2">
+      <section class="border-t border-ink/10 pt-5">
+        <h2 class="text-xl font-semibold tracking-tight">{{ t("admin.daily_page_views") }}</h2>
+        <div class="mt-4 overflow-x-auto">
+          {% if daily_totals %}
+            <table class="min-w-full text-left text-sm">
+              <thead class="text-ink/50">
+                <tr>
+                  <th class="pb-3 pr-4">{{ t("admin.date") }}</th>
+                  <th class="pb-3 pr-4">{{ t("admin.views") }}</th>
+                  <th class="pb-3 pr-4">{{ t("admin.paths") }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in daily_totals %}
+                  <tr class="border-t border-ink/10">
+                    <td class="py-3 pr-4">{{ row.view_date }}</td>
+                    <td class="py-3 pr-4">{{ row.views }}</td>
+                    <td class="py-3 pr-4">{{ row.path_count }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-sm text-ink/60">{{ t("admin.no_analytics_rows") }}</p>
+          {% endif %}
+        </div>
+      </section>
+      <section class="border-t border-ink/10 pt-5">
+        <h2 class="text-xl font-semibold tracking-tight">{{ t("admin.page_type_mix") }}</h2>
+        <div class="mt-4 overflow-x-auto">
+          {% if page_type_totals %}
+            <table class="min-w-full text-left text-sm">
+              <thead class="text-ink/50">
+                <tr>
+                  <th class="pb-3 pr-4">{{ t("admin.page_type") }}</th>
+                  <th class="pb-3 pr-4">{{ t("admin.views") }}</th>
+                  <th class="pb-3 pr-4">{{ t("admin.paths") }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in page_type_totals %}
+                  <tr class="border-t border-ink/10">
+                    <td class="py-3 pr-4">{{ row.page_type }}</td>
+                    <td class="py-3 pr-4">{{ row.views }}</td>
+                    <td class="py-3 pr-4">{{ row.path_count }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-sm text-ink/60">{{ t("admin.no_analytics_rows") }}</p>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+    <section class="border-t border-ink/10 pt-5">
+      <h2 class="text-xl font-semibold tracking-tight">{{ t("admin.top_paths") }}</h2>
+      <div class="mt-4 overflow-x-auto">
+        {% if top_paths %}
+          <table class="min-w-full text-left text-sm">
+            <thead class="text-ink/50">
+              <tr>
+                <th class="pb-3 pr-4">{{ t("admin.path") }}</th>
+                <th class="pb-3 pr-4">{{ t("admin.page_type") }}</th>
+                <th class="pb-3 pr-4">{{ t("admin.language") }}</th>
+                <th class="pb-3 pr-4">{{ t("admin.views") }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in top_paths %}
+                <tr class="border-t border-ink/10">
+                  <td class="py-3 pr-4 font-mono text-xs">{{ row.path_key }}</td>
+                  <td class="py-3 pr-4">{{ row.page_type }}</td>
+                  <td class="py-3 pr-4">{{ row.lang }}</td>
+                  <td class="py-3 pr-4">{{ row.views }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="text-sm text-ink/60">{{ t("admin.no_analytics_rows") }}</p>
+        {% endif %}
+      </div>
+    </section>
+    <section class="border-t border-ink/10 pt-5">
+      <h2 class="text-xl font-semibold tracking-tight">{{ t("admin.analytics_decisions") }}</h2>
+      <div class="mt-4 space-y-3">
+        {% for decision in event_decisions %}
+          <article class="border-b border-ink/10 pb-3 text-sm">
+            <p class="font-medium">{{ t(decision.label_key) }}: {{ t(decision.status_key) }}</p>
+            <p class="mt-1 text-ink/60">{{ t(decision.reason_key) }}</p>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  </section>
+{% endblock %}
