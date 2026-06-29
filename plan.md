@@ -94,7 +94,7 @@ data.
   page-view summaries, an admin analytics readout, and explicit telemetry/alerting decisions.
 - Cloudflare Worker: `montreal-mcm`
 - Container application: `montreal-mcm-mcmcontainer`
-- Current named production container instance: `web-d1-v12`
+- Current named production container instance: `web-d1-v13`
 - Live workers.dev URL: `https://montreal-mcm.dalaque.workers.dev`
 - Custom domains configured in Wrangler: `montrealmcm.ca`, `www.montrealmcm.ca`
 - `www.montrealmcm.ca` redirects to `montrealmcm.ca` in the Worker.
