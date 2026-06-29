@@ -632,6 +632,7 @@ class AppTests(unittest.TestCase):
         self.assertEqual(sitemap_response.content_type, "application/xml; charset=utf-8")
         self.assertIn("<loc>https://montrealmcm.ca/</loc>", sitemap_response.text)
         self.assertIn("<loc>https://montrealmcm.ca/shops</loc>", sitemap_response.text)
+        self.assertIn("<loc>https://montrealmcm.ca/about</loc>", sitemap_response.text)
         self.assertIn("<loc>https://montrealmcm.ca/shops/morceau</loc>", sitemap_response.text)
         self.assertIn(
             f"<loc>https://montrealmcm.ca/listing/{public_item_number(self.listing_id)}</loc>",
@@ -658,6 +659,38 @@ class AppTests(unittest.TestCase):
         self.assertIn("saved searches", response.text)
         self.assertIn("Cloudflare", response.text)
         self.assertIn("does not store raw IP addresses", response.text)
+
+    def test_about_page_explains_the_project_and_is_discoverable(self) -> None:
+        response = self.client.get("/about")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("About Montreal MCM", response.text)
+        self.assertIn("Montreal-focused vintage/MCM furniture discovery project", response.text)
+        self.assertIn("checks local and regional shops daily", response.text)
+        self.assertIn(
+            "Corrections, shop suggestions, duplicate listings, or feedback", response.text
+        )
+        self.assertIn('href="mailto:hello@montrealmcm.ca"', response.text)
+        self.assertIn("hello@montrealmcm.ca", response.text)
+        self.assertIn('href="https://montrealmcm.ca/about"', response.text)
+
+        home_response = self.client.get("/")
+        self.assertEqual(home_response.status_code, 200)
+        self.assertIn('class="nav-link ', home_response.text)
+        self.assertIn('href="/about">About</a>', home_response.text)
+        self.assertIn("About", home_response.text)
+
+    def test_about_page_renders_in_french(self) -> None:
+        response = self.client.get("/about?lang=fr")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("À propos de Montreal MCM", response.text)
+        self.assertIn("projet montréalais de découverte de mobilier vintage/MCM", response.text)
+        self.assertIn("boutiques locales et régionales chaque jour", response.text)
+        self.assertIn(
+            "Corrections, suggestions de boutiques, doublons ou commentaires", response.text
+        )
+        self.assertIn('href="mailto:hello@montrealmcm.ca"', response.text)
 
     def test_pages_include_canonical_and_description_metadata(self) -> None:
         home_response = self.client.get("/?q=teak&price_max=1000")

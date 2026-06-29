@@ -719,12 +719,15 @@ Current decision:
 
 Likely work:
 
-- create one or more shareable entry URLs beyond the generic listings page
-- write a lightweight explanation of what Montreal MCM is, without turning the app into a marketing
-  homepage
 - prepare a low-key launch message framed as a Montreal-focused vintage/MCM furniture discovery
   project seeking feedback
 - start promotion gradually with local design/vintage people before any broader public post
+
+Completed:
+
+- added `/about` as a lightweight shareable explanation page, linked from the footer and included in
+  the primary navigation/footer and included in the sitemap, without turning the catalogue-first app
+  into a marketing homepage
 
 ### Normalized Design Data
 

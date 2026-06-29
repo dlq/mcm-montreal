@@ -1,6 +1,7 @@
 TRANSLATIONS_FR = {
     "nav.listings": "Annonces",
     "nav.shops": "Boutiques",
+    "nav.about": "À propos",
     "nav.favourites": "Favoris",
     "nav.admin": "Admin",
     "nav.log_in": "Connexion",

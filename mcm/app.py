@@ -718,7 +718,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.get("/sitemap.xml")
     def sitemap_xml() -> Response:
-        static_paths = ["/", "/shops"]
+        static_paths = ["/", "/shops", "/about"]
         urls = [
             {"loc": absolute_public_url(app.config["MCM_PUBLIC_BASE_URL"], path), "lastmod": ""}
             for path in static_paths
@@ -785,6 +785,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/privacy")
     def privacy() -> str:
         return render_template("privacy.html")
+
+    @app.get("/about")
+    def about() -> str:
+        return render_template("about.html")
 
     @app.errorhandler(404)
     def not_found(_error: Exception) -> tuple[str, int]:

@@ -1,6 +1,7 @@
 TRANSLATIONS_EN = {
     "nav.listings": "Listings",
     "nav.shops": "Shops",
+    "nav.about": "About",
     "nav.favourites": "Favourites",
     "nav.admin": "Admin",
     "nav.log_in": "Log in",

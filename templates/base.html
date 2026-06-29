@@ -102,6 +102,9 @@
             <a class="nav-link {% if endpoint in ['shops', 'shop_detail'] %}nav-link-active{% endif %}"
                {% if endpoint in ['shops', 'shop_detail'] %}aria-current="page"{% endif %}
                href="{{ url_for('shops') }}">{{ t("nav.shops") }}</a>
+            <a class="nav-link {% if endpoint == 'about' %}nav-link-active{% endif %}"
+               {% if endpoint == 'about' %}aria-current="page"{% endif %}
+               href="{{ url_for('about') }}">{{ t("nav.about") }}</a>
             <a class="nav-link {% if endpoint == 'favourites' %}nav-link-active{% endif %}"
                {% if endpoint == 'favourites' %}aria-current="page"{% endif %}
                href="{{ url_for('favourites') }}">{{ t("nav.favourites") }}
@@ -114,7 +117,15 @@
       <main id="main-content" tabindex="-1">
         {% block content %}{% endblock %}
       </main>
-      <footer class="mt-14 border-t border-ink/10 pt-6 text-xs text-ink/55">
+      <footer class="mt-14 flex flex-wrap gap-x-5 gap-y-2 border-t border-ink/10 pt-6 text-xs text-ink/55">
+        <a class="underline-offset-4 hover:text-ink hover:underline"
+           href="{{ url_for('about') }}">
+          {% if lang == "fr" %}
+            À propos
+          {% else %}
+            About
+          {% endif %}
+        </a>
         <a class="underline-offset-4 hover:text-ink hover:underline"
            href="{{ url_for('privacy') }}">
           {% if lang == "fr" %}

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}
+  {% if lang == "fr" %}
+    À propos de Montreal MCM | Montreal MCM
+  {% else %}
+    About Montreal MCM | Montreal MCM
+  {% endif %}
+{% endblock %}
+{% block meta_description %}
+  {% if lang == "fr" %}
+    Montreal MCM est un projet montréalais de découverte de mobilier vintage/MCM qui vérifie des boutiques locales et régionales chaque jour.
+  {% else %}
+    Montreal MCM is a Montreal-focused vintage/MCM furniture discovery project that checks local and regional shops daily.
+  {% endif %}
+{% endblock %}
+{% block content %}
+  {% if lang == "fr" %}
+    <section class="max-w-3xl space-y-8">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-clay">À propos</p>
+        <h1 class="mt-3 text-4xl font-semibold tracking-tight text-moss">À propos de Montreal MCM</h1>
+        <p class="mt-4 text-base leading-8 text-ink/70">
+          Montreal MCM est un projet montréalais de découverte de mobilier vintage/MCM. Il vérifie
+          des boutiques locales et régionales chaque jour pour rassembler les nouvelles trouvailles,
+          les baisses de prix, les favoris et les recherches sauvegardées dans un seul endroit.
+        </p>
+      </div>
+      <div class="space-y-5 text-sm leading-7 text-ink/70">
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Ce que le site fait</h2>
+          <p class="mt-2">
+            Le catalogue suit des sources publiques de boutiques de meubles vintage et de revente.
+            Chaque fiche garde son lien original, sa boutique, ses dates de première vue et de dernière
+            vérification, et les changements de prix que Montreal MCM observe avec le temps.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Ce que le site ne fait pas</h2>
+          <p class="mt-2">
+            Montreal MCM ne vend pas les articles, ne réserve pas les pièces et ne remplace pas les
+            informations de la boutique source. Les prix, disponibilités et descriptions doivent
+            toujours être confirmés auprès de la boutique avant un achat.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Pourquoi ça existe</h2>
+          <p class="mt-2">
+            Les bonnes pièces apparaissent dans beaucoup de petites vitrines différentes. Ce site
+            garde la recherche plus calme: filtrer, sauvegarder, comparer, puis aller vers la source.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Contact</h2>
+          <p class="mt-2">
+            Corrections, suggestions de boutiques, doublons ou commentaires:
+            <a class="font-semibold text-moss underline-offset-4 hover:underline"
+               href="mailto:hello@montrealmcm.ca">hello@montrealmcm.ca</a>.
+          </p>
+        </section>
+      </div>
+    </section>
+  {% else %}
+    <section class="max-w-3xl space-y-8">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-clay">About</p>
+        <h1 class="mt-3 text-4xl font-semibold tracking-tight text-moss">About Montreal MCM</h1>
+        <p class="mt-4 text-base leading-8 text-ink/70">
+          Montreal MCM is a Montreal-focused vintage/MCM furniture discovery project. It checks local
+          and regional shops daily so new finds, price changes, favourites, and saved searches can
+          live in one quieter place.
+        </p>
+      </div>
+      <div class="space-y-5 text-sm leading-7 text-ink/70">
+        <section>
+          <h2 class="text-lg font-semibold text-ink">What the site does</h2>
+          <p class="mt-2">
+            The catalogue tracks public shop sources for vintage, resale, and mid-century modern
+            furniture. Each listing keeps its original shop link, source, first-seen date,
+            last-checked date, and price changes Montreal MCM has observed over time.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">What the site does not do</h2>
+          <p class="mt-2">
+            Montreal MCM does not sell the items, reserve pieces, or replace the source shop's own
+            listing. Prices, availability, and descriptions should still be confirmed with the shop
+            before buying.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Why it exists</h2>
+          <p class="mt-2">
+            Good pieces show up across a lot of small storefronts. This site keeps the search calmer:
+            filter, save, compare, and then go to the source.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Contact</h2>
+          <p class="mt-2">
+            Corrections, shop suggestions, duplicate listings, or feedback:
+            <a class="font-semibold text-moss underline-offset-4 hover:underline"
+               href="mailto:hello@montrealmcm.ca">hello@montrealmcm.ca</a>.
+          </p>
+        </section>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}
