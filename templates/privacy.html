@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Privacy | Montreal MCM{% endblock %}
+{% block meta_description %}
+  How Montreal MCM handles anonymous favourites, saved searches, cookies, Cloudflare analytics, and retention.
+{% endblock %}
+{% block content %}
+  {% if lang == "fr" %}
+    <section class="max-w-3xl space-y-8">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-clay">Confidentialité</p>
+        <h1 class="mt-3 text-4xl font-semibold tracking-tight text-moss">Confidentialité</h1>
+        <p class="mt-4 text-base leading-8 text-ink/70">
+          Montreal MCM est un petit site de découverte de mobilier vintage. La collecte de données
+          reste volontairement limitée: assez pour faire fonctionner les favoris, les recherches
+          sauvegardées, les rafraîchissements et les statistiques de base, sans profils publicitaires.
+        </p>
+      </div>
+      <div class="space-y-5 text-sm leading-7 text-ink/70">
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Favoris et recherches sauvegardées</h2>
+          <p class="mt-2">
+            Les favoris anonymes, boutiques sauvegardées et recherches sauvegardées utilisent un
+            cookie de première partie signé. La base de données garde seulement une clé propriétaire
+            hachée avec les identifiants des éléments sauvegardés. Il n'y a pas de compte utilisateur
+            public pour cette fonctionnalité.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Statistiques</h2>
+          <p class="mt-2">
+            Montreal MCM conserve des statistiques agrégées de pages vues par jour, type de page,
+            chemin et langue. Le site ne stocke pas les adresses IP brutes, les agents utilisateurs
+            ou les référents dans cette table applicative. Cloudflare traite aussi les requêtes et journaux
+            nécessaires pour servir, sécuriser et mesurer le site.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Témoins</h2>
+          <p class="mt-2">
+            Le site utilise des témoins de première partie pour la langue, la session Flask et
+            l'identité anonyme durable des favoris/recherches. Aucun script publicitaire tiers n'est
+            chargé par Montreal MCM.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Conservation</h2>
+          <p class="mt-2">
+            Les données sauvegardées anonymes et les statistiques agrégées sont conservées tant
+            qu'elles sont utiles au fonctionnement et à l'amélioration du site. Les données de
+            catalogue proviennent des sources publiques des boutiques et gardent leur provenance.
+          </p>
+        </section>
+      </div>
+    </section>
+  {% else %}
+    <section class="max-w-3xl space-y-8">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-clay">Privacy</p>
+        <h1 class="mt-3 text-4xl font-semibold tracking-tight text-moss">Privacy</h1>
+        <p class="mt-4 text-base leading-8 text-ink/70">
+          Montreal MCM is a small vintage furniture discovery site. Data collection is deliberately
+          limited: enough to run favourites, saved searches, refresh operations, and basic site
+          analytics, without advertising profiles.
+        </p>
+      </div>
+      <div class="space-y-5 text-sm leading-7 text-ink/70">
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Anonymous favourites and saved searches</h2>
+          <p class="mt-2">
+            Anonymous favourites, saved shops, and saved searches use a signed first-party browser
+            cookie. The database stores only a hashed owner key with the IDs of saved items. There
+            are no public user accounts for this feature.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Analytics</h2>
+          <p class="mt-2">
+            Montreal MCM stores aggregate page-view counts by day, page type, path, and language.
+            The app does not store raw IP addresses, user agents, or referrers in this analytics
+            table. Cloudflare also processes requests and logs needed to serve, secure, and measure
+            the site.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Cookies</h2>
+          <p class="mt-2">
+            The site uses first-party cookies for language, the Flask session, and durable anonymous
+            favourite/search identity. Montreal MCM does not load third-party advertising scripts.
+          </p>
+        </section>
+        <section>
+          <h2 class="text-lg font-semibold text-ink">Retention</h2>
+          <p class="mt-2">
+            Anonymous saved data and aggregate analytics are retained while they remain useful for
+            operating and improving the site. Catalogue data comes from public shop sources and keeps
+            source provenance.
+          </p>
+        </section>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

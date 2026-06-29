@@ -643,6 +643,9 @@ Proposed release slices:
   cookies, Cloudflare analytics/logs, and data retention; decide whether cookie consent or Global
   Privacy Control handling is needed for the current analytics posture; and consider a 503
   maintenance page pattern.
+  Initial `0.3.5` pass completed locally: baseline security headers, `/.well-known/security.txt`,
+  a public privacy page, and a footer privacy link are implemented and covered by app tests. CSP,
+  cookie-consent/GPC decisions, and a 503 maintenance pattern remain follow-ups.
 - Later structural hardening and readability:
   - separate public shop concepts from crawl source concepts. `ShopDefinition` should own public shop
     metadata such as name, website, address, location, shipping summary, and display copy;

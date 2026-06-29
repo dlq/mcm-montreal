@@ -114,6 +114,16 @@
       <main id="main-content" tabindex="-1">
         {% block content %}{% endblock %}
       </main>
+      <footer class="mt-14 border-t border-ink/10 pt-6 text-xs text-ink/55">
+        <a class="underline-offset-4 hover:text-ink hover:underline"
+           href="{{ url_for('privacy') }}">
+          {% if lang == "fr" %}
+            Confidentialité
+          {% else %}
+            Privacy
+          {% endif %}
+        </a>
+      </footer>
     </div>
     <script src="{{ url_for('static', filename='app.js', v=static_asset_version('app.js')) }}"
             defer></script>

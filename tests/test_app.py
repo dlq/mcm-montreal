@@ -286,6 +286,17 @@ class AppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("X-MCM-App-Ms", response.headers)
 
+    def test_public_responses_include_security_headers(self) -> None:
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Strict-Transport-Security"], "max-age=31536000")
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+        self.assertEqual(response.headers["Referrer-Policy"], "strict-origin-when-cross-origin")
+        self.assertIn("geolocation=()", response.headers["Permissions-Policy"])
+        self.assertIn("camera=()", response.headers["Permissions-Policy"])
+
     def test_admin_health_checks_database(self) -> None:
         response = self.client.get("/admin/healthz")
         self.assertEqual(response.status_code, 200)
@@ -628,6 +639,25 @@ class AppTests(unittest.TestCase):
         )
         self.assertNotIn("/admin", sitemap_response.text)
         self.assertNotIn("/favourites", sitemap_response.text)
+
+    def test_security_txt_lists_contact_and_policy(self) -> None:
+        response = self.client.get("/.well-known/security.txt")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content_type, "text/plain; charset=utf-8")
+        self.assertIn("Contact: mailto:darcy.quesnel@gmail.com", response.text)
+        self.assertIn("Policy: https://montrealmcm.ca/privacy", response.text)
+        self.assertIn("Canonical: https://montrealmcm.ca/.well-known/security.txt", response.text)
+
+    def test_privacy_page_explains_current_analytics_and_cookies(self) -> None:
+        response = self.client.get("/privacy")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Privacy", response.text)
+        self.assertIn("anonymous favourites", response.text)
+        self.assertIn("saved searches", response.text)
+        self.assertIn("Cloudflare", response.text)
+        self.assertIn("does not store raw IP addresses", response.text)
 
     def test_pages_include_canonical_and_description_metadata(self) -> None:
         home_response = self.client.get("/?q=teak&price_max=1000")

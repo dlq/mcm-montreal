@@ -102,6 +102,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.environ.get("MCM_DATABASE", BASE_DIR / "data" / "mcm.db"))
 LISTING_PAGE_SIZE = 48
 DEFAULT_PUBLIC_BASE_URL = "https://montrealmcm.ca"
+SECURITY_HEADERS = {
+    "Strict-Transport-Security": "max-age=31536000",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+}
 ANALYTICS_EVENT_DECISIONS = (
     {
         "label_key": "admin.analytics_decision.outbound_clicks",
@@ -428,6 +435,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
     @app.after_request
     def persist_request_resources(response: Response) -> Response:
+        for header, value in SECURITY_HEADERS.items():
+            response.headers.setdefault(header, value)
         if request.endpoint in {"static", "service_worker", "web_manifest", "robots_txt"}:
             return response
         response = persist_anonymous_identity(response)
@@ -692,6 +701,21 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             content_type="text/plain; charset=utf-8",
         )
 
+    @app.get("/.well-known/security.txt")
+    def security_txt() -> Response:
+        base_url = app.config["MCM_PUBLIC_BASE_URL"]
+        expires_at = (datetime.now(UTC) + timedelta(days=365)).replace(microsecond=0)
+        body = "\n".join(
+            [
+                "Contact: mailto:darcy.quesnel@gmail.com",
+                f"Expires: {expires_at.isoformat().replace('+00:00', 'Z')}",
+                f"Policy: {absolute_public_url(base_url, '/privacy')}",
+                f"Canonical: {absolute_public_url(base_url, '/.well-known/security.txt')}",
+                "",
+            ]
+        )
+        return Response(body, content_type="text/plain; charset=utf-8")
+
     @app.get("/sitemap.xml")
     def sitemap_xml() -> Response:
         static_paths = ["/", "/shops"]
@@ -757,6 +781,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     @app.get("/offline")
     def offline() -> str:
         return render_template("offline.html")
+
+    @app.get("/privacy")
+    def privacy() -> str:
+        return render_template("privacy.html")
 
     @app.errorhandler(404)
     def not_found(_error: Exception) -> tuple[str, int]:
