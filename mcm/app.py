@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import secrets
 import sys
 import time
@@ -27,6 +26,12 @@ from flask import (
 )
 from werkzeug.datastructures import MultiDict
 
+from .analytics import (
+    analytics_page_type,
+    analytics_path_key,
+    analytics_since_date,
+    record_analytics_pageview,
+)
 from .db import get_db, initialize_storage
 from .i18n import (
     LAUNCH_CATEGORIES,
@@ -62,24 +67,21 @@ from .refresh import (
     refresh_showroom_chunk,
     refresh_source_by_slug,
 )
-from .repository import (
-    add_listing_design_entity_evidence,
+from .repository_analytics import (
+    list_analytics_daily_totals,
+    list_analytics_page_type_totals,
+    list_analytics_top_paths,
+)
+from .repository_catalog import (
     admin_sources,
-    approve_design_entity_candidate,
     build_listing_filters,
     count_listings,
-    create_design_entity,
     delete_saved_search,
     favourite_counts,
     find_duplicate_candidates,
     get_listing,
     get_shop,
     get_shop_by_slug,
-    list_analytics_daily_totals,
-    list_analytics_page_type_totals,
-    list_analytics_top_paths,
-    list_design_entities,
-    list_design_entity_candidates,
     list_failures,
     list_favourite_listings,
     list_favourite_shops,
@@ -91,17 +93,36 @@ from .repository import (
     list_shops,
     list_sitemap_listings,
     query_listings,
-    review_design_entity_candidate,
     save_search,
     toggle_favourite_listing,
     toggle_favourite_shop,
     update_listing_overrides,
 )
+from .repository_design import (
+    add_listing_design_entity_evidence,
+    approve_design_entity_candidate,
+    create_design_entity,
+    list_design_entities,
+    list_design_entity_candidates,
+    review_design_entity_candidate,
+)
+from .saved_searches import saved_search_name, saved_search_query_string
+from .seo import (
+    DEFAULT_PUBLIC_BASE_URL,
+    absolute_public_url,
+    base_structured_data,
+    category_from_slug,
+    category_slug,
+    collection_structured_data,
+    language_alternate_urls,
+    listing_structured_data,
+    normalized_public_base_url,
+    shop_structured_data,
+)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.environ.get("MCM_DATABASE", BASE_DIR / "data" / "mcm.db"))
 LISTING_PAGE_SIZE = 48
-DEFAULT_PUBLIC_BASE_URL = "https://montrealmcm.ca"
 SECURITY_HEADERS = {
     "Strict-Transport-Security": "max-age=31536000",
     "X-Content-Type-Options": "nosniff",
@@ -146,71 +167,6 @@ def static_asset_version(filename: str) -> int:
         return 0
 
 
-def normalized_public_base_url(value: str) -> str:
-    cleaned = value.strip().rstrip("/")
-    return cleaned or DEFAULT_PUBLIC_BASE_URL
-
-
-def absolute_public_url(base_url: str, path: str) -> str:
-    clean_path = path if path.startswith("/") else f"/{path}"
-    return f"{normalized_public_base_url(base_url)}{clean_path}"
-
-
-def category_slug(value: str) -> str:
-    normalized = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
-    return normalized
-
-
-def category_from_slug(slug: str) -> str | None:
-    categories = {category_slug(category): category for category in LAUNCH_CATEGORIES}
-    return categories.get(slug)
-
-
-def language_alternate_urls(base_url: str, path: str) -> dict[str, str]:
-    return {
-        "en": absolute_public_url(base_url, f"{path}?lang=en"),
-        "fr": absolute_public_url(base_url, f"{path}?lang=fr"),
-        "x-default": absolute_public_url(base_url, path),
-    }
-
-
-def analytics_page_type(path: str) -> str:
-    clean_path = (path or "/").split("?", 1)[0] or "/"
-    if clean_path == "/":
-        return "home"
-    if clean_path == "/shops":
-        return "shops"
-    if clean_path == "/favourites":
-        return "favourites"
-    if clean_path.startswith("/listing/"):
-        return "listing"
-    if clean_path.startswith("/shops/"):
-        return "shop"
-    if clean_path.startswith("/categories/"):
-        return "category"
-    return "other"
-
-
-def analytics_path_key(path: str) -> str:
-    clean_path = (path or "/").split("?", 1)[0] or "/"
-    return clean_path if clean_path.startswith("/") else f"/{clean_path}"
-
-
-def should_track_analytics_path(path: str) -> bool:
-    clean_path = analytics_path_key(path)
-    blocked_prefixes = (
-        "/admin",
-        "/analytics",
-        "/cron",
-        "/healthz",
-        "/internal",
-        "/readyz",
-        "/static",
-    )
-    blocked_paths = {"/manifest.webmanifest", "/robots.txt", "/service-worker.js", "/sitemap.xml"}
-    return clean_path not in blocked_paths and not clean_path.startswith(blocked_prefixes)
-
-
 def request_origin_is_allowed() -> bool:
     origin = request.headers.get("Origin", "")
     if not origin:
@@ -225,151 +181,6 @@ def request_origin_is_allowed() -> bool:
         "www.montrealmcm.ca",
         "montreal-mcm.dalaque.workers.dev",
     }
-
-
-def record_analytics_pageview(db: Any, path: str, lang: str) -> None:
-    if not should_track_analytics_path(path):
-        return
-    now = datetime.now(UTC)
-    clean_lang = normalize_lang(lang)
-    page_type = analytics_page_type(path)
-    path_key = analytics_path_key(path)
-    db.execute(
-        """
-        INSERT INTO analytics_page_views (
-            view_date, page_type, path_key, lang, views, updated_at
-        ) VALUES (?, ?, ?, ?, 1, ?)
-        ON CONFLICT(view_date, page_type, path_key, lang) DO UPDATE SET
-            views = analytics_page_views.views + 1,
-            updated_at = excluded.updated_at
-        """,
-        (now.date().isoformat(), page_type, path_key, clean_lang, now.isoformat()),
-    )
-    db.commit()
-
-
-def analytics_since_date(raw_value: str, *, default_days: int = 14) -> str:
-    if raw_value:
-        try:
-            return datetime.strptime(raw_value, "%Y-%m-%d").date().isoformat()
-        except ValueError:
-            pass
-    return (datetime.now(UTC).date() - timedelta(days=default_days - 1)).isoformat()
-
-
-def base_structured_data(base_url: str) -> dict[str, Any]:
-    return {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "Montreal MCM",
-        "url": normalized_public_base_url(base_url),
-        "potentialAction": {
-            "@type": "SearchAction",
-            "target": absolute_public_url(base_url, "/?q={search_term_string}"),
-            "query-input": "required name=search_term_string",
-        },
-    }
-
-
-def collection_structured_data(
-    base_url: str, path: str, name: str, description: str
-) -> dict[str, Any]:
-    return {
-        "@context": "https://schema.org",
-        "@type": "CollectionPage",
-        "name": name,
-        "description": description,
-        "url": absolute_public_url(base_url, path),
-        "isPartOf": {"@type": "WebSite", "name": "Montreal MCM"},
-    }
-
-
-def shop_structured_data(base_url: str, shop: dict[str, Any]) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "@context": "https://schema.org",
-        "@type": "Store",
-        "name": shop["name"],
-        "description": shop_text(shop, "description"),
-        "url": absolute_public_url(base_url, f"/shops/{shop['slug']}"),
-        "sameAs": shop["website"],
-        "address": {
-            "@type": "PostalAddress",
-            "addressLocality": shop["city"],
-            "addressRegion": shop["province"],
-            "addressCountry": shop["country"],
-        },
-    }
-    if shop.get("street_address"):
-        payload["address"]["streetAddress"] = shop["street_address"]
-        payload["address"]["postalCode"] = shop["postal_code"]
-    if shop.get("latitude") and shop.get("longitude"):
-        payload["geo"] = {
-            "@type": "GeoCoordinates",
-            "latitude": shop["latitude"],
-            "longitude": shop["longitude"],
-        }
-    return payload
-
-
-def listing_structured_data(
-    base_url: str,
-    listing: dict[str, Any],
-    shop: dict[str, Any],
-) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "@context": "https://schema.org",
-        "@type": "Product",
-        "name": listing["title"],
-        "description": listing.get("source_description") or listing["title"],
-        "url": absolute_public_url(base_url, f"/listing/{public_item_number(int(listing['id']))}"),
-        "image": listing["primary_image_url"] or None,
-        "brand": {"@type": "Brand", "name": listing["shop_name"]},
-        "category": category_label(listing["category_override"] or listing["category"]),
-        "offers": {
-            "@type": "Offer",
-            "url": listing["source_listing_url"],
-            "priceCurrency": listing["currency"] or "CAD",
-            "availability": "https://schema.org/InStock",
-            "seller": {"@type": "Store", "name": shop["name"]},
-        },
-    }
-    if listing["price_value"] is not None:
-        payload["offers"]["price"] = float(listing["price_value"])
-    availability = listing["availability_override"] or listing["availability_status"]
-    if availability == "sold_out":
-        payload["offers"]["availability"] = "https://schema.org/OutOfStock"
-    return {key: value for key, value in payload.items() if value is not None}
-
-
-def saved_search_query_string(filters: dict[str, str]) -> str:
-    values = {
-        key: value
-        for key, value in filters.items()
-        if value
-        and not (key == "availability" and value == "available")
-        and not (key == "sort" and value == "curated")
-    }
-    return urlencode(values)
-
-
-def saved_search_name(filters: dict[str, str]) -> str:
-    parts = []
-    if filters.get("q"):
-        parts.append(filters["q"])
-    for key in ("shop", "category", "material", "designer", "location"):
-        if filters.get(key):
-            parts.append(filters[key])
-    if filters.get("price_min") or filters.get("price_max"):
-        parts.append(
-            " ".join(
-                value
-                for value in (filters.get("price_min", ""), filters.get("price_max", ""))
-                if value
-            )
-        )
-    if filters.get("availability") and filters["availability"] != "available":
-        parts.append(filters["availability"].replace("_", " "))
-    return " / ".join(parts)[:120] or "Default browse"
 
 
 def require_scheduled_request() -> None:

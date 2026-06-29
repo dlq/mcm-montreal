@@ -182,11 +182,10 @@ Current source inventory may include some relevant lighting and decor from direc
 product scope should remain furniture-first until there is a deliberate decision to include selected
 lighting and decor as first-class categories.
 
-## Roadmap History
+## Changelog
 
-Closed release-track planning, including the completed `0.1.x` stabilization plan, lives in
-`docs/roadmap-history.md`. Keep this file focused on current state, active release planning, future
-tracks, and cross-cutting risks.
+Completed release-track planning lives in `CHANGELOG.md`. Keep this file focused on current state,
+active release planning, future tracks, and cross-cutting risks.
 
 ## 0.2.x Development: Retention And Better Discovery
 
@@ -591,7 +590,7 @@ Proposed release slices:
 
   - commit the current hardening, localization, tests, and planning changes
   - update dependency manifests and lockfiles in a boring, reviewable change
-  - run `npm run lint`, `npm run test:worker`, `uv run python -m unittest tests.test_app`, and
+  - run `npm run lint`, `npm run test:worker`, `uv run python -m unittest discover tests`, and
     `npm run deploy:dry-run`
   - smoke-test local desktop and mobile views after dependency updates
   - deploy only after checks pass, then run `npm run prod:health`
@@ -656,7 +655,7 @@ Proposed release slices:
     calls.
   - move shop-facing helpers into a coherent `mcm/shops.py` module or `mcm/shops/` package: address
     lines, map URLs, map eligibility, display text, and any shop-specific template registration.
-  - split `repository.py` by concern, likely into listings, shops, favourites, filters, admin, and
+  - split `repository_catalog.py` by concern, likely into listings, shops, favourites, filters, admin, and
     saved-search modules, while keeping current query behavior stable.
   - split the oversized source-ingestion module into source definitions, shared parser helpers, and
     parser-family modules such as Shopify, Showroom/Wix, Square, Cargo, and Squarespace; carry the
@@ -673,8 +672,8 @@ Proposed release slices:
     be tested as fixture input to expected `ParsedListing` output.
   - add D1 bridge unit tests and make the coverage goal explicit before tagging broader public
     releases; current coverage gaps are concentrated in source parsers and `mcm/d1.py`.
-  - make migrations the schema source of truth, or generate local SQLite initialization from the same
-    schema path, so local SQLite and D1 migration SQL cannot drift.
+  - make migrations the sole schema source of truth, or generate both local SQLite initialization and
+    D1 migration checks from one schema path, so local SQLite and D1 migration SQL cannot drift.
   - keep `docs/architecture.md` updated as a contributor-facing "where does this belong?" guide for
     shop display copy, crawler behavior, DB queries, refresh orchestration, route glue, templates,
     frontend components, and deployment/ops. A first pass now exists; revise it as the planned
@@ -807,6 +806,54 @@ Likely work:
 - small, clearly labelled sponsorship or contextual-ad experiments outside listing cards
 - careful monetization experiments only after the core catalogue is trusted
 
+### Code Quality And Tooling
+
+Current state:
+
+- Pyright is now part of the dev workflow in basic mode, but the first gate is intentionally scoped:
+  `mcm/sources.py` is ignored, tests are excluded, and broad SQLite/D1 argument-type checks are
+  deferred.
+- Coverage is measured with branch coverage over the `mcm` package, omitting `mcm/seed_data.py`.
+  The explicit goal is 100% measured coverage before the site is treated as broadly
+  release-ready/marketable.
+- `mcm.sources` now has an explicit public API: source definitions/types plus the refresh-facing
+  fetch dispatcher functions. Parser helpers, extraction helpers, URL cleanup, and parser-local
+  constants are private implementation details until they move into parser-family modules.
+- Source metadata/types have started moving out of the parser module: `mcm/source_types.py` owns the
+  public source/listing shapes, and `mcm/source_definitions.py` owns configured source metadata.
+- Shared source utility helpers now live in `mcm/source_utils.py`, leaving `mcm/sources.py` focused
+  more narrowly on parser dispatch and parser-family implementation.
+- Shared source-derived metadata heuristics now live in `mcm/source_enrichment.py`: materials,
+  dimensions, eras, designer/maker extraction, categories, and shipping scope.
+- `mcm/app.py` has started shrinking through pure-helper extraction: page-view analytics helpers now
+  live in `mcm/analytics.py`, SEO/structured-data helpers in `mcm/seo.py`, and saved-search naming
+  helpers in `mcm/saved_searches.py`.
+- Local SQLite DDL now lives in `mcm/schema.sql` and is loaded by `mcm/db.py`, reducing inline SQL in
+  Python while preserving the existing drift test against D1 migrations.
+- Refresh job and refresh event persistence helpers now live in `mcm/repository_refresh.py`,
+  reducing operational SQL in `mcm/refresh.py` while leaving listing ingest flow unchanged.
+- Repository splitting has started: analytics summary reads now live in `mcm/repository_analytics.py`,
+  and design entity/alias/candidate review helpers now live in `mcm/repository_design.py`.
+
+Known debt:
+
+- Clean up parser typing in `mcm/sources.py` so Pyright can check it without noise. The main work is
+  to type source fallback listings as `ParsedListing`, add narrow helpers for BeautifulSoup
+  attributes such as `href`/`src`, and guard nested Wix/Shopify JSON access before calling `.get()`.
+- Continue shrinking `mcm/refresh.py` by extracting listing ingest persistence and reconciliation
+  lookup SQL behind named helpers, with focused tests around deactivation, reconciliation, price
+  history, and identity-review behavior.
+- Continue shrinking `mcm/repository_catalog.py` by extracting favourites/saved searches and admin ops into
+  focused repository modules while keeping core listing search stable.
+- Add a shared database protocol or type alias for the local SQLite connection and D1 bridge so
+  repository, refresh, identity, and tests can accept the same connection-like object without
+  disabling `reportArgumentType`.
+- Decide whether tests should enter the Pyright gate after adding helper assertions for `fetchone()`
+  rows that fixture setup guarantees.
+- Close the coverage gap deliberately rather than by excluding production code. Start with D1 bridge
+  unit tests and source parser fixture tests, then add focused route/repository/refresh edge-case
+  coverage until `npm run test:coverage` reports 100%.
+
 ### UI Quality And Responsive Polish
 
 Live design audit notes from 2026-05-20:
@@ -894,6 +941,7 @@ The `0.3.x` line is successful when:
 - richer content improves buyer confidence rather than distracting from inventory
 - normalized entities improve search and browsing quality
 - any broader source or monetization strategy preserves trust
+- measured Python branch coverage reaches 100% for the configured `mcm` package coverage target
 
 ## 0.4.x Development: Assisted Relevance And Classification
 

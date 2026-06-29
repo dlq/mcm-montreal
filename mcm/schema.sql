@@ -1,0 +1,256 @@
+CREATE TABLE IF NOT EXISTS shops (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    website TEXT NOT NULL,
+    wordmark_text TEXT NOT NULL DEFAULT '',
+    wordmark_style TEXT NOT NULL DEFAULT '',
+    street_address TEXT NOT NULL DEFAULT '',
+    city TEXT NOT NULL,
+    province TEXT NOT NULL,
+    postal_code TEXT NOT NULL DEFAULT '',
+    country TEXT NOT NULL,
+    latitude REAL,
+    longitude REAL,
+    public_location_note TEXT NOT NULL DEFAULT '',
+    is_montreal_local INTEGER NOT NULL DEFAULT 0,
+    shipping_summary TEXT NOT NULL,
+    source_type TEXT NOT NULL,
+    crawl_priority INTEGER NOT NULL DEFAULT 0,
+    notes TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    style_focus TEXT NOT NULL DEFAULT '',
+    listing_url TEXT NOT NULL DEFAULT '',
+    active INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS listings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_shop_id INTEGER NOT NULL,
+    source_listing_url TEXT NOT NULL,
+    source_listing_key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    normalized_title TEXT NOT NULL,
+    price_raw TEXT NOT NULL DEFAULT '',
+    price_value REAL,
+    currency TEXT NOT NULL DEFAULT 'CAD',
+    primary_image_url TEXT NOT NULL DEFAULT '',
+    additional_image_urls TEXT NOT NULL DEFAULT '[]',
+    availability_status TEXT NOT NULL DEFAULT 'unknown',
+    shipping_scope TEXT NOT NULL DEFAULT '',
+    ships_to_montreal INTEGER NOT NULL DEFAULT 0,
+    shipping_note TEXT NOT NULL DEFAULT '',
+    last_seen_at TEXT NOT NULL,
+    last_checked_at TEXT NOT NULL,
+    first_seen_at TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT '',
+    subcategory TEXT NOT NULL DEFAULT '',
+    designer TEXT NOT NULL DEFAULT '',
+    maker TEXT NOT NULL DEFAULT '',
+    era TEXT NOT NULL DEFAULT '',
+    materials TEXT NOT NULL DEFAULT '',
+    dimensions_text TEXT NOT NULL DEFAULT '',
+    width REAL,
+    depth REAL,
+    height REAL,
+    condition_text TEXT NOT NULL DEFAULT '',
+    location_text TEXT NOT NULL DEFAULT '',
+    source_description TEXT NOT NULL DEFAULT '',
+    ingest_source_type TEXT NOT NULL DEFAULT '',
+    parse_confidence REAL NOT NULL DEFAULT 0,
+    dedupe_group_id TEXT NOT NULL DEFAULT '',
+    is_active INTEGER NOT NULL DEFAULT 1,
+    is_featured INTEGER NOT NULL DEFAULT 0,
+    manual_notes TEXT NOT NULL DEFAULT '',
+    availability_override TEXT NOT NULL DEFAULT '',
+    category_override TEXT NOT NULL DEFAULT '',
+    UNIQUE(source_shop_id, source_listing_key)
+);
+
+CREATE TABLE IF NOT EXISTS crawl_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    shop_id INTEGER NOT NULL,
+    ran_at TEXT NOT NULL,
+    status TEXT NOT NULL,
+    listings_found INTEGER NOT NULL DEFAULT 0,
+    error_message TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS crawl_failures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    shop_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    error_message TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS listing_identity_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    shop_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    source_listing_key TEXT NOT NULL,
+    title TEXT NOT NULL,
+    candidate_listing_ids TEXT NOT NULL DEFAULT '',
+    reason TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'open'
+);
+
+CREATE TABLE IF NOT EXISTS listing_availability_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    listing_id INTEGER NOT NULL,
+    shop_id INTEGER NOT NULL,
+    source_listing_key TEXT NOT NULL,
+    observed_at TEXT NOT NULL,
+    from_status TEXT NOT NULL DEFAULT '',
+    to_status TEXT NOT NULL,
+    event_type TEXT NOT NULL DEFAULT 'source_refresh'
+);
+
+CREATE TABLE IF NOT EXISTS listing_price_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    listing_id INTEGER NOT NULL,
+    shop_id INTEGER NOT NULL,
+    source_listing_key TEXT NOT NULL,
+    observed_at TEXT NOT NULL,
+    from_price_raw TEXT NOT NULL DEFAULT '',
+    from_price_value REAL,
+    to_price_raw TEXT NOT NULL DEFAULT '',
+    to_price_value REAL,
+    currency TEXT NOT NULL DEFAULT 'CAD',
+    event_type TEXT NOT NULL DEFAULT 'source_refresh'
+);
+
+CREATE TABLE IF NOT EXISTS refresh_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    shop_id INTEGER NOT NULL,
+    source_slug TEXT NOT NULL,
+    chunk_index INTEGER,
+    entry_url TEXT NOT NULL DEFAULT '',
+    started_at TEXT NOT NULL,
+    finished_at TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL,
+    listings_found INTEGER NOT NULL DEFAULT 0,
+    new_count INTEGER NOT NULL DEFAULT 0,
+    reconciled_count INTEGER NOT NULL DEFAULT 0,
+    hidden_count INTEGER NOT NULL DEFAULT 0,
+    error_message TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS anonymous_identities (
+    owner_key TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    last_seen_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS anonymous_favourite_listings (
+    owner_key TEXT NOT NULL,
+    listing_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (owner_key, listing_id)
+);
+
+CREATE TABLE IF NOT EXISTS anonymous_favourite_shops (
+    owner_key TEXT NOT NULL,
+    shop_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (owner_key, shop_id)
+);
+
+CREATE TABLE IF NOT EXISTS anonymous_saved_searches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_key TEXT NOT NULL,
+    name TEXT NOT NULL,
+    query_string TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(owner_key, query_string)
+);
+
+CREATE TABLE IF NOT EXISTS analytics_page_views (
+    view_date TEXT NOT NULL,
+    page_type TEXT NOT NULL,
+    path_key TEXT NOT NULL,
+    lang TEXT NOT NULL DEFAULT '',
+    views INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (view_date, page_type, path_key, lang)
+);
+
+CREATE TABLE IF NOT EXISTS design_entities (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    canonical_name TEXT UNIQUE NOT NULL,
+    normalized_name TEXT UNIQUE NOT NULL,
+    entity_type TEXT NOT NULL DEFAULT 'creator',
+    review_status TEXT NOT NULL DEFAULT 'approved',
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS design_entity_aliases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_id INTEGER NOT NULL,
+    alias TEXT NOT NULL,
+    normalized_alias TEXT UNIQUE NOT NULL,
+    source TEXT NOT NULL DEFAULT 'admin',
+    created_at TEXT NOT NULL,
+    UNIQUE(entity_id, normalized_alias)
+);
+
+CREATE TABLE IF NOT EXISTS listing_design_entity_evidence (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    listing_id INTEGER NOT NULL,
+    entity_id INTEGER NOT NULL,
+    evidence_role TEXT NOT NULL,
+    source_text TEXT NOT NULL,
+    normalized_source_text TEXT NOT NULL,
+    confidence REAL NOT NULL DEFAULT 1.0,
+    review_status TEXT NOT NULL DEFAULT 'approved',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(listing_id, entity_id, evidence_role, normalized_source_text)
+);
+
+CREATE TABLE IF NOT EXISTS design_entity_candidate_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_role TEXT NOT NULL,
+    source_text TEXT NOT NULL,
+    normalized_source_text TEXT NOT NULL,
+    review_status TEXT NOT NULL,
+    entity_id INTEGER,
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(source_role, normalized_source_text)
+);
+
+CREATE INDEX IF NOT EXISTS idx_listing_availability_events_listing
+    ON listing_availability_events(listing_id, observed_at);
+CREATE INDEX IF NOT EXISTS idx_listing_availability_events_transition
+    ON listing_availability_events(listing_id, from_status, to_status);
+CREATE INDEX IF NOT EXISTS idx_listings_source_shop ON listings(source_shop_id);
+CREATE INDEX IF NOT EXISTS idx_listings_active_availability
+    ON listings(is_active, availability_status, availability_override);
+CREATE INDEX IF NOT EXISTS idx_listings_first_seen ON listings(first_seen_at);
+CREATE INDEX IF NOT EXISTS idx_listings_last_checked ON listings(last_checked_at);
+CREATE INDEX IF NOT EXISTS idx_listing_price_events_listing
+    ON listing_price_events(listing_id, observed_at);
+CREATE INDEX IF NOT EXISTS idx_listing_price_events_change
+    ON listing_price_events(listing_id, from_price_value, to_price_value);
+CREATE INDEX IF NOT EXISTS idx_refresh_jobs_source_started
+    ON refresh_jobs(source_slug, started_at);
+CREATE INDEX IF NOT EXISTS idx_anonymous_favourite_listings_listing
+    ON anonymous_favourite_listings(listing_id);
+CREATE INDEX IF NOT EXISTS idx_anonymous_favourite_shops_shop
+    ON anonymous_favourite_shops(shop_id);
+CREATE INDEX IF NOT EXISTS idx_anonymous_saved_searches_owner
+    ON anonymous_saved_searches(owner_key, updated_at);
+CREATE INDEX IF NOT EXISTS idx_analytics_page_views_type_date
+    ON analytics_page_views(page_type, view_date);
+CREATE INDEX IF NOT EXISTS idx_design_entity_aliases_entity
+    ON design_entity_aliases(entity_id);
+CREATE INDEX IF NOT EXISTS idx_listing_design_entity_evidence_listing
+    ON listing_design_entity_evidence(listing_id, evidence_role);
+CREATE INDEX IF NOT EXISTS idx_listing_design_entity_evidence_entity
+    ON listing_design_entity_evidence(entity_id);
+CREATE INDEX IF NOT EXISTS idx_design_entity_candidate_reviews_status
+    ON design_entity_candidate_reviews(review_status, source_role);

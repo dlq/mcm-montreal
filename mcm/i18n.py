@@ -183,7 +183,7 @@ def resolved_language() -> str:
     return normalize_lang(session.get("lang"))
 
 
-def translator_for(lang: str) -> Callable[[str], str]:
+def translator_for(lang: str) -> Callable[..., str]:
     def _translate(key: str, **kwargs: Any) -> str:
         return translate(key, lang=lang, **kwargs)
 

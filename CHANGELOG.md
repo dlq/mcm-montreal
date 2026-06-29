@@ -1,9 +1,8 @@
-# Montreal MCM Roadmap History
+# Changelog
 
-This document holds closed roadmap tracks and completed implementation history that should survive
-context loss but no longer needs to occupy the active planning document.
+Completed release-track planning and implementation history for Montreal MCM.
 
-## 0.1.x Development: Stabilize The Live MVP
+## [0.1.2] Stabilize The Live MVP
 
 The `0.1.x` line made the live product dependable. It is closed at release `0.1.2`; remaining
 reliability improvements now belong to `0.2.x` unless they are urgent production incidents.

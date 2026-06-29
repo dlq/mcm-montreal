@@ -7,7 +7,7 @@ This runbook covers the production baseline for Montreal MCM.
 Run local checks:
 
 ```bash
-uv run python -m unittest tests.test_app
+uv run python -m unittest discover tests
 npm run test:worker
 npm run lint
 npm run deploy:dry-run
@@ -256,7 +256,7 @@ npm run deploy
 
 - `0.3.3` is tagged and pushed to `main`.
 - D1 migration `0013_design_entity_candidate_reviews.sql` was applied successfully to production.
-- The full pre-deploy check set passed: `uv run python -m unittest tests.test_app`,
+- The full pre-deploy check set passed: `uv run python -m unittest discover tests`,
   `npm run test:worker`, `npm run lint`, and `npm run deploy:dry-run`.
 - Three full `npm run deploy` attempts built the `mcm-montreal==0.3.3` container image locally but
   failed while pushing layers to Cloudflare's managed registry with closed-connection or

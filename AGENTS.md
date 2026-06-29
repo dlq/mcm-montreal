@@ -7,8 +7,8 @@
 
 ## Durable Notes
 
-- Use `research.md` for findings that should survive chat context loss: source behavior, parser evidence, URLs, commands run, unresolved questions, and conclusions.
-- Use `plan.md` for execution state: current goal, checklist, decisions, risks, and next steps.
+- Use `NOTES.md` for findings that should survive chat context loss: source behavior, parser evidence, URLs, commands run, unresolved questions, and conclusions.
+- Use `PLANS.md` for execution state: current goal, checklist, decisions, risks, and next steps.
 - Update these files only when the durable facts or plan materially change. Do not add conversational notes, temporary scratch work, secrets, or duplicate final responses.
 
 ## Project Shape
@@ -29,6 +29,7 @@
 
 - Run checks that match the files touched before handing off code changes.
 - Python: `uv run ruff check .` and `uv run ruff format .`.
+- Type checks: `uv run pyright`.
 - Templates: `uv run djlint templates --lint` and `uv run djlint templates --reformat`.
 - Static JS/CSS: `npm run lint` or `npx biome check static`; formatting is covered by `npm run format`.
 - For broad changes, prefer `uv run pre-commit run --all-files` after dependencies are installed.

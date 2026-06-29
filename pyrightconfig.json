@@ -1,0 +1,15 @@
+{
+  "typeCheckingMode": "basic",
+  "pythonVersion": "3.12",
+  "include": ["mcm"],
+  "exclude": [
+    ".venv",
+    ".wrangler",
+    ".worktrees",
+    "backups",
+    "data",
+    "node_modules"
+  ],
+  "ignore": ["mcm/sources.py"],
+  "reportArgumentType": false
+}

@@ -5,7 +5,8 @@ scrapes a small set of direct shop sources, stores listings in SQLite locally, a
 English/French browsing UI with filters, favourites, listing detail pages, shop pages, and admin
 review tools.
 
-The product plan lives in [plan.md](plan.md), and source research lives in [research.md](research.md).
+The product plan lives in [PLANS.md](PLANS.md), source notes live in [NOTES.md](NOTES.md),
+and completed release history lives in [CHANGELOG.md](CHANGELOG.md).
 
 ## Local Quick Start
 
@@ -61,8 +62,14 @@ uv run app.py refresh chez-lamothe
 Run tests:
 
 ```bash
-uv run python -m unittest tests.test_app
+uv run python -m unittest discover tests
 npm run test:worker
+```
+
+Run Python type checks:
+
+```bash
+uv run pyright
 ```
 
 Check Python coverage:
