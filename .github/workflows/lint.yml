@@ -43,7 +43,7 @@ jobs:
         run: uv run pyright
 
       - name: Run tests
-        run: uv run python -m unittest tests.test_app
+        run: uv run python -m unittest discover tests
 
       - name: Run djLint
         run: uv run djlint templates --lint
